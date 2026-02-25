@@ -1491,7 +1491,7 @@ onMounted(async () => {
     await store.loadKpiRates();
     
     // Загружаем bonusHistory.json
-    const response = await fetch('/data/bonusHistory.json');
+    const response = await fetch('/api/bonusHistory');
     const data = await response.json();
     bonusHistory.value = data.bonuses;
     console.log('✅ Bonus history loaded:', bonusHistory.value.length, 'records');
