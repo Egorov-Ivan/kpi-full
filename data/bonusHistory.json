@@ -1,0 +1,2101 @@
+{
+  "bonuses": [
+    {
+      "client": "АВТОЛОГ ООО",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "16-08-2023"
+    },
+    {
+      "client": "ИНТЕГРАЛ ООО",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Андикаев Павел Анатольевич",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Анучин Андрей Александрович",
+      "currentManager": "Архипова А",
+      "status": "ДА",
+      "firstFillDate": "28-10-2025"
+    },
+    {
+      "client": "ИП Анучина Анна Владимировна",
+      "currentManager": "Архипова А",
+      "status": "ДА",
+      "firstFillDate": "27-10-2025"
+    },
+    {
+      "client": "ИП Ахметов Алмаз Фанисович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "01-10-2025"
+    },
+    {
+      "client": "ИП Ахметова Гузелия Жаудатовна",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "30-09-2025"
+    },
+    {
+      "client": "ИП Борисов Юрий Олегович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "17-04-2024"
+    },
+    {
+      "client": "ИП Водильцев Евгений Юрьевич",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "30-10-2025"
+    },
+    {
+      "client": "ИП Волков Алексей Александрович",
+      "currentManager": "Архипова А",
+      "status": "ДА",
+      "firstFillDate": "31-10-2025"
+    },
+    {
+      "client": "ИП Волков Сергей Олегович",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Ворончихин Константин Александрович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "28-10-2025"
+    },
+    {
+      "client": "ИП Данилов Максим Александрович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "16-10-2025"
+    },
+    {
+      "client": "ИП Дубинин Иван Семенович",
+      "currentManager": "Архипова А",
+      "status": "ДА",
+      "firstFillDate": "26-11-2025"
+    },
+    {
+      "client": "ИП Иконников Александр Викторович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "01-10-2025"
+    },
+    {
+      "client": "ИП Коновалов Алексей Анатольевич",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Крючков Евгений Павлович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "13-10-2025"
+    },
+    {
+      "client": "ИП Морозенков Алексей Анатольевич",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "20-08-2025"
+    },
+    {
+      "client": "ИП Набиуллин Ирек Габдулгилемович",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": "15-09-2025"
+    },
+    {
+      "client": "ИП Петифоров Владимир Васильевич",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Петухов Дмитрий Викторович",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Печенкин Константин Владимирович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "19-10-2025"
+    },
+    {
+      "client": "ИП Пивоваров Артур Вадимович",
+      "currentManager": "Архипова А",
+      "status": "ДА",
+      "firstFillDate": "01-11-2025"
+
+    },
+    {
+      "client": "ИП Пунтусов Сергей Анатольевич",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "02-11-2025"
+    },
+    {
+      "client": "ИП Репнер Даниил Генрихович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "15-10-2025"
+    },
+    {
+      "client": "ИП Романова Алина Евгеньевна",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "06-06-2025"
+    },
+    {
+      "client": "ИП Уральская Татьяна Александровна",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "18-06-2025"
+    },
+    {
+      "client": "ИП Фархутдинов Рафаил Борисович",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "07-12-2024"
+    },
+    {
+      "client": "ИП Шабалина Екатерина Александровна",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "06-11-2025"
+    },
+    {
+      "client": "ИП Щербина Дмитрий Анатольевич",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "16-08-2023"
+    },
+    {
+      "client": "ТРАНСПОРТНАЯ КОМПАНИЯ МАШИНОФФ ООО",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "Фролов Илья Юрьевич",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "11-01-2025"
+    },
+    {
+      "client": "ЧЕРНОМОРЕЦ ООО СК",
+      "currentManager": "Архипова А",
+      "status": "БЫЛ",
+      "firstFillDate": "07-03-2025"
+    },
+    {
+      "client": "ШИННЫЙ ЦЕНТР АФИПСКИЙ ООО",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЯРТЕХЦЕНТР ООО",
+      "currentManager": "Архипова А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АГАТ ООО",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Барсуков Геннадий Васильевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Выволокина Светлана Евгеньевна",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гончарова Марина Владимировна",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Грабовский Олег Викторович",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Грамада Владислав Сергеевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гусев Александр Васильевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мавликаев Александр Рефанович",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Минин Дмитрий Михайлович",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Молчин Вадим Эдуардович",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Наймушин Андрей Николаевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Никитин Виктор Сергеевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Романова Алина Евгеньевна",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Сильвестров Владимир Александрович",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Сильвестрова Светлана Зотиковна",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Стуколов Денис Юрьевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Томилов Юрий Валерьевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Тупицин Владимир Викторович",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Уральская Татьяна Александровна",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Щербина Дмитрий Анатольевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "Фролов Илья Юрьевич",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЧЕРНОМОРЕЦ ООО СК",
+      "currentManager": "Борисов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Красильников Максим Викторович",
+      "currentManager": "Борисов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Пидоря Алексей Федорович",
+      "currentManager": "Борисов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Подкопаев Александр Евгеньевич",
+      "currentManager": "Борисов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АВТОЛОГ ООО",
+      "currentManager": "Панин И",
+      "status": "БЫЛ",
+      "firstFillDate": "16-08-2023"
+    },
+    {
+      "client": "ИП Андреев Дмитрий Алексеевич",
+      "currentManager": "Панин И",
+      "status": "ДА",
+      "firstFillDate": "03-09-2025"
+    },
+    {
+      "client": "ИП Баранова Светлана Александровна",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": "21-09-2025"
+    },
+    {
+      "client": "ИП Баранчаев Рамиль Абдулхакович",
+      "currentManager": "Панин И",
+      "status": "БЫЛ",
+      "firstFillDate": "29-07-2025"
+    },
+    {
+      "client": "ИП Григорьев Дмитрий Александрович",
+      "currentManager": "Панин И",
+      "status": "БЫЛ",
+      "firstFillDate": "23-07-2025"
+    },
+    {
+      "client": "ИП Дроздов Алексей Владимирович",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Коншин Алексей Викторович",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Копьёв Николай Александрович",
+      "currentManager": "Панин И",
+      "status": "БЫЛ",
+      "firstFillDate": "28-08-2025"
+    },
+    {
+      "client": "ИП Ларионов Дмитрий Александрович",
+      "currentManager": "Панин И",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мазепов Дмитрий Иванович",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": "08-10-2025"
+    },
+    {
+      "client": "ИП Морозенков Алексей Анатольевич",
+      "currentManager": "Панин И",
+      "status": "БЫЛ",
+      "firstFillDate": "20-08-2025"
+    },
+    {
+      "client": "ИП Нифедов Михаил Петрович",
+      "currentManager": "Панин И",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Спрыжкова Анастасия Алексеевна",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Топал Георгий Викторович",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шевчук Станислав Васильевич",
+      "currentManager": "Панин И",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шиблев Владимир Викторович",
+      "currentManager": "Панин И",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Александрова Ольга Владимировна",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Алёшин Андрей Александрович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Баринов Виктор Юрьевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "10-09-2025"
+    },
+    {
+      "client": "ИП Вихров Юрий Александрович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "29-09-2025"
+    },
+    {
+      "client": "ИП Зайцев Алексей Сергеевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "14-09-2025"
+    },
+    {
+      "client": "ИП Каюмов Альфис Дамирович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "10-09-2025"
+    },
+    {
+      "client": "ИП Клюкин Денис Васильевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "30-09-2025"
+    },
+    {
+      "client": "ИП Куратник Андрей Константинович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "14-09-2025"
+    },
+    {
+      "client": "ИП Луконин Андрей Валерьевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "04-09-2025"
+    },
+    {
+      "client": "ИП Лямин Артем Александрович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "22-07-2025"
+    },
+    {
+      "client": "ИП Мозиков Алексей Юрьевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "11-09-2025"
+    },
+    {
+      "client": "ИП Хисмутдинова Алсу Рамильевна",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "27-08-2025"
+    },
+    {
+      "client": "ИП Чикунов Михаил Николаевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "13-07-2025"
+    },
+    {
+      "client": "ИП Янес Евгений Евгеньевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "25-08-2025"
+    },
+    {
+      "client": "ИП Яньшин Михаил Владимирович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "04-09-2025"
+    },
+    {
+      "client": "ИП Алматаев Денис Алексеевич",
+      "currentManager": "Голобоков А",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Копьёв Николай Александрович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Наймушин Андрей Николаевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Никитин Виктор Сергеевич",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Сильвестров Владимир Александрович",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Сильвестрова Светлана Зотиковна",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "28-07-2025"
+    },
+    {
+      "client": "ИП Теплухин Андрей Сергеевич",
+      "currentManager": "Голобоков А",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Хаванцев Андрей Анатольевич",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кафидов Максим Вячеславович",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бодня Анатолий Николаевич",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Дадашов Джейхун Сервер Оглы",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Баранова Светлана Александровна",
+      "currentManager": "Голобоков А",
+      "status": "БЫЛ",
+      "firstFillDate": "21-09-2025"
+    },
+    {
+      "client": "ИП Богданова Марина Олеговна",
+      "currentManager": "Голобоков А",
+      "status": "ДА",
+      "firstFillDate": "27-11-2025"
+    },
+    {
+      "client": "ИП Голов Александр Михайлович",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Ефремов Андрей Юрьевич",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТРАНСТРЕЙД ООО",
+      "currentManager": "Голобоков А",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ГСГ ООО",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Абакумец Александр Борисович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Агеев Герман Александрович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Алексеев Эдуард Владимирович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Андреев Сергей Сергеевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Астапович Юрий Васильевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Аубакиров Расул Булатович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Баранчаев Рамиль Абдулхакович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бугор Анатолий Афанасьевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Васильева Анна Вячеславовна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Выволокина Светлана Евгеньевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Вялков Сергей Борисович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гаус Максим Федорович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Говядинкина Наталья Сергеевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Голованова Аида Раисовна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гречко Андрей Владимирович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гречко Владимир Николаевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гречко Сергей Владимирович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Диулин Вадим Станиславович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Дружинин Сергей Александрович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Зайцев Евгений Михайлович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Иванцов Владимир Васильевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Клочкова Ольга Анатольевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кобзарь Олег Николаевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кобзарь Светлана Евгеньевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Козлов Александр Иванович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кондратьев Сергей Николаевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кочетков Игорь Петрович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Левченко Наталья Юрьевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Лоза Галина Сергеевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мазепов Дмитрий Иванович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мацкевич Янина Игоревна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Минин Дмитрий Михайлович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Насыбулин Адик Рашитович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Невкин Александр Александрович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Невпоранный Антон Евгеньевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Павлинов Артем Валентинович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Понявина Наталия Александровна",
+      "currentManager": "Воропаев С",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Попова Татьяна Александровна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Рубцов Дмитрий Николаевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Свистунов Дмитрий Сергеевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Сенцов Михаил Геннадиевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Смагин Михаил Алексеевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Согрин Владимир Петрович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Томилов Юрий Валерьевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Хромова Елена Дмитриевна",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Цуканов Андрей Викторович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "МЕЛИЗМ ООО",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ОПТНЕФТЬ ООО",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТРАНСПОРТНАЯ КОМПАНИЯ МАШИНОФФ ООО",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Агеев Станислав Германович",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Белоус Сергей Юрьевич",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "НК ИНЖИНИРИНГ ООО",
+      "currentManager": "Воропаев С",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АВТОРЕЙС ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АВТОРЕЙС-ЕК ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ГРАН ТРЕЙД ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бойков Михаил Антонинович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Быковский Александр Викторович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Варава Игорь Владимирович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Вортман Михаил Ефремович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Голенков Андрей Вадимович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Горлов Сергей Николаевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Давлекамов Равиль Тамирович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Дзукашвили Тамаз Харитонович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Долгинов Николай Петрович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Жилин Сергей Сергеевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Липатов Виктор Павлович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Нагоев Шумаф Темботович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Рождественский Олег Вячеславович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Рожок Юрий Николаевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Рязанцев Александр Николаевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Сидоренко Олег Адольфович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Тагиров Марсель Мухамедьянович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Чернов Анатолий Анатольевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шведов Валерий Валентинович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Щербинин Сергей Юрьевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИСО ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "КРАМЗ-АВТО ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЛБЛ МАГИСТРАЛЬ ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "МТЛА ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ООО БЕКАС",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТАКАР ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТРАНСЛОДЖИК ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТОО \"ASCO-TRANS GROUP\"",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гузеева Елена Евгеньевна",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Манакова Дарья Викторовна",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Петухов Сергей Юрьевич",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гончарова Марина Владимировна",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Грабовский Олег Викторович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гран Владимир Владимирович",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Ерохов Александр Григорьевич",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Красильников Максим Викторович",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мочалов Роман Сергеевич",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Нагоева Зарема Асланчариевна",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шевчук Станислав Васильевич",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Радченко Юрий Викторович",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шиблев Владимир Викторович",
+      "currentManager": "Кошарный Е",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "АГАТ ООО",
+      "currentManager": "Кошарный Е",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "НОВАЯ ЛОГИСТИКА ООО",
+      "currentManager": "Кошарный Е",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "БАЛТНЕВА ЛОГИСТИКА ООО",
+      "currentManager": "Кошарный Е",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Идрисов Денис Радикович",
+      "currentManager": "Кошарный Е",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Алексеев Алексей Леонидович",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Барсуков Геннадий Васильевич",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "22-08-2025"
+    },
+    {
+      "client": "ИП Бордаченко Артем Владимирович",
+      "currentManager": "Сартаков Р",
+      "status": "ДА",
+      "firstFillDate": "25-10-2025"
+    },
+    {
+      "client": "ИП Булатов Ильгиз Алекович",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Григорьев Дмитрий Александрович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "23-07-2025"
+    },
+    {
+      "client": "ИП Завгородний Вадим Григорьевич",
+      "currentManager": "Сартаков Р",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Завьялов Михаил Васильевич",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Ильина Лариса Виталиевна",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "04-09-2025"
+    },
+    {
+      "client": "ИП Мавликаев Александр Рефанович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "02-04-2025"
+    },
+    {
+      "client": "ИП Мальтин Виктор Федорович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "05-09-2025"
+    },
+    {
+      "client": "ИП Молчин Вадим Эдуардович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "25-06-2025"
+    },
+    {
+      "client": "ИП Нифедов Михаил Петрович",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": "25-08-2025"
+    },
+    {
+      "client": "ИП Новак Сергей Николаевич",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Патрогин Борис Борисович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "30-08-2025"
+    },
+    {
+      "client": "ИП Пидоря Алексей Федорович",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Подкопаев Александр Евгеньевич",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": "20-09-2025"
+    },
+    {
+      "client": "ИП Смирнов Артур Игоревич",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "18-09-2025"
+    },
+    {
+      "client": "ИП Тимеруков Илдар Минхайдерович",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": "27-09-2025"
+    },
+    {
+      "client": "ИП Трошин Владимир Викторович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "29-09-2025"
+    },
+    {
+      "client": "ИП Удругов Вадим Геннадьевич",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "04-09-2025"
+    },
+    {
+      "client": "ИП Фрига Денис Васильевич",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шмаков Валерий Павлович",
+      "currentManager": "Сартаков Р",
+      "status": "БЫЛ",
+      "firstFillDate": "03-09-2025"
+    },
+    {
+      "client": "ИП Поплаухина Светлана Владимировна",
+      "currentManager": "Сартаков Р",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Амелина Виктория Дмитриевна",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Аристова Валентина Васильевна",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "16-08-2025"
+    },
+    {
+      "client": "ИП Борисов Вячеслав Павлович",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "08-08-2025"
+    },
+    {
+      "client": "ИП Гавритенкова Галина Викторовна",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Грамада Владислав Сергеевич",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гусев Александр Васильевич",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Канцибер Иван Петрович",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "19-08-2025"
+    },
+    {
+      "client": "ИП Ларионов Дмитрий Александрович",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Лещенко Артем Васильевич",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "10-09-2025"
+    },
+    {
+      "client": "ИП Михайлов Андрей Павлович",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Михеев Денис Васильевич",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "14-08-2025"
+    },
+    {
+      "client": "ИП Мордакин Алексей Владимирович",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "26-08-2025"
+    },
+    {
+      "client": "ИП Новохатский Максим Валерьевич",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "27-08-2025"
+    },
+    {
+      "client": "ИП Петров Александр Викторович",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Попова Елена Алексеевна",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "25-09-2025"
+    },
+    {
+      "client": "ИП Просеков Максим Владимирович",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "28-08-2025"
+    },
+    {
+      "client": "ИП Тажибаев Руслан Бахадирович",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "06-08-2025"
+    },
+    {
+      "client": "ИП Ушков Александр Викторович",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шакиров Юсыф Наилевич",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "19-08-2025"
+    },
+    {
+      "client": "ИП Шакирова Эльмира Габдыхановна",
+      "currentManager": "Храмов Д",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шашкин Дмитрий Андреевич",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ООО \"И-ТРАНС\"",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "СТРОИТЕЛЕВ ООО",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТОО \"ASCO-TRANS GROUP\"",
+      "currentManager": "Храмов Д",
+      "status": "БЫЛ",
+      "firstFillDate": "16-08-2023"
+    },
+    {
+      "client": "ТРАНСАВТО53 ООО",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЭКСПРЕСС ООО",
+      "currentManager": "Храмов Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АВТОКАРЗ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АЛЬФА - МОБИЛ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АМУЛЕТ СПБ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АТП № 8 ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "АТП ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "БАЛТ СЕРВИС ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ГЛОБАЛТРАНЗ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ГЛОНАСС ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ГЛОНАСС-М ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ГОРОХОВЕЦКОЕ АТП АО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ДРАЙВУЭЙ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЗАГОРОДНЫЙ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Афанасьева Татьяна Николаевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Байшев Руслан Сергеевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бельков Валерий Васильевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бомбель Иван Владимирович",
+      "currentManager": "Федосеенко Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бородин Андрей Олегович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бунцыкин Андрей Владимирович",
+      "currentManager": "Федосеенко Д",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бутузов Дмитрий Петрович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Быкадорова Анна Юрьевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Быков Владимир Александрович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Бякин Александр Петрович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Влезько Олег Алексеевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гаврилов Виктор Владимирович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Грицун Андрей Валерьевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Гришко Светлана Николаевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Громов Александр Владимирович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Дудаков Александр Сергеевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Иванов Денис Григорьевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Исмаилов Николай Тельманович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Карабин Виктор Леонидович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Карсонов Александр Александрович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кириллов Кирилл Вячеславович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Коломыйченко Сергей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Крамчанинова Наталья Вячеславовна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Кузнецов Дмитрий Викторович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Лазакович Вадим Игоревич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Левченко Валентина Николаевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Литвинов Алексей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Майлатов Сергей Александрович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мальгинов Антон Игоревич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Матосян Тигран Арменович",
+      "currentManager": "Федосеенко Д",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Матросов Алексей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Матросов Сергей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Мухин Сергей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Новокрещенов Вячеслав Валерьевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Оленева Нина Николаевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Останин Павел Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Павлов Константин Андреевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Перминов Александр Вячеславович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Першин Павел Анатольевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Пихтин Павел Анатольевич",
+      "currentManager": "Федосеенко Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Попов Виталий Яковлевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Рехин Максим Сергеевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Руденко Станислав Владимирович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Русяев Олег Иванович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Ряднов Игорь Евгеньевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Самохина Анастасия Юрьевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Степанян Ашот Юрикович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Суворов Владимир Михайлович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Титов Сергей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Толмачёв Виктор Иванович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Тропин Олег Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Фатихов Ильдар Радикович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Филиппов Никита Владимирович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Фомин Евгений Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Цветков Станислав Юрьевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Цепелёв Сергей Иннокентьевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Цепков Алексей Анатольевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шангин Ратмир Эдуардович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шевченко Валерий Валерьевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шибитов Василий Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Широков Евгений Михайлович",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шмелёва Ксения Сергеевна",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Шурыгин Дмитрий Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "ДА",
+      "firstFillDate": null
+    },
+    {
+      "client": "ИП Яковлев Сергей Николаевич",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "КОФЕЕК СПБ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "КРОВЛЯ БЫКБЕЙ ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "КРЫМСКОЕ АТП АО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ПМК7 ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "СДЭК ТК ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "СОВА ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ССВ ЛОГИСТИКА ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТАМБОВ-АВТО-ЛИДЕР ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТИФФАНИ БОАТС ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТРАНС-СЕРВИС-АВТО ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ТРАНСЭКОСЕРВИС ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЧИСТЫЙ РОДНИК ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ЭКСПРЕСС-АВТО ООО",
+      "currentManager": "Федосеенко Д",
+      "status": "БЫЛ",
+      "firstFillDate": null
+    },
+    {
+      "client": "ООО ГУ ШУН",
+      "currentManager": "Федосеенко Д",
+      "status": "НЕТ",
+      "firstFillDate": null
+    }
+  ],
+  "statistics": {
+    "processedSheets": [
+      "Архипова А",
+      "Борисов Д",
+      "Панин И",
+      "Голобоков А",
+      "Воропаев С",
+      "Кошарный Е",
+      "Сартаков Р",
+      "Храмов Д",
+      "Федосеенко Д"
+    ],
+    "totalRecords": 347
+  }
+}
