@@ -3,7 +3,7 @@
 **/.pnpm-store
 
 # production
-**/dist
+# **/dist           <--- закомментировано или удалено
 **/build
 
 # local env files
