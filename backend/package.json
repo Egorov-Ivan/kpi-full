@@ -1,5 +1,5 @@
 {
-  "name": "kpi-calculator",
+  "name": "json-server-backend",
   "version": "1.0.0",
   "description": "JSON Server for KPI",
   "main": "server.js",
@@ -7,6 +7,6 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "json-server": "1.0.0-beta.3"
+    "json-server": "^1.0.0-beta.3"
   }
 }
