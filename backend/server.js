@@ -6,4 +6,5 @@ const middlewares = jsonServer.defaults()
 server.use(middlewares)
 server.use(router)
 
+// ВАЖНО: Экспортируем сервер для Vercel
 module.exports = server

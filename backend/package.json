@@ -1,7 +1,6 @@
 {
-  "name": "json-server-backend",
+  "name": "kpi-backend",
   "version": "1.0.0",
-  "description": "JSON Server for KPI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
