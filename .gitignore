@@ -1,0 +1,23 @@
+# dependencies
+**/node_modules
+**/.pnpm-store
+
+# production
+**/dist
+**/build
+
+# local env files
+**/.env
+**/.env.local
+**/.env.*.local
+
+# vercel
+**.vercel
+**/.vercel
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
