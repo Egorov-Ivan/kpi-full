@@ -1,0 +1,1887 @@
+<!-- src/pages/KpiCalculator.vue -->
+<template>
+  <v-container fluid class="page-content">
+    <v-row>
+      <v-col cols="12">
+        <!-- Заголовок страницы -->
+        <div class="d-flex align-center mb-4">
+          <v-avatar color="primary" size="48" class="mr-4">
+            <v-icon size="28" color="white">ri-bar-chart-grouped-line</v-icon>
+          </v-avatar>
+          <div>
+            <h1 class="text-h4 font-weight-medium mb-1">Рейтинг менеджеров</h1>
+            <p class="text-subtitle-1 text-grey">План / Факт / Выплаты за {{ selectedMonthName }} {{ selectedYear }}</p>
+          </div>
+        </div>
+
+        <!-- Карточка с рейтингом -->
+        <v-card elevation="0" class="rating-card">
+          <!-- Период и фильтры -->
+          <div class="pa-4 d-flex align-center gap-4 flex-wrap">
+            <div style="min-width: 200px;">
+              <v-select
+                v-model="selectedYear"
+                :items="years"
+                label="Год"
+                variant="outlined"
+                density="compact"
+                hide-details
+              ></v-select>
+            </div>
+
+            <div style="min-width: 200px;">
+              <v-select
+                v-model="selectedMonth"
+                :items="months"
+                item-title="title"
+                item-value="value"
+                label="Месяц"
+                variant="outlined"
+                density="compact"
+                hide-details
+              ></v-select>
+            </div>
+
+            <v-spacer></v-spacer>
+
+            <v-btn
+              color="primary"
+              variant="tonal"
+              prepend-icon="ri-refresh-line"
+              @click="refreshData"
+            >
+              Обновить
+            </v-btn>
+          </div>
+
+          <!-- Статистика по буферу -->
+          <v-divider></v-divider>
+          
+          <div class="pa-4 d-flex justify-space-between align-center">
+            <div class="text-caption text-grey">
+              <v-icon size="small" color="grey" class="mr-1">ri-database-2-line</v-icon>
+              Буфер данных: 
+              <strong>{{ bufferStats.totalOperations }}</strong> операций, 
+              <strong>{{ bufferStats.totalClients }}</strong> клиентов
+            </div>
+            
+            <div class="text-caption text-grey">
+              <v-icon size="small" color="grey" class="mr-1">ri-calendar-line</v-icon>
+              Период данных: {{ bufferStats.dateRange.first }} — {{ bufferStats.dateRange.last }}
+            </div>
+          </div>
+
+          <v-divider></v-divider>
+
+          <!-- Таблица рейтинга -->
+          <v-data-table
+            :headers="ratingHeaders"
+            :items="managerRatings"
+            :loading="loading"
+            loading-text="Загрузка данных..."
+            class="rating-table"
+            hover
+            items-per-page="-1"
+            fixed-header
+          >
+            <!-- Место в рейтинге -->
+            <template v-slot:item.rank="{ index }">
+              <div class="rank-cell">
+                <span class="rank-number">#{{ index + 1 }}</span>
+              </div>
+            </template>
+
+            <!-- Менеджер -->
+            <template v-slot:item.manager="{ item }">
+              <div class="d-flex align-center gap-3">
+                <v-avatar :color="getRoleColor(item.role)" size="36">
+                  <v-icon color="white">{{ getRoleIcon(item.role) }}</v-icon>
+                </v-avatar>
+                <div>
+                  <div class="font-weight-medium">{{ item.name }}</div>
+                  <div class="text-caption text-grey">{{ item.role }}</div>
+                </div>
+              </div>
+            </template>
+
+            <!-- План пополнений -->
+            <template v-slot:item.plan="{ item }">
+              <div class="text-right font-weight-medium">
+                {{ formatMoney(item.plan) }}
+              </div>
+            </template>
+
+            <!-- Факт (пополнения) -->
+            <template v-slot:item.fact="{ item }">
+              <div class="text-right">
+                <span class="font-weight-medium">{{ formatMoney(item.fact) }}</span>
+                <div class="text-caption text-grey">
+                  {{ item.operationsCount }} опер.
+                </div>
+              </div>
+            </template>
+
+            <!-- % выполнения плана -->
+            <template v-slot:item.planPercent="{ item }">
+              <div class="d-flex align-center gap-2">
+                <v-progress-linear
+                  v-model="item.planPercent"
+                  :color="getPercentColor(item.planPercent)"
+                  height="8"
+                  rounded
+                  class="flex-grow-1"
+                ></v-progress-linear>
+                <span class="text-body-2 font-weight-medium" :class="getPercentTextColor(item.planPercent)">
+                  {{ item.planPercent.toFixed(1) }}%
+                </span>
+              </div>
+            </template>
+
+            <!-- Сумма выплаты -->
+            <template v-slot:item.payment="{ item }">
+              <div class="text-right">
+                <span class="text-h6 font-weight-bold" :class="getPaymentColor(item.payment)">
+                  {{ formatMoney(item.payment) }}
+                </span>
+              </div>
+            </template>
+
+            <!-- Действия -->
+            <template v-slot:item.actions="{ item }">
+              <v-btn
+                icon
+                variant="text"
+                size="small"
+                color="primary"
+                @click="openManagerDetails(item)"
+              >
+                <v-icon>ri-eye-line</v-icon>
+                <v-tooltip activator="parent" location="top">Детали</v-tooltip>
+              </v-btn>
+            </template>
+
+            <!-- Пустое состояние -->
+            <template v-slot:no-data>
+              <div class="text-center pa-8">
+                <v-icon size="64" color="grey-lighten-1" class="mb-4">ri-user-search-line</v-icon>
+                <h3 class="text-h6 text-grey">Нет данных за выбранный период</h3>
+                <p class="text-body-2 text-grey">Попробуйте выбрать другой месяц</p>
+              </div>
+            </template>
+          </v-data-table>
+
+          <!-- Итоги -->
+          <v-divider></v-divider>
+          
+          <div class="pa-4 d-flex justify-space-between align-center">
+            <div class="text-caption text-grey">
+              <v-icon size="small" color="grey" class="mr-1">ri-information-line</v-icon>
+              Период: {{ selectedMonthName }} {{ selectedYear }}
+            </div>
+            
+            <div class="d-flex gap-4">
+              <div class="text-caption">
+                <span class="text-grey">Общий факт:</span>
+                <span class="font-weight-medium ml-2">{{ formatMoney(totalFact) }}</span>
+              </div>
+              <div class="text-caption">
+                <span class="text-grey">Средний % плана:</span>
+                <span class="font-weight-medium ml-2">{{ averagePlanPercent.toFixed(1) }}%</span>
+              </div>
+              <div class="text-caption">
+                <span class="text-grey">Общая выплата:</span>
+                <span class="font-weight-medium ml-2">{{ formatMoney(totalPayment) }}</span>
+              </div>
+            </div>
+          </div>
+        </v-card>
+
+        <!-- Модальное окно деталей менеджера -->
+        <v-dialog v-model="showDetailsDialog" max-width="1200" @update:model-value="saveDialogState">
+          <v-card v-if="selectedManagerDetails">
+            <v-card-title class="d-flex align-center pa-4">
+              <v-avatar :color="getRoleColor(selectedManagerDetails.role)" size="40" class="mr-3">
+                <v-icon color="white">{{ getRoleIcon(selectedManagerDetails.role) }}</v-icon>
+              </v-avatar>
+              <div>
+                <span class="text-h5">{{ selectedManagerDetails.name }}</span>
+                <div class="text-caption text-grey">{{ selectedManagerDetails.role }}</div>
+              </div>
+              <v-spacer></v-spacer>
+              <v-btn
+                icon
+                variant="text"
+                @click="showDetailsDialog = false"
+              >
+                <v-icon>ri-close-line</v-icon>
+              </v-btn>
+            </v-card-title>
+
+            <v-divider></v-divider>
+
+            <v-card-text class="pa-4">
+              <!-- Статистика по менеджеру -->
+              <v-row>
+                <v-col cols="3">
+                  <v-card variant="tonal" class="pa-4">
+                    <div class="text-caption text-grey mb-1">Пополнений за месяц</div>
+                    <div class="text-h4 font-weight-bold text-primary">
+                      {{ selectedManagerDetails.operationsCount }}
+                    </div>
+                  </v-card>
+                </v-col>
+                <v-col cols="3">
+                  <v-card variant="tonal" class="pa-4">
+                    <div class="text-caption text-grey mb-1">Сумма пополнений</div>
+                    <div class="text-h4 font-weight-bold text-success">
+                      {{ formatMoney(selectedManagerDetails.fact) }}
+                    </div>
+                  </v-card>
+                </v-col>
+                <v-col cols="3">
+                  <v-card variant="tonal" class="pa-4">
+                    <div class="text-caption text-grey mb-1">Пополнения с НДС</div>
+                    <div class="text-h5 font-weight-bold text-info">
+                      {{ formatMoney(selectedManagerDetails.vatAmount || 0) }}
+                    </div>
+                  </v-card>
+                </v-col>
+                <v-col cols="3">
+                  <v-card variant="tonal" class="pa-4">
+                    <div class="text-caption text-grey mb-1">KPI НДС (ручной ввод)</div>
+                    <div class="text-h5 font-weight-bold text-info">
+                      {{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}
+                    </div>
+                  </v-card>
+                </v-col>
+              </v-row>
+
+              <!-- Выполнение плана пополнений -->
+              <v-card class="mt-4" variant="tonal">
+                <v-card-text>
+                  <div class="d-flex align-center justify-space-between mb-2">
+                    <span class="font-weight-medium">Выполнение плана пополнений</span>
+                    <span class="text-h6" :class="getPercentTextColor(selectedManagerDetails.planPercent)">
+                      {{ selectedManagerDetails.planPercent.toFixed(1) }}%
+                    </span>
+                  </div>
+                  <v-progress-linear
+                    v-model="selectedManagerDetails.planPercent"
+                    :color="getPercentColor(selectedManagerDetails.planPercent)"
+                    height="18"
+                    rounded
+                  ></v-progress-linear>
+                  <div class="d-flex justify-space-between mt-2 text-caption text-grey">
+                    <span>План: {{ formatMoney(selectedManagerDetails.plan) }}</span>
+                    <span>Факт: {{ formatMoney(selectedManagerDetails.fact) }}</span>
+                  </div>
+                </v-card-text>
+              </v-card>
+
+              <!-- Табы с детализацией -->
+              <v-tabs
+                v-model="activeTab"
+                class="mt-4"
+                color="primary"
+                grow
+              >
+                <v-tab value="maintenance">
+                  <v-icon start>ri-percent-line</v-icon>
+                  Ведение
+                </v-tab>
+                <v-tab value="kpiNoVat">
+                  <v-icon start>ri-bar-chart-2-line</v-icon>
+                  KPI Без НДС
+                </v-tab>
+                <v-tab value="kpiVat">
+                  <v-icon start>ri-file-copy-line</v-icon>
+                  KPI НДС
+                </v-tab>
+              </v-tabs>
+
+              <v-window v-model="activeTab" class="mt-4">
+                <!-- Таб: Ведение -->
+                <v-window-item value="maintenance">
+                  <!-- Выбор ставки ведения -->
+                  <v-card class="mb-4" variant="tonal">
+                    <v-card-text>
+                      <div class="text-subtitle-1 font-weight-medium mb-3">Ставка ведения</div>
+                      <v-btn-toggle
+                        v-model="selectedRate[selectedManagerDetails.id]"
+                        mandatory
+                        divided
+                        class="flex-wrap"
+                      >
+                        <v-btn
+                          v-for="rate in store.maintenanceRates"
+                          :key="rate.id"
+                          :value="rate.value"
+                          :color="selectedRate[selectedManagerDetails.id] === rate.value ? 'primary' : undefined"
+                          variant="outlined"
+                          class="ma-1"
+                          :disabled="!isRateAllowed(selectedManagerDetails.originalManager, rate.id)"
+                        >
+                          {{ rate.label }}
+                        </v-btn>
+                      </v-btn-toggle>
+                      
+                      <div class="d-flex justify-space-between mt-3 text-caption text-grey">
+                        <span>Доступные ставки: 
+                          {{ getAllowedRates(selectedManagerDetails.originalManager).join(', ') }}
+                        </span>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+
+                  <!-- Расчет выплаты -->
+                  <v-card class="mb-4" variant="tonal" color="primary-light">
+                    <v-card-text>
+                      <div class="d-flex align-center justify-space-between">
+                        <div>
+                          <div class="text-caption text-grey">Сумма выплаты (ведение)</div>
+                          <div class="text-h3 font-weight-bold text-primary">
+                            {{ formatMoney(calculatePayment(selectedManagerDetails)) }}
+                          </div>
+                          <div class="text-caption text-grey mt-2">
+                            Рассчитано как {{ formatMoney(selectedManagerDetails.noVatAmount || 0) }} × 
+                            {{ (getSelectedRate(selectedManagerDetails) * 100).toFixed(2) }}%
+                          </div>
+                        </div>
+                        <v-icon size="48" color="primary">ri-money-cny-circle-line</v-icon>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+
+                  <!-- Детализация по клиентам (ведение) -->
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>ri-team-line</v-icon>
+                        Детализация по клиентам ({{ maintenanceClientDetails.length }})
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-data-table
+                          :headers="maintenanceClientHeaders"
+                          :items="maintenanceClientDetails"
+                          items-per-page="-1"
+                          density="compact"
+                          class="client-table"
+                          hover
+                        >
+                          <!-- Клиент -->
+                          <template v-slot:item.client="{ item }">
+                            <div class="font-weight-medium">{{ item.client }}</div>
+                          </template>
+
+                          <!-- Сумма пополнений (NO_VAT) -->
+                          <template v-slot:item.totalAmount="{ item }">
+                            <div class="text-right">
+                              {{ formatMoney(item.totalAmount) }}
+                            </div>
+                          </template>
+
+                          <!-- Сумма ведения -->
+                          <template v-slot:item.maintenance="{ item }">
+                            <div class="text-right text-primary font-weight-medium">
+                              {{ formatMoney(item.maintenance) }}
+                            </div>
+                          </template>
+
+                          <!-- Доля в общем ведении -->
+                          <template v-slot:item.share="{ item }">
+                            <div class="text-right">
+                              {{ item.share.toFixed(1) }}%
+                            </div>
+                          </template>
+
+                          <!-- Количество операций -->
+                          <template v-slot:item.operations="{ item }">
+                            <div class="text-center">
+                              <v-chip size="x-small" variant="tonal">
+                                {{ item.operationsCount }}
+                              </v-chip>
+                            </div>
+                          </template>
+                        </v-data-table>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-window-item>
+
+                <!-- Таб: KPI NO VAT -->
+                <v-window-item value="kpiNoVat">
+                  <!-- Базовая статистика -->
+                  <v-row>
+                    <v-col cols="4">
+                      <v-card variant="tonal" class="pa-4">
+                        <div class="text-caption text-grey mb-1">Пополнений без НДС</div>
+                        <div class="text-h4 font-weight-bold text-warning">
+                          {{ formatMoney(selectedManagerDetails.noVatAmount || 0) }}
+                        </div>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="4">
+                      <v-card variant="tonal" class="pa-4">
+                        <div class="text-caption text-grey mb-1">KPI к выплате (ДА)</div>
+                        <div class="text-h4 font-weight-bold text-success">
+                          {{ kpiClientDetails.active.length }}
+                        </div>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="4">
+                      <v-card variant="tonal" class="pa-4">
+                        <div class="text-caption text-grey mb-1">Остальные клиенты</div>
+                        <div class="text-h4 font-weight-bold text-grey">
+                          {{ kpiClientDetails.was.length + kpiClientDetails.non.length }}
+                        </div>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+
+                  <!-- Выбор ставки KPI -->
+                  <v-card class="mt-4 mb-4" variant="tonal">
+                    <v-card-text>
+                      <div class="text-subtitle-1 font-weight-medium mb-3">Ставка KPI Без НДС</div>
+                      <v-btn-toggle
+                        v-model="selectedKpiRate[selectedManagerDetails.id]"
+                        mandatory
+                        divided
+                        class="flex-wrap"
+                      >
+                        <v-btn
+                          v-for="rate in kpiNoVatRates"
+                          :key="rate.id"
+                          :value="rate.value"
+                          :color="selectedKpiRate[selectedManagerDetails.id] === rate.value ? 'success' : undefined"
+                          variant="outlined"
+                          class="ma-1"
+                        >
+                          {{ rate.label }}
+                        </v-btn>
+                      </v-btn-toggle>
+                    </v-card-text>
+                  </v-card>
+
+                  <!-- Расчет KPI -->
+                  <v-card class="mb-4" variant="tonal" color="success-light">
+                    <v-card-text>
+                      <div class="d-flex align-center justify-space-between">
+                        <div>
+                          <div class="text-caption text-grey">Сумма KPI Без НДС</div>
+                          <div class="text-h3 font-weight-bold text-success">
+                            {{ formatMoney(calculateKpiAmount(selectedManagerDetails)) }}
+                          </div>
+                          <div class="text-caption text-grey mt-2">
+                            Рассчитано как {{ formatMoney(kpiClientBaseTotal) }} × 
+                            {{ (getSelectedKpiRate(selectedManagerDetails) * 100).toFixed(2) }}%
+                          </div>
+                          <div class="text-caption text-grey mt-1">
+                            База KPI: Сумма максимальных пополнений за бонусный период
+                          </div>
+                        </div>
+                        <v-icon size="48" color="success">ri-bar-chart-2-line</v-icon>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+
+                  <!-- Выпадающий список 1: Клиенты с бонусом (ДА) -->
+                  <v-expansion-panels class="mb-2">
+                    <v-expansion-panel>
+                      <v-expansion-panel-title class="bg-success-light">
+                        <v-icon start color="success">ri-checkbox-circle-line</v-icon>
+                        KPI к выплате ({{ kpiClientDetails.active.length }})
+                        <template v-slot:actions>
+                          <v-chip size="small" color="success" variant="tonal">
+                            {{ formatMoney(kpiClientBaseTotal) }}
+                          </v-chip>
+                        </template>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-data-table
+                          :headers="kpiClientHeaders"
+                          :items="kpiClientDetails.active"
+                          items-per-page="-1"
+                          density="compact"
+                          class="client-table"
+                          hover
+                        >
+                          <!-- Клиент -->
+                          <template v-slot:item.client="{ item }">
+                            <div class="font-weight-medium">{{ item.client }}</div>
+                          </template>
+
+                          <!-- База KPI (максимальная сумма за период) -->
+                          <template v-slot:item.kpiBase="{ item }">
+                            <div class="text-right">
+                              <div class="text-warning font-weight-medium">
+                                {{ formatMoney(item.displayAmount) }}
+                              </div>
+                              <div v-if="item.baseInfo" class="text-caption text-grey">
+                                {{ item.baseInfo }}
+                              </div>
+                            </div>
+                          </template>
+
+                          <!-- Сумма KPI -->
+                          <template v-slot:item.kpiAmount="{ item }">
+                            <div class="text-right">
+                              <div class="text-success font-weight-medium">
+                                {{ formatMoney(item.kpiAmount) }}
+                              </div>
+                              <div class="text-caption text-grey">
+                                ставка {{ (getSelectedKpiRate(selectedManagerDetails) * 100).toFixed(2) }}%
+                              </div>
+                            </div>
+                          </template>
+
+                          <!-- Бонусный месяц -->
+                          <template v-slot:item.bonusMonth="{ item }">
+                            <div class="text-center">
+                              <v-chip 
+                                size="x-small" 
+                                :color="item.maxAmountMonth ? 'success' : 'grey'"
+                                variant="tonal"
+                              >
+                                {{ item.maxAmountMonth || '—' }}
+                              </v-chip>
+                            </div>
+                          </template>
+
+                          <!-- Первая заправка -->
+                          <template v-slot:item.firstFillDate="{ item }">
+                            <div class="text-center text-caption">
+                              {{ item.firstFillDate || '—' }}
+                            </div>
+                          </template>
+
+                          <!-- Количество операций -->
+                          <template v-slot:item.operations="{ item }">
+                            <div class="text-center">
+                              <v-chip 
+                                size="x-small" 
+                                :color="item.operationsCount === 0 ? 'grey' : 'primary'"
+                                variant="tonal"
+                              >
+                                {{ item.operationsCount }}
+                              </v-chip>
+                            </div>
+                          </template>
+                        </v-data-table>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+
+                  <!-- Выпадающий список 2: Клиенты с историей бонуса (БЫЛ) -->
+                  <v-expansion-panels class="mb-2">
+                    <v-expansion-panel>
+                      <v-expansion-panel-title class="bg-warning-light">
+                        <v-icon start color="warning">ri-history-line</v-icon>
+                        KPI был получен ранее ({{ kpiClientDetails.was.length }})
+                        <template v-slot:actions>
+                          <v-chip size="small" color="warning" variant="tonal">
+                            {{ formatMoney(wasKpiClientNoVatTotal) }}
+                          </v-chip>
+                        </template>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-data-table
+                          :headers="wasKpiClientHeaders"
+                          :items="kpiClientDetails.was"
+                          items-per-page="-1"
+                          density="compact"
+                          class="client-table"
+                          hover
+                        >
+                          <!-- Клиент -->
+                          <template v-slot:item.client="{ item }">
+                            <div class="font-weight-medium">{{ item.client }}</div>
+                          </template>
+
+                          <!-- Сумма NO_VAT -->
+                          <template v-slot:item.noVatAmount="{ item }">
+                            <div class="text-right text-warning font-weight-medium">
+                              {{ formatMoney(item.noVatAmount) }}
+                            </div>
+                          </template>
+
+                          <!-- Статус в файле -->
+                          <template v-slot:item.fileStatus="{ item }">
+                            <div class="text-center">
+                              <v-chip 
+                                size="x-small" 
+                                color="warning"
+                                variant="tonal"
+                                v-if="item.fileStatus"
+                              >
+                                {{ item.fileStatus }}
+                              </v-chip>
+                              <span v-else>—</span>
+                            </div>
+                          </template>
+
+                          <!-- Месяц бонуса (если был) -->
+                          <template v-slot:item.bonusMonth="{ item }">
+                            <div class="text-center text-caption">
+                              {{ item.bonusMonth || '—' }}
+                            </div>
+                          </template>
+
+                          <!-- Первая заправка -->
+                          <template v-slot:item.firstFillDate="{ item }">
+                            <div class="text-center text-caption">
+                              {{ item.firstFillDate || '—' }}
+                            </div>
+                          </template>
+
+                          <!-- Количество операций -->
+                          <template v-slot:item.operations="{ item }">
+                            <div class="text-center">
+                              <v-chip size="x-small" variant="tonal">
+                                {{ item.operationsCount }}
+                              </v-chip>
+                            </div>
+                          </template>
+                        </v-data-table>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+
+                  <!-- Выпадающий список 3: Клиенты без бонуса (НЕТ) -->
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title class="text-grey">
+                        <v-icon start color="grey">ri-eye-off-line</v-icon>
+                        KPI еще не получен ({{ kpiClientDetails.non.length }})
+                        <template v-slot:actions>
+                          <v-chip size="small" color="grey" variant="tonal">
+                            {{ formatMoney(nonKpiClientNoVatTotal) }}
+                          </v-chip>
+                        </template>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-data-table
+                          :headers="nonKpiClientHeaders"
+                          :items="kpiClientDetails.non"
+                          items-per-page="-1"
+                          density="compact"
+                          class="client-table"
+                          hover
+                        >
+                          <!-- Клиент -->
+                          <template v-slot:item.client="{ item }">
+                            <div class="font-weight-medium">{{ item.client }}</div>
+                          </template>
+
+                          <!-- Сумма NO_VAT -->
+                          <template v-slot:item.noVatAmount="{ item }">
+                            <div class="text-right text-grey">
+                              {{ formatMoney(item.noVatAmount) }}
+                            </div>
+                          </template>
+
+                          <!-- Статус в файле -->
+                          <template v-slot:item.fileStatus="{ item }">
+                            <div class="text-center">
+                              <v-chip 
+                                size="x-small" 
+                                :color="item.fileStatus === 'НЕТ' ? 'grey' : 'warning'"
+                                variant="tonal"
+                                v-if="item.fileStatus"
+                              >
+                                {{ item.fileStatus }}
+                              </v-chip>
+                              <span v-else>—</span>
+                            </div>
+                          </template>
+
+                          <!-- Первая заправка -->
+                          <template v-slot:item.firstFillDate="{ item }">
+                            <div class="text-center text-caption">
+                              {{ item.firstFillDate || '—' }}
+                            </div>
+                          </template>
+
+                          <!-- Количество операций -->
+                          <template v-slot:item.operations="{ item }">
+                            <div class="text-center">
+                              <v-chip size="x-small" variant="tonal">
+                                {{ item.operationsCount }}
+                              </v-chip>
+                            </div>
+                          </template>
+
+                          <!-- Действия -->
+                          <template v-slot:item.actions="{ item }">
+                            <v-btn
+                              size="x-small"
+                              color="success"
+                              variant="tonal"
+                              @click="setBonusStatus(item.client, 'ДА')"
+                            >
+                              <v-icon size="small">ri-check-line</v-icon>
+                              Сделать ДА
+                            </v-btn>
+                          </template>
+                        </v-data-table>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-window-item>
+
+                <!-- Таб: KPI VAT -->
+                <v-window-item value="kpiVat">
+                  <v-row>
+                    <v-col cols="12">
+                      <v-card variant="tonal" class="pa-4 mb-4">
+                        <v-card-text>
+                          <div class="text-subtitle-1 font-weight-medium mb-3">Ручной ввод KPI НДС</div>
+                          <v-text-field
+                            :model-value="manualKpiVat[selectedManagerDetails.id]"
+                            @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)"
+                            label="Сумма KPI НДС"
+                            prefix="₽"
+                            variant="outlined"
+                            density="compact"
+                            type="text"
+                            :placeholder="formatNumber(0)"
+                            hint="Введите сумму в рублях"
+                            persistent-hint
+                          >
+                            <template v-slot:append>
+                              <v-btn
+                                icon
+                                variant="text"
+                                size="small"
+                                @click="updateManualKpiVat(selectedManagerDetails.id, 0)"
+                                title="Очистить"
+                              >
+                                <v-icon>ri-close-line</v-icon>
+                              </v-btn>
+                            </template>
+                          </v-text-field>
+                          
+                          <div class="d-flex align-center justify-space-between mt-2 text-caption text-grey">
+                            <span>Текущее значение:</span>
+                            <span class="font-weight-medium text-primary">{{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}</span>
+                          </div>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                  
+                  <!-- История ввода -->
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>ri-history-line</v-icon>
+                        История ввода KPI НДС
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-card variant="tonal" class="pa-4 text-center text-grey">
+                          <v-icon size="48" color="grey-lighten-1" class="mb-2">ri-timer-line</v-icon>
+                          <p>Здесь будет отображаться история изменений</p>
+                          <p class="text-caption">Функция в разработке</p>
+                        </v-card>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </v-window-item>
+              </v-window>
+            </v-card-text>
+          </v-card>
+        </v-dialog>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import { useKpiStore } from '../stores/kpiStore';
+import { bufferService } from '@/services/bufferService';
+import type { Manager } from '@/types/kpi.types';
+
+const store = useKpiStore();
+const loading = ref(false);
+const activeTab = ref('maintenance');
+
+// Состояние фильтров - текущий месяц по умолчанию
+const currentDate = new Date();
+const selectedYear = ref(currentDate.getFullYear().toString());
+const selectedMonth = ref((currentDate.getMonth() + 1).toString().padStart(2, '0'));
+
+const showDetailsDialog = ref(false);
+const selectedManagerDetails = ref<any>(null);
+
+// Состояние для выбранных ставок по каждому менеджеру
+const selectedRate = ref<Record<string, number>>({});
+
+// Ставки KPI NO VAT
+const kpiNoVatRates = ref([
+  { id: 'kpi_1', value: 0.015, label: '1.50%' },
+  { id: 'kpi_2', value: 0.02, label: '2.00%' },
+  { id: 'kpi_3', value: 0.03, label: '3.00%' },
+]);
+
+// Выбранные ставки KPI для каждого менеджера
+const selectedKpiRate = ref<Record<string, number>>({});
+
+// Состояние для ручного ввода KPI НДС по каждому менеджеру
+const manualKpiVat = ref<Record<string, number>>({});
+
+// Данные bonusHistory
+const bonusHistory = ref<any[]>([]);
+
+// Кастомные статусы бонусов (переопределение из файла)
+const customBonusStatus = ref<Record<string, {
+  status: string;
+  bonusMonth: string | null;
+}>>({});
+
+// Состояние для хранения KPI всех менеджеров (не только текущего)
+const managerKpiValues = ref<Record<string, number>>({});
+
+// Триггер для принудительного обновления computed свойств
+const forceUpdate = ref(0);
+
+// Функция для загрузки состояния из localStorage
+const loadStateFromStorage = () => {
+  try {
+    console.log('📂 Загрузка состояния из localStorage...');
+    
+    // Загружаем кастомные статусы
+    const savedCustomStatus = localStorage.getItem('kpi_custom_bonus_status');
+    if (savedCustomStatus) {
+      customBonusStatus.value = JSON.parse(savedCustomStatus);
+      console.log('✅ Загружены кастомные статусы:', Object.keys(customBonusStatus.value).length);
+    }
+    
+    // Загружаем KPI менеджеров
+    const savedManagerKpi = localStorage.getItem('kpi_manager_values');
+    if (savedManagerKpi) {
+      managerKpiValues.value = JSON.parse(savedManagerKpi);
+      console.log('✅ Загружены KPI менеджеров:', managerKpiValues.value);
+    }
+    
+    // Загружаем ставки ведения
+    const savedRates = localStorage.getItem('kpi_selected_rates');
+    if (savedRates) {
+      selectedRate.value = JSON.parse(savedRates);
+    }
+    
+    // Загружаем ставки KPI
+    const savedKpiRates = localStorage.getItem('kpi_selected_kpi_rates');
+    if (savedKpiRates) {
+      selectedKpiRate.value = JSON.parse(savedKpiRates);
+    }
+    
+    // Загружаем ручной ввод KPI VAT
+    const savedManualKpiVat = localStorage.getItem('kpi_manual_vat');
+    if (savedManualKpiVat) {
+      manualKpiVat.value = JSON.parse(savedManualKpiVat);
+    }
+    
+    // Загружаем активный таб
+    const savedTab = localStorage.getItem('kpi_active_tab');
+    if (savedTab) {
+      activeTab.value = savedTab;
+    }
+    
+    // Загружаем выбранный год/месяц
+    const savedYear = localStorage.getItem('kpi_selected_year');
+    if (savedYear) {
+      selectedYear.value = savedYear;
+    }
+    
+    const savedMonth = localStorage.getItem('kpi_selected_month');
+    if (savedMonth) {
+      selectedMonth.value = savedMonth;
+    }
+    
+    // ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ: создаем триггер для перерисовки
+    forceUpdate.value = Date.now();
+    
+    console.log('✅ Состояние загружено, forceUpdate:', forceUpdate.value);
+    
+  } catch (e) {
+    console.error('Ошибка загрузки состояния:', e);
+  }
+};
+
+// Функция для сохранения состояния в localStorage
+const saveStateToStorage = () => {
+  try {
+    localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
+    localStorage.setItem('kpi_manager_values', JSON.stringify(managerKpiValues.value));
+    localStorage.setItem('kpi_selected_rates', JSON.stringify(selectedRate.value));
+    localStorage.setItem('kpi_selected_kpi_rates', JSON.stringify(selectedKpiRate.value));
+    localStorage.setItem('kpi_manual_vat', JSON.stringify(manualKpiVat.value));
+    localStorage.setItem('kpi_active_tab', activeTab.value);
+    localStorage.setItem('kpi_selected_year', selectedYear.value);
+    localStorage.setItem('kpi_selected_month', selectedMonth.value);
+  } catch (e) {
+    console.error('Ошибка сохранения состояния:', e);
+  }
+};
+
+// Функция для принудительного пересчета всех computed
+const refreshAllData = () => {
+  forceUpdate.value = Date.now();
+};
+
+// Следим за изменениями и сохраняем
+watch([customBonusStatus, managerKpiValues, selectedRate, selectedKpiRate, manualKpiVat, activeTab, selectedYear, selectedMonth], () => {
+  saveStateToStorage();
+}, { deep: true });
+
+// Функция для форматирования ввода числа
+const parseNumberInput = (value: string): number => {
+  // Убираем все кроме цифр и точки
+  const cleaned = value.replace(/[^\d.]/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+};
+
+// Функция для обновления KPI VAT с сохранением
+const updateManualKpiVat = (managerId: string, value: any) => {
+  const numValue = typeof value === 'string' ? parseNumberInput(value) : value;
+  manualKpiVat.value[managerId] = numValue;
+  saveStateToStorage();
+};
+
+// Функция для форматирования отображения
+const formatNumber = (value: number): string => {
+  return new Intl.NumberFormat('ru-RU').format(value);
+};
+
+// Годы (от 2024 до текущего + 1)
+const years = Array.from({ length: 5 }, (_, i) => (2024 + i).toString());
+
+// Месяцы
+const months = [
+  { title: 'Январь', value: '01' },
+  { title: 'Февраль', value: '02' },
+  { title: 'Март', value: '03' },
+  { title: 'Апрель', value: '04' },
+  { title: 'Май', value: '05' },
+  { title: 'Июнь', value: '06' },
+  { title: 'Июль', value: '07' },
+  { title: 'Август', value: '08' },
+  { title: 'Сентябрь', value: '09' },
+  { title: 'Октябрь', value: '10' },
+  { title: 'Ноябрь', value: '11' },
+  { title: 'Декабрь', value: '12' }
+];
+
+// Заголовки таблицы рейтинга
+const ratingHeaders = [
+  { title: '#', key: 'rank', sortable: false, width: '60', align: 'center' as const },
+  { title: 'Менеджер', key: 'manager', sortable: true },
+  { title: 'План пополнений', key: 'plan', sortable: true, align: 'end' as const },
+  { title: 'Факт (пополнения)', key: 'fact', sortable: true, align: 'end' as const },
+  { title: 'Выполнение', key: 'planPercent', sortable: true },
+  { title: 'К выплате', key: 'payment', sortable: true, align: 'end' as const },
+  { title: '', key: 'actions', sortable: false, width: '60', align: 'center' as const }
+];
+
+// Заголовки для таблицы клиентов (ведение)
+const maintenanceClientHeaders = [
+  { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'Пополнения (NO_VAT)', key: 'totalAmount', sortable: true, align: 'end' as const },
+  { title: 'Ведение', key: 'maintenance', sortable: true, align: 'end' as const },
+  { title: 'Доля', key: 'share', sortable: true, align: 'end' as const },
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
+];
+
+// Заголовки для таблицы KPI клиентов (с бонусом)
+const kpiClientHeaders = [
+  { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'База KPI Без НДС', key: 'kpiBase', sortable: true, align: 'end' as const },
+  { title: 'Сумма KPI', key: 'kpiAmount', sortable: true, align: 'end' as const },
+  { title: 'Бонусный месяц', key: 'bonusMonth', sortable: true, align: 'center' as const },
+  { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
+];
+
+// Заголовки для таблицы клиентов с историей бонуса (БЫЛ)
+const wasKpiClientHeaders = [
+  { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
+  { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
+  { title: 'Месяц бонуса', key: 'bonusMonth', sortable: true, align: 'center' as const },
+  { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
+];
+
+// Заголовки для таблицы клиентов без бонуса (НЕТ)
+const nonKpiClientHeaders = [
+  { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
+  { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
+  { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
+  { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
+];
+
+// Разрешенные роли
+const allowedRoles = ['Менеджер', 'Старший Менеджер',];
+
+// Фильтрованные менеджеры из системы
+const filteredManagers = computed(() => {
+  return store.managers.filter(manager => 
+    manager.role && allowedRoles.includes(manager.role)
+  );
+});
+
+// Статистика буфера
+const bufferStats = bufferService.getBufferStats();
+
+// Получить статистику менеджеров из буфера за выбранный период
+const managersStats = computed(() => {
+  const year = parseInt(selectedYear.value);
+  const month = parseInt(selectedMonth.value);
+  return bufferService.getManagersStats(year, month);
+});
+
+// Актуальные планы пополнений
+const plans: Record<string, number> = {
+  'crm_7': 18500000,   // Федосеенко Дана
+  'crm_18': 6150000,   // Воропаев Степан
+  'crm_21': 6500000,   // Храмов Дмитрий
+  'crm_22': 3000000,   // Сартаков Роман
+  'crm_24': 3250000,   // Архипова Анна
+  'crm_12': 22000000,  // Кошарный Евгений (Руководитель ОП)
+  'crm_32': 1200000,   // Масленников Никита
+  'crm_33': 300000,    // Массаков Даниил
+  'crm_34': 300000,    // Марушкевич Иван
+  'crm_36': 300000,    // Кухарь Роман
+  'crm_37': 300000,    // Самедов Али
+  'crm_40': 300000,    // Овсянников Артем
+  'crm_41': 300000,    // Сысоева Кристина
+  'crm_42': 300000,    // Морева Кристина
+};
+
+// Проверка разрешена ли ставка для менеджера
+const isRateAllowed = (manager: Manager, rateId: string): boolean => {
+  if (!manager.allowedMaintenanceRates || manager.allowedMaintenanceRates.length === 0) {
+    return true;
+  }
+  return manager.allowedMaintenanceRates.includes(rateId);
+};
+
+// Получить разрешенные ставки для менеджера в читаемом виде
+const getAllowedRates = (manager: Manager): string[] => {
+  const rates: string[] = [];
+  if (manager.allowedMaintenanceRates?.includes('m015')) rates.push('0.15%');
+  if (manager.allowedMaintenanceRates?.includes('m020')) rates.push('0.20%');
+  if (manager.allowedMaintenanceRates?.includes('m030')) rates.push('0.30%');
+  if (manager.allowedMaintenanceRates?.includes('m150')) rates.push('1.50%');
+  return rates;
+};
+
+// Получить выбранную ставку для менеджера (ведение)
+const getSelectedRate = (item: any): number => {
+  if (selectedRate.value[item.id]) {
+    return selectedRate.value[item.id];
+  }
+  
+  const manager = item.originalManager;
+  if (manager.allowedMaintenanceRates?.includes('m150')) return 0.015;  // 1.5%
+  if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015; // 0.15%
+  if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;  // 0.2%
+  if (manager.allowedMaintenanceRates?.includes('m030')) return 0.003;  // 0.3%
+  return 0.015; // По умолчанию 1.5%
+};
+
+// Получить выбранную ставку KPI
+const getSelectedKpiRate = (item: any): number => {
+  return selectedKpiRate.value[item.id] || 0.015; // По умолчанию 1.5%
+};
+
+// Рассчитать выплату с учетом выбранной ставки (ведение)
+const calculatePayment = (item: any): number => {
+  const rate = getSelectedRate(item);
+  return (item.noVatAmount || 0) * rate;
+};
+
+// Рассчитать KPI сумму
+const calculateKpiAmount = (item: any): number => {
+  const rate = getSelectedKpiRate(item);
+  return kpiClientBaseTotal.value * rate;
+};
+
+// Получить статус бонуса для клиента с учетом данных из файла
+const getClientBonusStatus = (
+  clientName: string,
+  managerName: string,
+  currentYear: number,
+  currentMonth: number,
+  monthlyAmounts: Map<string, number>
+): { 
+  status: string; 
+  firstFillDate: string | null;
+  maxAmount: number;
+  maxMonth: string | null;
+  hasActiveBonus: boolean;
+  allMonthsCompleted: boolean;
+  fileStatus?: string;
+} => {
+  
+  // Сначала проверяем кастомный статус (установленный вручную)
+  const customKey = `${clientName}_${managerName}`;
+  if (customBonusStatus.value[customKey]) {
+    const custom = customBonusStatus.value[customKey];
+    return {
+      status: custom.status,
+      firstFillDate: null,
+      maxAmount: 0,
+      maxMonth: custom.bonusMonth,
+      hasActiveBonus: custom.status === 'ДА',
+      allMonthsCompleted: true,
+      fileStatus: custom.status
+    };
+  }
+  
+  // Ищем запись в bonusHistory
+  const bonus = bonusHistory.value.find(b => 
+    b.client === clientName && b.currentManager === managerName
+  );
+  
+  // Если есть запись в файле - используем её статус
+  if (bonus) {
+    // Для статуса "БЫЛ" из файла - сразу возвращаем
+    if (bonus.status === 'БЫЛ') {
+      return {
+        status: 'БЫЛ',
+        firstFillDate: bonus.firstFillDate || null,
+        maxAmount: 0,
+        maxMonth: null,
+        hasActiveBonus: false,
+        allMonthsCompleted: true,
+        fileStatus: bonus.status
+      };
+    }
+    
+    // Для статуса "ДА" из файла - проверяем период
+    if (bonus.status === 'ДА' && bonus.firstFillDate) {
+      // Парсим дату первой заправки
+      const [day, month, year] = bonus.firstFillDate.split('-').map(Number);
+      const firstFill = new Date(year, month - 1, day);
+      
+      // Получаем первые 3 месяца
+      const bonusMonths: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const bonusDate = new Date(firstFill);
+        bonusDate.setMonth(firstFill.getMonth() + i);
+        const bonusYear = bonusDate.getFullYear();
+        const bonusMonth = bonusDate.getMonth() + 1;
+        bonusMonths.push(`${bonusYear}-${bonusMonth.toString().padStart(2, '0')}`);
+      }
+      
+      // Текущий месяц
+      const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
+      
+      // Находим максимальную сумму
+      let maxAmount = 0;
+      let maxMonth = null;
+      
+      bonusMonths.forEach(monthKey => {
+        const amount = monthlyAmounts.get(monthKey) || 0;
+        if (amount > maxAmount) {
+          maxAmount = amount;
+          maxMonth = monthKey;
+        }
+      });
+      
+      // Если текущий месяц - месяц с максимальной суммой, то ДА, иначе БЫЛ
+      const isActive = currentMonthKey === maxMonth;
+      
+      return {
+        status: isActive ? 'ДА' : 'БЫЛ',
+        firstFillDate: bonus.firstFillDate,
+        maxAmount,
+        maxMonth,
+        hasActiveBonus: isActive,
+        allMonthsCompleted: true,
+        fileStatus: bonus.status
+      };
+    }
+    
+    // Для статуса "НЕТ" - возвращаем НЕТ
+    if (bonus.status === 'НЕТ') {
+      return {
+        status: 'НЕТ',
+        firstFillDate: bonus.firstFillDate || null,
+        maxAmount: 0,
+        maxMonth: null,
+        hasActiveBonus: false,
+        allMonthsCompleted: false,
+        fileStatus: bonus.status
+      };
+    }
+  }
+  
+  // Если нет записи в файле - возвращаем НЕТ
+  return {
+    status: 'НЕТ',
+    firstFillDate: null,
+    maxAmount: 0,
+    maxMonth: null,
+    hasActiveBonus: false,
+    allMonthsCompleted: false,
+    fileStatus: null
+  };
+};
+
+// Установить статус бонуса для клиента
+const setBonusStatus = (clientName: string, status: string) => {
+  console.log('%c========== НАЖАТА КНОПКА "СДЕЛАТЬ ДА" ==========', 'background: #4CAF50; color: white; font-size: 14px');
+  
+  if (!selectedManagerDetails.value) {
+    console.error('❌ Ошибка: selectedManagerDetails отсутствует');
+    alert('Ошибка: выберите менеджера');
+    return;
+  }
+  
+  const manager = selectedManagerDetails.value.originalManager;
+  const managerName = manager.displayName;
+  const managerId = selectedManagerDetails.value.id;
+  
+  const customKey = `${clientName}_${managerName}`;
+  const currentMonthKey = `${selectedYear.value}-${selectedMonth.value}`;
+  
+  console.log('📝 Сохраняем кастомный статус:', { customKey, status, currentMonthKey });
+  
+  // Сохраняем статус
+  customBonusStatus.value = {
+    ...customBonusStatus.value,
+    [customKey]: {
+      status,
+      bonusMonth: currentMonthKey
+    }
+  };
+  
+  // Сохраняем в localStorage
+  localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
+  
+  // Пересчитываем KPI для этого менеджера
+  setTimeout(() => {
+    // Находим менеджера в списке
+    const managerItem = managerRatings.value.find(m => m.id === managerId);
+    if (managerItem) {
+      // Сохраняем его KPI
+      managerKpiValues.value[managerId] = managerItem.managerKpi || 0;
+      saveStateToStorage();
+      console.log(`💾 Сохранен KPI для ${managerName}:`, managerItem.managerKpi);
+    }
+    
+    // Принудительное обновление
+    forceUpdate.value = Date.now();
+  }, 100);
+  
+  console.log(`✅ Статус для клиента ${clientName} установлен как ${status}`);
+  alert(`✅ Статус для клиента "${clientName}" изменен на "${status}"`);
+};
+
+// Цвет для статуса бонуса
+const getBonusStatusColor = (status: string): string => {
+  switch(status) {
+    case 'ДА': return 'success';
+    case 'НЕТ': return 'grey';
+    case 'БЫЛ': return 'warning';
+    default: return 'grey';
+  }
+};
+
+// Рейтинги менеджеров
+const managerRatings = computed(() => {
+  const year = parseInt(selectedYear.value);
+  const month = parseInt(selectedMonth.value);
+  const bufferStats = managersStats.value;
+  
+  return filteredManagers.value.map((manager) => {
+    let totalAmount = 0;
+    let noVatAmount = 0;
+    let operationsCount = 0;
+    let vatAmount = 0;
+    let uniqueClients = 0;
+    
+    // Собираем все имена для поиска
+    const searchNames = [
+      manager.displayName,
+      ...(manager.aliases || [])
+    ].map(n => n?.toLowerCase().trim()).filter(Boolean);
+    
+    // Ищем точное совпадение в статистике буфера
+    for (const [bufferManager, data] of bufferStats.entries()) {
+      const bufferManagerLower = bufferManager.toLowerCase().trim();
+      
+      if (searchNames.some(name => name === bufferManagerLower)) {
+        totalAmount = data.totalAmount;
+        noVatAmount = data.noVatAmount;
+        vatAmount = data.vatAmount;
+        operationsCount = data.operationsCount;
+        uniqueClients = data.uniqueClients;
+        break;
+      }
+    }
+    
+    const plan = plans[manager.id] || 80000;
+    const fact = totalAmount;
+    const planPercent = plan > 0 ? (fact / plan) * 100 : 0;
+    
+    // Ведение
+    const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
+    const maintenancePayment = noVatAmount * rate;
+    
+    // KPI менеджера - ИСПОЛЬЗУЕМ СОХРАНЕННОЕ ЗНАЧЕНИЕ
+    let managerKpi = 0;
+    
+    // Если есть сохраненное значение, используем его
+    if (managerKpiValues.value[manager.id] !== undefined) {
+      managerKpi = managerKpiValues.value[manager.id];
+    } 
+    // Иначе если это текущий открытый менеджер, вычисляем
+    else if (selectedManagerDetails.value?.id === manager.id) {
+      managerKpi = kpiClientDetails.value.active.reduce((sum, client) => sum + client.kpiAmount, 0);
+      // Сохраняем вычисленное значение
+      managerKpiValues.value[manager.id] = managerKpi;
+      saveStateToStorage();
+    }
+    
+    // KPI VAT из ручного ввода
+    const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
+    
+    // Общая выплата
+    const payment = maintenancePayment + managerKpi + kpiVatAmount;
+    
+    return {
+      id: manager.id,
+      name: manager.displayName,
+      role: manager.role || 'Менеджер',
+      originalManager: manager,
+      plan,
+      fact,
+      planPercent,
+      payment,
+      maintenancePayment,
+      managerKpi,
+      kpiVatAmount,
+      operationsCount,
+      totalAmount,
+      noVatAmount,
+      vatAmount,
+      uniqueClients
+    };
+  }).sort((a, b) => b.planPercent - a.planPercent);
+});
+
+// Детализация по клиентам для ведения
+const maintenanceClientDetails = computed(() => {
+  if (!selectedManagerDetails.value) return [];
+  
+  const year = parseInt(selectedYear.value);
+  const month = parseInt(selectedMonth.value);
+  const manager = selectedManagerDetails.value.originalManager;
+  
+  const searchNames = [
+    manager.displayName,
+    ...(manager.aliases || [])
+  ].map(n => n?.toLowerCase().trim()).filter(Boolean);
+  
+  let allOps: any[] = [];
+  
+  searchNames.forEach(name => {
+    const ops = bufferService.getOperationsByManagerNames([name], year, month);
+    allOps = [...allOps, ...ops];
+  });
+  
+  // Убираем дубликаты
+  const uniqueOps = Array.from(
+    new Map(allOps.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
+  );
+  
+  const clientMap = new Map();
+  
+  uniqueOps.forEach(op => {
+    if (!clientMap.has(op.client)) {
+      clientMap.set(op.client, {
+        client: op.client,
+        totalAmount: 0,
+        noVatAmount: 0,
+        operationsCount: 0
+      });
+    }
+    
+    const data = clientMap.get(op.client);
+    data.totalAmount += op.amount;
+    data.operationsCount += 1;
+    if (op.clientType === 'NO_VAT') {
+      data.noVatAmount += op.amount;
+    }
+  });
+  
+  const rate = getSelectedRate(selectedManagerDetails.value);
+  
+  let totalMaintenance = 0;
+  const details = Array.from(clientMap.values())
+    .filter(data => data.noVatAmount > 0)
+    .map(data => {
+      const maintenance = data.noVatAmount * rate;
+      totalMaintenance += maintenance;
+      return {
+        ...data,
+        maintenance
+      };
+    });
+  
+  details.forEach(data => {
+    data.share = totalMaintenance > 0 ? (data.maintenance / totalMaintenance) * 100 : 0;
+  });
+  
+  return details.sort((a, b) => b.maintenance - a.maintenance);
+});
+
+// Детализация по клиентам для KPI
+const kpiClientDetails = computed(() => {
+  // Принудительное обновление при изменении forceUpdate
+  const update = forceUpdate.value;
+  
+  if (!selectedManagerDetails.value) return { active: [], was: [], non: [] };
+  
+  const year = parseInt(selectedYear.value);
+  const month = parseInt(selectedMonth.value);
+  const manager = selectedManagerDetails.value.originalManager;
+  const managerName = manager.displayName;
+  const managerAliases = manager.aliases || [];
+  const allManagerNames = [managerName, ...managerAliases];
+  
+  console.log('🔄 Пересчет kpiClientDetails, forceUpdate:', update);
+  
+  // Собираем все операции менеджера по месяцам
+  const monthsToCheck = [];
+  for (let i = -3; i <= 3; i++) {
+    const checkDate = new Date(year, month - 1 + i, 1);
+    monthsToCheck.push({
+      year: checkDate.getFullYear(),
+      month: checkDate.getMonth() + 1
+    });
+  }
+  
+  const monthlyOpsMap = new Map<string, any[]>();
+  
+  monthsToCheck.forEach(({ year: y, month: m }) => {
+    const monthKey = `${y}-${m.toString().padStart(2, '0')}`;
+    let monthOps: any[] = [];
+    
+    allManagerNames.forEach(name => {
+      const ops = bufferService.getOperationsByManagerNames([name], y, m);
+      monthOps = [...monthOps, ...ops];
+    });
+    
+    monthlyOpsMap.set(monthKey, monthOps);
+  });
+  
+  // Группируем операции по клиентам и месяцам
+  const clientMonthlyMap = new Map(); // client -> Map<month, amount>
+  
+  monthlyOpsMap.forEach((ops, monthKey) => {
+    ops.forEach(op => {
+      if (!clientMonthlyMap.has(op.client)) {
+        clientMonthlyMap.set(op.client, new Map());
+      }
+      
+      const clientMonths = clientMonthlyMap.get(op.client);
+      const currentAmount = clientMonths.get(monthKey) || 0;
+      clientMonths.set(monthKey, currentAmount + op.amount);
+    });
+  });
+  
+  // Создаем карту клиентов
+  const clientCurrentMap = new Map();
+  
+  // 1. Сначала добавляем всех клиентов из bonusHistory для этого менеджера
+  const managerBonuses = bonusHistory.value.filter(b => 
+    allManagerNames.some(name => b.currentManager === name)
+  );
+  
+  managerBonuses.forEach(bonus => {
+    if (!clientCurrentMap.has(bonus.client)) {
+      clientCurrentMap.set(bonus.client, {
+        client: bonus.client,
+        totalAmount: 0,
+        noVatAmount: 0,
+        vatAmount: 0,
+        operationsCount: 0,
+        firstFillDate: bonus.firstFillDate || null,
+        clientStatus: bonus.status,
+        bonusMonth: null,
+        maxAmount: 0,
+        maxAmountMonth: null,
+        fileStatus: bonus.status,
+        hasOperations: false
+      });
+    }
+  });
+  
+  // 2. Добавляем клиентов из операций (или обновляем существующих)
+  const currentMonthKey = `${year}-${month.toString().padStart(2, '0')}`;
+  const currentMonthOps = monthlyOpsMap.get(currentMonthKey) || [];
+  
+  currentMonthOps.forEach(op => {
+    if (!clientCurrentMap.has(op.client)) {
+      // Новый клиент, которого нет в bonusHistory
+      clientCurrentMap.set(op.client, {
+        client: op.client,
+        totalAmount: 0,
+        noVatAmount: 0,
+        vatAmount: 0,
+        operationsCount: 0,
+        firstFillDate: null,
+        clientStatus: 'НЕТ',
+        bonusMonth: null,
+        maxAmount: 0,
+        maxAmountMonth: null,
+        fileStatus: null,
+        hasOperations: true
+      });
+    }
+    
+    const data = clientCurrentMap.get(op.client);
+    data.totalAmount += op.amount;
+    data.operationsCount += 1;
+    data.hasOperations = true;
+    
+    if (op.clientType === 'NO_VAT') {
+      data.noVatAmount += op.amount;
+    } else if (op.clientType === 'VAT') {
+      data.vatAmount += op.amount;
+    }
+  });
+  
+  // 3. Для всех клиентов с firstFillDate вычисляем максимальную сумму за период
+  for (const [client, data] of clientCurrentMap.entries()) {
+    if (data.firstFillDate) {
+      try {
+        const [day, m, y] = data.firstFillDate.split('-').map(Number);
+        const firstFill = new Date(y, m - 1, day);
+        
+        // Получаем первые 3 месяца бонусного периода
+        const bonusMonths: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          const bonusDate = new Date(firstFill);
+          bonusDate.setMonth(firstFill.getMonth() + i);
+          const bonusYear = bonusDate.getFullYear();
+          const bonusMonthNum = bonusDate.getMonth() + 1;
+          bonusMonths.push(`${bonusYear}-${bonusMonthNum.toString().padStart(2, '0')}`);
+        }
+        
+        // Находим максимальную сумму за эти месяцы
+        const clientMonths = clientMonthlyMap.get(client) || new Map();
+        let maxAmount = 0;
+        let maxMonth = null;
+        
+        bonusMonths.forEach(monthKey => {
+          const amount = clientMonths.get(monthKey) || 0;
+          if (amount > maxAmount) {
+            maxAmount = amount;
+            maxMonth = monthKey;
+          }
+        });
+        
+        data.maxAmount = maxAmount;
+        data.maxAmountMonth = maxMonth;
+        
+        // Для клиентов со статусом "ДА" из файла, показываем максимальную сумму за период
+        if (data.clientStatus === 'ДА') {
+          data.kpiBaseAmount = maxAmount;
+        }
+        
+      } catch (e) {
+        console.error('Ошибка парсинга даты для клиента:', client, data.firstFillDate);
+      }
+    }
+  }
+  
+  // Преобразуем Map в массив
+  const allClients = Array.from(clientCurrentMap.values());
+  
+  const rate = getSelectedKpiRate(selectedManagerDetails.value);
+  
+  // Разделяем на три категории на основе clientStatus и типа клиента
+  const active = allClients
+    .filter(data => data.clientStatus === 'ДА' && data.noVatAmount > 0)
+    .map(data => {
+      const baseAmount = data.kpiBaseAmount || data.noVatAmount;
+      
+      return {
+        ...data,
+        displayAmount: baseAmount,
+        kpiAmount: baseAmount * rate,
+        baseInfo: data.kpiBaseAmount ? `Макс. за период: ${formatMoney(data.kpiBaseAmount)}` : null,
+        monthInfo: data.maxAmountMonth ? `Бонусный месяц: ${data.maxAmountMonth}` : null,
+        warning: !data.hasOperations && !data.kpiBaseAmount ? 'Нет операций' : null
+      };
+    });
+  
+  const was = allClients
+    .filter(data => data.clientStatus === 'БЫЛ' && data.noVatAmount > 0)
+    .map(data => ({ ...data }));
+  
+  const non = allClients
+    .filter(data => data.clientStatus === 'НЕТ' && data.noVatAmount > 0)
+    .map(data => ({ ...data }));
+  
+  return { active, was, non };
+});
+
+// Общая сумма базы KPI по клиентам с бонусом
+const kpiClientBaseTotal = computed(() => {
+  return kpiClientDetails.value.active.reduce((sum, item) => {
+    return sum + (item.displayAmount || 0);
+  }, 0);
+});
+
+// Общая сумма NO_VAT по клиентам с историей бонуса
+const wasKpiClientNoVatTotal = computed(() => {
+  return kpiClientDetails.value.was.reduce((sum, item) => sum + item.noVatAmount, 0);
+});
+
+// Общая сумма NO_VAT по клиентам без бонуса
+const nonKpiClientNoVatTotal = computed(() => {
+  return kpiClientDetails.value.non.reduce((sum, item) => sum + item.noVatAmount, 0);
+});
+
+// Итоги
+const totalFact = computed(() => {
+  return managerRatings.value.reduce((sum, m) => sum + m.fact, 0);
+});
+
+const totalPayment = computed(() => {
+  return managerRatings.value.reduce((sum, m) => sum + m.payment, 0);
+});
+
+const averagePlanPercent = computed(() => {
+  if (managerRatings.value.length === 0) return 0;
+  return managerRatings.value.reduce((sum, m) => sum + m.planPercent, 0) / managerRatings.value.length;
+});
+
+// Название месяца
+const selectedMonthName = computed(() => {
+  const month = months.find(m => m.value === selectedMonth.value);
+  return month ? month.title : '';
+});
+
+// Функции для иконок и цветов
+const getRoleIcon = (role?: string): string => {
+  switch(role) {
+    case 'Старший Менеджер': return 'ri-computer-line';
+    case 'Руководитель ОП': return 'ri-team-line';
+    case 'Менеджер': return 'ri-user-line';
+    default: return 'ri-user-line';
+  }
+};
+
+const getRoleColor = (role?: string): string => {
+  switch(role) {
+    case 'Старший Менеджер': return 'error';
+    case 'Руководитель ОП': return 'primary';
+    case 'Менеджер': return 'success';
+    default: return 'grey';
+  }
+};
+
+const getPercentColor = (percent: number): string => {
+  if (percent >= 100) return 'success';
+  if (percent >= 50) return 'warning';
+  return 'error';
+};
+
+const getPercentTextColor = (percent: number): string => {
+  if (percent >= 100) return 'text-success';
+  if (percent >= 50) return 'text-warning';
+  return 'text-error';
+};
+
+const getPaymentColor = (payment: number): string => {
+  return payment > 0 ? 'text-primary' : 'text-grey';
+};
+
+// Форматирование денег
+const formatMoney = (amount: number): string => {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+};
+
+// Сохранить состояние диалога
+const saveDialogState = (isOpen: boolean) => {
+  if (!isOpen && selectedManagerDetails.value) {
+    // При закрытии диалога сохраняем состояние
+    saveStateToStorage();
+  }
+};
+
+// Открыть детали менеджера
+const openManagerDetails = (item: any) => {
+  selectedManagerDetails.value = item;
+  
+  if (!selectedRate.value[item.id]) {
+    selectedRate.value[item.id] = getSelectedRate(item);
+  }
+  
+  if (!selectedKpiRate.value[item.id]) {
+    selectedKpiRate.value[item.id] = 0.015; // По умолчанию 1.5%
+  }
+  
+  // Инициализируем KPI VAT, если ещё нет
+  if (manualKpiVat.value[item.id] === undefined) {
+    manualKpiVat.value[item.id] = 0;
+  }
+  
+  // Восстанавливаем последний активный таб для этого менеджера
+  const savedTabKey = `kpi_tab_${item.id}`;
+  const savedTab = localStorage.getItem(savedTabKey);
+  if (savedTab) {
+    activeTab.value = savedTab;
+  } else {
+    activeTab.value = 'maintenance';
+  }
+  
+  showDetailsDialog.value = true;
+};
+
+// Обновление данных
+const refreshData = () => {
+  loading.value = true;
+  setTimeout(() => {
+    loading.value = false;
+  }, 500);
+};
+
+// Загрузка данных
+onMounted(async () => {
+  loading.value = true;
+  try {
+    // Загружаем сохраненное состояние
+    loadStateFromStorage();
+    
+    await store.loadManagers();
+    await store.loadMaintenanceRates();
+    await store.loadKpiRates();
+    
+    // Загружаем bonusHistory.json
+    const response = await fetch('/data/bonusHistory.json');
+    const data = await response.json();
+    bonusHistory.value = data.bonuses;
+    console.log('✅ Bonus history loaded:', bonusHistory.value.length, 'records');
+    
+    // Принудительное обновление после загрузки всех данных
+    setTimeout(() => {
+      forceUpdate.value = Date.now();
+      console.log('🔄 Принудительное обновление после загрузки данных');
+    }, 100);
+    
+  } catch (error) {
+    console.error('❌ Ошибка загрузки данных:', error);
+  } finally {
+    loading.value = false;
+  }
+});
+
+// Сохраняем активный таб при его изменении
+watch(activeTab, (newTab) => {
+  if (selectedManagerDetails.value) {
+    localStorage.setItem(`kpi_tab_${selectedManagerDetails.value.id}`, newTab);
+  }
+});
+</script>
+
+<style scoped>
+.page-content {
+  padding: 24px;
+  background-color: #F5F5F5;
+  min-height: 100vh;
+}
+
+.rating-card {
+  border-radius: 16px !important;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.05) !important;
+}
+
+.rank-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.rank-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.client-table {
+  margin-top: 8px;
+  border-radius: 8px !important;
+}
+
+.client-table :deep(.v-data-table__tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.03) !important;
+}
+
+.client-table :deep(.v-data-table__td) {
+  padding: 8px 12px !important;
+}
+
+:deep(.v-data-table) {
+  background-color: transparent !important;
+}
+
+:deep(.v-data-table .v-data-table__thead) {
+  background-color: rgba(0,0,0,0.02);
+}
+
+:deep(.v-data-table__tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.05) !important;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.gap-3 {
+  gap: 12px;
+}
+
+.gap-4 {
+  gap: 16px;
+}
+
+.bg-success-light {
+  background-color: rgba(var(--v-theme-success), 0.1) !important;
+}
+
+.bg-warning-light {
+  background-color: rgba(var(--v-theme-warning), 0.1) !important;
+}
+
+.dark-theme .page-content {
+  background-color: #1E1E2D !important;
+}
+
+.dark-theme .v-data-table .v-data-table__thead {
+  background-color: rgba(255,255,255,0.05);
+}
+</style>
