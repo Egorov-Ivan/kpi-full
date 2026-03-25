@@ -1755,11 +1755,20 @@ const openManagerDetails = (item: any) => {
 };
 
 // Обновление данных
-const refreshData = () => {
+const refreshData = async () => {
   loading.value = true;
-  setTimeout(() => {
+  try {
+    // Загружаем данные за выбранный месяц
+    const year = parseInt(selectedYear.value);
+    const month = parseInt(selectedMonth.value);
+    
+    await store.loadBufferData(year, month);
+    // Остальные загрузки уже есть в onMounted
+  } catch (error) {
+    console.error('Ошибка загрузки:', error);
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 };
 
 
@@ -1767,42 +1776,19 @@ const refreshData = () => {
 onMounted(async () => {
   loading.value = true;
   try {
-    console.log('📥 Загрузка данных...');
-    
-    // Загружаем сохраненное состояние
-    loadStateFromStorage();
-    
-    // Загружаем менеджеров из JSON
-    try {
-      console.log('🔄 Загрузка /data/managers.json...');
-      const response = await fetch('/data/managers.json');
-      if (response.ok) {
-        const data = await response.json();
-        store.managers = data.managers;
-        store.maintenanceRates = data.maintenanceRates;
-        store.kpiRates = data.kpiRates;
-        console.log(`✅ Загружено ${data.managers.length} менеджеров`);
-      } else {
-        console.warn('⚠️ managers.json не найден, используем API');
-        await store.loadManagers();
-        await store.loadMaintenanceRates();
-        await store.loadKpiRates();
-      }
-    } catch (error) {
-      console.error('❌ Ошибка загрузки managers.json:', error);
-      await store.loadManagers();
-      await store.loadMaintenanceRates();
-      await store.loadKpiRates();
-    }
-    
-    // Загружаем buffer.json через store
-    await store.loadBufferData();
-    
-    // Загружаем bonusHistory.json через store
+    // Загружаем менеджеров, ставки и историю бонусов
+    await store.loadManagers();
+    await store.loadMaintenanceRates();
+    await store.loadKpiRates();
     await store.loadBonusHistory();
     
+    // Загружаем данные буфера за текущий месяц
+    const year = parseInt(selectedYear.value);
+    const month = parseInt(selectedMonth.value);
+    await store.loadBufferData(year, month);
+    
   } catch (error) {
-    console.error('❌ Критическая ошибка:', error);
+    console.error('Ошибка загрузки:', error);
   } finally {
     loading.value = false;
   }
@@ -1813,6 +1799,11 @@ watch(activeTab, (newTab) => {
   if (selectedManagerDetails.value) {
     localStorage.setItem(`kpi_tab_${selectedManagerDetails.value.id}`, newTab);
   }
+});
+
+// Следим за изменением года/месяца
+watch([selectedYear, selectedMonth], () => {
+  refreshData();
 });
 
 </script>
