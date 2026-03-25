@@ -1,4 +1,13 @@
 {
   "version": 2,
-  "outputDirectory": "dist"
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
