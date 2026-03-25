@@ -7,15 +7,15 @@ export interface BufferOperation {
   client: string;
   clientType: 'VAT' | 'NO_VAT';
   manager: string;
+  legalEntity?: string;
 }
 
-// Типы для статистики
 export interface ManagerStats {
-  manager: string;
   totalAmount: number;
   operationsCount: number;
-  clients: Set<string>;
-  monthlyTotals: Map<string, number>;
+  uniqueClients: number;
+  vatAmount: number;
+  noVatAmount: number;
 }
 
 class BufferService {
@@ -24,6 +24,64 @@ class BufferService {
   constructor() {
     this.data = rawData as BufferOperation[];
     console.log('✅ BufferService инициализирован, загружено операций:', this.data.length);
+    
+    // Показываем статистику по датам для отладки
+    this.showDateStats();
+    
+    // Показываем статистику по менеджерам для отладки
+    this.showManagerStats();
+  }
+
+  /**
+   * Показать статистику по датам (для отладки)
+   */
+  private showDateStats(): void {
+    if (this.data.length === 0) return;
+    
+    console.log('📅 Примеры дат (первые 5):', this.data.slice(0, 5).map(op => op.date));
+    
+    // Группировка по годам и месяцам
+    const yearMonthStats = new Map<string, number>();
+    
+    this.data.forEach(op => {
+      const parsed = this.parseDate(op.date);
+      if (parsed) {
+        const key = `${parsed.year}-${parsed.month.toString().padStart(2, '0')}`;
+        yearMonthStats.set(key, (yearMonthStats.get(key) || 0) + 1);
+      } else {
+        console.warn('⚠️ Не удалось распарсить дату:', op.date);
+      }
+    });
+    
+    console.log('📊 Статистика по месяцам:');
+    Array.from(yearMonthStats.entries())
+      .sort()
+      .forEach(([month, count]) => {
+        console.log(`   ${month}: ${count} операций`);
+      });
+  }
+
+  /**
+   * Показать статистику по менеджерам (для отладки)
+   */
+  private showManagerStats(): void {
+    const managerCount = new Map<string, number>();
+    const managerTotal = new Map<string, number>();
+    
+    this.data.forEach(op => {
+      const manager = op.manager;
+      managerCount.set(manager, (managerCount.get(manager) || 0) + 1);
+      managerTotal.set(manager, (managerTotal.get(manager) || 0) + op.amount);
+    });
+    
+    console.log('📊 Статистика по менеджерам в буфере:');
+    Array.from(managerCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .forEach(([manager, count]) => {
+        const total = managerTotal.get(manager) || 0;
+        console.log(`   ${manager}: ${count} опер., ${total.toLocaleString()}₽`);
+      });
   }
 
   /**
@@ -34,50 +92,110 @@ class BufferService {
   }
 
   /**
+   * Преобразовать дату из ДД-ММ-ГГГГ в объект Date
+   */
+  private parseDate(dateStr: string): { year: number; month: number; day: number } | null {
+    if (!dateStr) return null;
+    
+    // Формат ДД-ММ-ГГГГ (с дефисами) - ОСНОВНОЙ ФОРМАТ
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        
+        // Проверка на валидность
+        if (isNaN(day) || isNaN(month) || isNaN(year)) {
+          console.warn('⚠️ Некорректная дата:', dateStr);
+          return null;
+        }
+        
+        return { year, month, day };
+      }
+    }
+    
+    // Формат ДД.ММ.ГГГГ (с точками) - запасной вариант
+    if (dateStr.includes('.')) {
+      const parts = dateStr.split('.');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        
+        if (isNaN(day) || isNaN(month) || isNaN(year)) {
+          return null;
+        }
+        
+        return { year, month, day };
+      }
+    }
+    
+    console.warn('⚠️ Неподдерживаемый формат даты:', dateStr);
+    return null;
+  }
+
+  /**
    * Получить операции за конкретный месяц
    */
   getOperationsByMonth(year: number, month: number): BufferOperation[] {
-    const monthStr = month.toString().padStart(2, '0');
-    return this.data.filter(op => op.date.startsWith(`${year}-${monthStr}`));
-  }
-
-  /**
-   * Получить операции менеджера за месяц
-   */
-  getOperationsByManagerAndMonth(managerName: string, year: number, month: number): BufferOperation[] {
-  const monthStr = month.toString().padStart(2, '0');
-  const managerLower = managerName.toLowerCase().trim();
-  
-  console.log(`🔍 Поиск операций для менеджера "${managerName}" за ${year}-${monthStr}`);
-  
-  const result = this.data.filter(op => {
-    const opManager = op.manager.toLowerCase().trim();
-    const dateMatch = op.date.startsWith(`${year}-${monthStr}`);
-    const managerMatch = opManager === managerLower || 
-                        opManager.includes(managerLower) || 
-                        managerLower.includes(opManager);
+    console.log(`🔍 Поиск операций за ${year}-${month.toString().padStart(2, '0')}`);
     
-    if (dateMatch && managerMatch) {
-      console.log(`   ✅ Найдена операция: ${op.date} | ${op.client} | ${op.amount} ₽ | ${op.clientType}`);
+    const result = this.data.filter(op => {
+      const parsed = this.parseDate(op.date);
+      if (!parsed) return false;
+      
+      return parsed.year === year && parsed.month === month;
+    });
+    
+    console.log(`   Найдено: ${result.length} операций`);
+    
+    // Для отладки покажем первых 3 менеджеров
+    if (result.length > 0) {
+      const managers = [...new Set(result.map(op => op.manager))];
+      console.log(`   Менеджеры: ${managers.slice(0, 3).join(', ')}${managers.length > 3 ? '...' : ''}`);
     }
     
-    return dateMatch && managerMatch;
-  });
-  
-  console.log(`📊 Найдено операций: ${result.length}`);
-  return result;
-}
-  /**
-   * Получить операции без VAT
-   */
-  getNonVatOperations(): BufferOperation[] {
-    return this.data.filter(op => op.clientType === 'NO_VAT');
+    return result;
   }
 
   /**
-   * Получить статистику по менеджеру
+   * Получить операции менеджера за месяц по списку возможных имен (алиасов)
    */
-  getManagerStats(managerName: string, year?: number, month?: number): {
+  getOperationsByManagerNames(managerNames: string[], year: number, month: number): BufferOperation[] {
+    const normalizedNames = managerNames
+      .map(name => name?.toLowerCase().trim())
+      .filter(Boolean);
+    
+    console.log(`🔍 Поиск операций для менеджера по именам: [${normalizedNames.join(', ')}] за ${year}-${month}`);
+    
+    const result = this.data.filter(op => {
+      const parsed = this.parseDate(op.date);
+      if (!parsed) return false;
+      
+      const dateMatch = parsed.year === year && parsed.month === month;
+      if (!dateMatch) return false;
+      
+      const opManager = op.manager.toLowerCase().trim();
+      
+      // ТОЛЬКО точное совпадение с одним из алиасов
+      // Никакого includes или частичного вхождения!
+      return normalizedNames.some(name => name === opManager);
+    });
+    
+    console.log(`   Найдено операций: ${result.length}`);
+    if (result.length > 0) {
+      const totalSum = result.reduce((sum, op) => sum + op.amount, 0);
+      console.log(`   Общая сумма: ${totalSum}₽`);
+    }
+    
+    return result;
+  }
+
+  /**
+   * Получить статистику по менеджеру (по алиасам)
+   */
+  getManagerStatsByNames(managerNames: string[], year?: number, month?: number): {
     totalAmount: number;
     operationsCount: number;
     uniqueClients: number;
@@ -85,19 +203,22 @@ class BufferService {
     vatAmount: number;
     noVatAmount: number;
   } {
+    const normalizedNames = managerNames
+      .map(name => name?.toLowerCase().trim())
+      .filter(Boolean);
+    
     let operations = this.data;
     
     if (year && month) {
-      const monthStr = month.toString().padStart(2, '0');
-      operations = operations.filter(op => op.date.startsWith(`${year}-${monthStr}`));
+      operations = operations.filter(op => {
+        const parsed = this.parseDate(op.date);
+        return parsed ? parsed.year === year && parsed.month === month : false;
+      });
     }
     
-    const managerLower = managerName.toLowerCase();
     const managerOps = operations.filter(op => {
-      const opManager = op.manager.toLowerCase();
-      return opManager === managerLower || 
-             opManager.includes(managerLower) || 
-             managerLower.includes(opManager);
+      const opManager = op.manager.toLowerCase().trim();
+      return normalizedNames.some(name => name === opManager);
     });
     
     const totalAmount = managerOps.reduce((sum, op) => sum + op.amount, 0);
@@ -119,6 +240,22 @@ class BufferService {
   }
 
   /**
+   * Получить операции менеджера за месяц (старая версия, оставлена для совместимости)
+   * @deprecated Используйте getOperationsByManagerNames
+   */
+  getOperationsByManagerAndMonth(managerName: string, year: number, month: number): BufferOperation[] {
+    console.warn('⚠️ getOperationsByManagerAndMonth устарел, используйте getOperationsByManagerNames');
+    return this.getOperationsByManagerNames([managerName], year, month);
+  }
+
+  /**
+   * Получить операции без VAT
+   */
+  getNonVatOperations(): BufferOperation[] {
+    return this.data.filter(op => op.clientType === 'NO_VAT');
+  }
+
+  /**
    * Получить топ клиентов по сумме
    */
   getTopClients(limit: number = 10, year?: number, month?: number): {
@@ -130,8 +267,10 @@ class BufferService {
     let operations = this.data;
     
     if (year && month) {
-      const monthStr = month.toString().padStart(2, '0');
-      operations = operations.filter(op => op.date.startsWith(`${year}-${monthStr}`));
+      operations = operations.filter(op => {
+        const parsed = this.parseDate(op.date);
+        return parsed ? parsed.year === year && parsed.month === month : false;
+      });
     }
     
     const clientStats = new Map<string, { total: number; count: number; managers: Set<string> }>();
@@ -165,8 +304,10 @@ class BufferService {
     let operations = this.data;
     
     if (year && month) {
-      const monthStr = month.toString().padStart(2, '0');
-      operations = operations.filter(op => op.date.startsWith(`${year}-${monthStr}`));
+      operations = operations.filter(op => {
+        const parsed = this.parseDate(op.date);
+        return parsed ? parsed.year === year && parsed.month === month : false;
+      });
     }
     
     const vatOps = operations.filter(op => op.clientType === 'VAT');
@@ -194,8 +335,10 @@ class BufferService {
     vatAmount: number;
     noVatAmount: number;
   }[] {
-    const monthStr = month.toString().padStart(2, '0');
-    const monthOps = this.data.filter(op => op.date.startsWith(`${year}-${monthStr}`));
+    const monthOps = this.data.filter(op => {
+      const parsed = this.parseDate(op.date);
+      return parsed ? parsed.year === year && parsed.month === month : false;
+    });
     
     const dailyStats = new Map<string, { 
       total: number; 
@@ -250,8 +393,10 @@ class BufferService {
     let operations = this.data;
     
     if (year && month) {
-      const monthStr = month.toString().padStart(2, '0');
-      operations = operations.filter(op => op.date.startsWith(`${year}-${monthStr}`));
+      operations = operations.filter(op => {
+        const parsed = this.parseDate(op.date);
+        return parsed ? parsed.year === year && parsed.month === month : false;
+      });
     }
     
     const stats = new Map();
@@ -299,15 +444,28 @@ class BufferService {
    */
   getBufferStats() {
     const allOps = this.data;
-    const dates = allOps.map(op => op.date).sort();
+    
+    // Получаем все даты и сортируем
+    const dates = allOps
+      .map(op => this.parseDate(op.date))
+      .filter(d => d !== null)
+      .map(d => `${d.day.toString().padStart(2, '0')}-${d.month.toString().padStart(2, '0')}-${d.year}`)
+      .sort((a, b) => {
+        // Сортировка по дате (ДД-ММ-ГГГГ)
+        const [d1, m1, y1] = a.split('-').map(Number);
+        const [d2, m2, y2] = b.split('-').map(Number);
+        if (y1 !== y2) return y1 - y2;
+        if (m1 !== m2) return m1 - m2;
+        return d1 - d2;
+      });
     
     return {
       totalOperations: allOps.length,
       totalManagers: new Set(allOps.map(op => op.manager)).size,
       totalClients: new Set(allOps.map(op => op.client)).size,
       dateRange: {
-        first: dates[0],
-        last: dates[dates.length - 1]
+        first: dates[0] || 'нет данных',
+        last: dates[dates.length - 1] || 'нет данных'
       },
       totalAmount: allOps.reduce((sum, op) => sum + op.amount, 0),
       vatAmount: allOps.filter(op => op.clientType === 'VAT').reduce((sum, op) => sum + op.amount, 0),

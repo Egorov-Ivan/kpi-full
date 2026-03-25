@@ -5,7 +5,7 @@ import App from './App.vue'
 import router from './router'
 import vuetify from './plugins/vuetify'
 import 'remixicon/fonts/remixicon.css'
-import './styles/variables.css'  // Добавьте эту строку
+import './styles/variables.css'
 
 const app = createApp(App)
 

@@ -22,14 +22,24 @@
       <v-divider :class="dividerClass"></v-divider>
       
       <!-- Основное меню (CRM) -->
+      
       <v-list density="compact" nav class="mt-2">
         <v-list-item 
-          prepend-icon="ri-home-line" 
+          prepend-icon="ri-home-line"
           title="Главная"
           to="/"
           :active="$route.path === '/'"
           :class="navItemClass"
         ></v-list-item>
+        
+        <v-list-item 
+          prepend-icon="ri-home-line" 
+          title="Главная Менеджера"
+          to="/manager"
+          :active="$route.path === '/manager'"
+          :class="navItemClass"
+        ></v-list-item> 
+
         
         <v-list-item 
           prepend-icon="ri-team-line" 
@@ -157,6 +167,7 @@ const pageTitle = computed(() => {
     case '/clients': return 'Клиенты'
     case '/cards': return 'Карты'
     case '/transactions': return 'Транзакции'
+    case '/manager': return 'Главная Менеджера'
     default: return 'Benzigo CRM'
   }
 })

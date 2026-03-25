@@ -7,6 +7,8 @@ export const useKpiStore = defineStore('kpi', () => {
   const managers = ref<any[]>([]);
   const maintenanceRates = ref<any[]>([]);
   const kpiRates = ref<any[]>([]);
+  const bufferData = ref<any[]>([]);
+  const bonusHistory = ref<any[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
 
@@ -16,7 +18,7 @@ export const useKpiStore = defineStore('kpi', () => {
     error.value = null;
     
     try {
-      // Пробуем загрузить через API (работает на Vercel)
+      // Пробуем загрузить через API
       const response = await fetch('/api/managers');
       
       if (!response.ok) {
@@ -48,11 +50,104 @@ export const useKpiStore = defineStore('kpi', () => {
         
         // Запасные данные на крайний случай
         managers.value = [
-          { id: "crm_7", displayName: "Федосеенко Д", role: "Менеджер", aliases: ["Федосеенко Денис"], allowedMaintenanceRates: ["m015", "m020", "m030"] },
-          { id: "crm_22", displayName: "Сартаков Р", role: "Менеджер", aliases: ["Сартаков Роман"], allowedMaintenanceRates: ["m015", "m020"] },
-          { id: "crm_23", displayName: "Воропаев С", role: "Менеджер", aliases: ["Воропаев Сергей"], allowedMaintenanceRates: ["m015", "m020", "m030"] },
-          { id: "crm_24", displayName: "Храмов Д", role: "Менеджер", aliases: ["Храмов Дмитрий"], allowedMaintenanceRates: ["m015", "m020"] },
-          { id: "crm_25", displayName: "Архипова А", role: "Менеджер", aliases: ["Архипова Анна"], allowedMaintenanceRates: ["m015", "m020", "m030"] }
+          { 
+            id: "crm_7", 
+            displayName: "Федосеенко Дана", 
+            role: "Старший Менеджер", 
+            aliases: ["Дана", "Федосеенко Д", "Федосеенко"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_12", 
+            displayName: "Кошарный Евгений", 
+            role: "Старший Менеджер", 
+            aliases: ["Евгений К", "Евгений", "Кошарный Е"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_18", 
+            displayName: "Воропаев Степан", 
+            role: "Менеджер", 
+            aliases: ["Степан", "Воропаев С", "Воропаев"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_21", 
+            displayName: "Храмов Дмитрий", 
+            role: "Старший Менеджер", 
+            aliases: ["Дмитрий", "Храмов Д", "Храмов"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_22", 
+            displayName: "Сартаков Роман", 
+            role: "Менеджер", 
+            aliases: ["Роман С", "Сартаков Р", "Сартаков"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_24", 
+            displayName: "Архипова Анна", 
+            role: "Менеджер", 
+            aliases: ["Анна", "Архипова А", "Архипова"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_32", 
+            displayName: "Масленников Никита", 
+            role: "Менеджер", 
+            aliases: ["Никита", "Масленников Н", "Масленников"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_33", 
+            displayName: "Массаков Даниил", 
+            role: "Менеджер", 
+            aliases: ["Даниил М", "Массаков Д", "Даниил", "Даня"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_34", 
+            displayName: "Марушкевич Иван", 
+            role: "Менеджер", 
+            aliases: ["Иван", "Марушкевич И", "Марушкевич"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_36", 
+            displayName: "Кухарь Роман", 
+            role: "Менеджер", 
+            aliases: ["Роман К", "Кухарь Р", "Кухарь"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_37", 
+            displayName: "Самедов Али", 
+            role: "Менеджер", 
+            aliases: ["Али", "Самедов А", "Самедов"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_40", 
+            displayName: "Овсянников Артем", 
+            role: "Менеджер", 
+            aliases: ["Артем", "Овсянников А", "Овсянников"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_41", 
+            displayName: "Сысоева Кристина", 
+            role: "Менеджер", 
+            aliases: ["Кристина С", "Сысоева К", "Сысоева"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          },
+          { 
+            id: "crm_42", 
+            displayName: "Морева Кристина", 
+            role: "Менеджер", 
+            aliases: ["Кристина М", "Морева К", "Морева"], 
+            allowedMaintenanceRates: ["m015", "m020", "m030"] 
+          }
         ];
         console.log('⚠️ Используются запасные данные менеджеров');
       }
@@ -119,13 +214,78 @@ export const useKpiStore = defineStore('kpi', () => {
         console.error('❌ Локальный сервер тоже не работает');
         // Запасные данные
         kpiRates.value = [
-          { id: "kpi_1", value: 0.01, label: "1.00%" },
+          { id: "kpi_1", value: 0.015, label: "1.50%" },
           { id: "kpi_2", value: 0.02, label: "2.00%" },
-          { id: "kpi_3", value: 0.03, label: "3.00%" },
-          { id: "kpi_4", value: 0.04, label: "4.00%" },
-          { id: "kpi_5", value: 0.05, label: "5.00%" }
+          { id: "kpi_3", value: 0.03, label: "3.00%" }
         ];
       }
+    }
+  };
+
+  // Загрузка данных буфера
+  const loadBufferData = async () => {
+    try {
+      console.log('🔄 Загрузка /data/buffer.json...');
+      const response = await fetch('/data/buffer.json');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Проверяем структуру данных
+      if (Array.isArray(data)) {
+        bufferData.value = data;
+        console.log(`✅ Буфер загружен: ${data.length} записей`);
+      } else if (data.operations && Array.isArray(data.operations)) {
+        bufferData.value = data.operations;
+        console.log(`✅ Буфер загружен: ${data.operations.length} записей`);
+      } else if (data.data && Array.isArray(data.data)) {
+        bufferData.value = data.data;
+        console.log(`✅ Буфер загружен: ${data.data.length} записей`);
+      } else {
+        console.warn('⚠️ Неожиданный формат buffer.json:', data);
+        bufferData.value = [];
+      }
+      
+      return bufferData.value;
+    } catch (error) {
+      console.error('❌ Ошибка загрузки buffer.json:', error);
+      bufferData.value = [];
+      return [];
+    }
+  };
+
+  // Загрузка истории бонусов
+  const loadBonusHistory = async () => {
+    try {
+      console.log('🔄 Загрузка /data/bonushistory.json...');
+      const response = await fetch('/data/bonushistory.json');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Проверяем структуру данных
+      if (data && data.bonuses) {
+        bonusHistory.value = data.bonuses;
+        console.log(`✅ Bonus history загружен: ${bonusHistory.value.length} записей`);
+      } else if (Array.isArray(data)) {
+        bonusHistory.value = data;
+        console.log(`✅ Bonus history загружен: ${bonusHistory.value.length} записей`);
+      } else {
+        console.warn('⚠️ Неожиданный формат bonushistory.json:', data);
+        bonusHistory.value = [];
+      }
+      
+      return bonusHistory.value;
+    } catch (error) {
+      console.error('❌ Ошибка загрузки bonusHistory:', error);
+      bonusHistory.value = [];
+      return [];
     }
   };
 
@@ -141,11 +301,56 @@ export const useKpiStore = defineStore('kpi', () => {
     );
   };
 
+  // Получить все операции из буфера
+  const getAllBufferOperations = () => {
+    return bufferData.value;
+  };
+
+  // Получить операции по менеджеру
+  const getBufferOperationsByManager = (managerName: string) => {
+    return bufferData.value.filter(op => 
+      op.manager === managerName || 
+      op.managerName === managerName ||
+      op.responsible === managerName
+    );
+  };
+
+  // Получить операции за период
+  const getBufferOperationsByPeriod = (year: number, month: number) => {
+    const monthStr = month.toString().padStart(2, '0');
+    return bufferData.value.filter(op => {
+      if (op.date) {
+        return op.date.startsWith(`${year}-${monthStr}`) || 
+               op.date.includes(`-${monthStr}-${year}`) ||
+               op.date.includes(`.${monthStr}.${year}`);
+      }
+      return false;
+    });
+  };
+
+  // Получить бонусную историю для менеджера
+  const getBonusHistoryForManager = (managerName: string) => {
+    return bonusHistory.value.filter(b => 
+      b.currentManager === managerName || 
+      b.manager === managerName
+    );
+  };
+
+  // Получить статус бонуса для клиента
+  const getBonusStatusForClient = (clientName: string, managerName: string) => {
+    return bonusHistory.value.find(b => 
+      b.client === clientName && 
+      (b.currentManager === managerName || b.manager === managerName)
+    );
+  };
+
   return {
     // Состояние
     managers,
     maintenanceRates,
     kpiRates,
+    bufferData,
+    bonusHistory,
     loading,
     error,
     
@@ -153,9 +358,20 @@ export const useKpiStore = defineStore('kpi', () => {
     loadManagers,
     loadMaintenanceRates,
     loadKpiRates,
+    loadBufferData,
+    loadBonusHistory,
     
     // Хелперы
     getManagerById,
-    getManagerByName
+    getManagerByName,
+    
+    // Методы для работы с буфером
+    getAllBufferOperations,
+    getBufferOperationsByManager,
+    getBufferOperationsByPeriod,
+    
+    // Методы для работы с бонусной историей
+    getBonusHistoryForManager,
+    getBonusStatusForClient
   };
 });

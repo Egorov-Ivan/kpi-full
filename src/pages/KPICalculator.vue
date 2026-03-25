@@ -197,7 +197,7 @@
         </v-card>
 
         <!-- Модальное окно деталей менеджера -->
-        <v-dialog v-model="showDetailsDialog" max-width="1200">
+        <v-dialog v-model="showDetailsDialog" max-width="1200" @update:model-value="saveDialogState">
           <v-card v-if="selectedManagerDetails">
             <v-card-title class="d-flex align-center pa-4">
               <v-avatar :color="getRoleColor(selectedManagerDetails.role)" size="40" class="mr-3">
@@ -224,7 +224,7 @@
               <v-row>
                 <v-col cols="3">
                   <v-card variant="tonal" class="pa-4">
-                    <div class="text-caption text-grey mb-1">Операций за месяц</div>
+                    <div class="text-caption text-grey mb-1">Пополнений за месяц</div>
                     <div class="text-h4 font-weight-bold text-primary">
                       {{ selectedManagerDetails.operationsCount }}
                     </div>
@@ -232,7 +232,7 @@
                 </v-col>
                 <v-col cols="3">
                   <v-card variant="tonal" class="pa-4">
-                    <div class="text-caption text-grey mb-1">Сумма операций (ФАКТ)</div>
+                    <div class="text-caption text-grey mb-1">Сумма пополнений</div>
                     <div class="text-h4 font-weight-bold text-success">
                       {{ formatMoney(selectedManagerDetails.fact) }}
                     </div>
@@ -240,7 +240,7 @@
                 </v-col>
                 <v-col cols="3">
                   <v-card variant="tonal" class="pa-4">
-                    <div class="text-caption text-grey mb-1">VAT операции</div>
+                    <div class="text-caption text-grey mb-1">Пополнения с НДС</div>
                     <div class="text-h5 font-weight-bold text-info">
                       {{ formatMoney(selectedManagerDetails.vatAmount || 0) }}
                     </div>
@@ -248,9 +248,9 @@
                 </v-col>
                 <v-col cols="3">
                   <v-card variant="tonal" class="pa-4">
-                    <div class="text-caption text-grey mb-1">NO_VAT операции</div>
-                    <div class="text-h5 font-weight-bold text-warning">
-                      {{ formatMoney(selectedManagerDetails.noVatAmount || 0) }}
+                    <div class="text-caption text-grey mb-1">KPI НДС (ручной ввод)</div>
+                    <div class="text-h5 font-weight-bold text-info">
+                      {{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}
                     </div>
                   </v-card>
                 </v-col>
@@ -268,7 +268,7 @@
                   <v-progress-linear
                     v-model="selectedManagerDetails.planPercent"
                     :color="getPercentColor(selectedManagerDetails.planPercent)"
-                    height="12"
+                    height="18"
                     rounded
                   ></v-progress-linear>
                   <div class="d-flex justify-space-between mt-2 text-caption text-grey">
@@ -291,12 +291,11 @@
                 </v-tab>
                 <v-tab value="kpiNoVat">
                   <v-icon start>ri-bar-chart-2-line</v-icon>
-                  KPI NO VAT
+                  KPI Без НДС
                 </v-tab>
                 <v-tab value="kpiVat">
                   <v-icon start>ri-file-copy-line</v-icon>
-                  KPI VAT
-                  <v-chip size="x-small" color="warning" class="ml-2">в разработке</v-chip>
+                  KPI НДС
                 </v-tab>
               </v-tabs>
 
@@ -415,7 +414,7 @@
                   <v-row>
                     <v-col cols="4">
                       <v-card variant="tonal" class="pa-4">
-                        <div class="text-caption text-grey mb-1">NO_VAT операции</div>
+                        <div class="text-caption text-grey mb-1">Пополнений без НДС</div>
                         <div class="text-h4 font-weight-bold text-warning">
                           {{ formatMoney(selectedManagerDetails.noVatAmount || 0) }}
                         </div>
@@ -423,7 +422,7 @@
                     </v-col>
                     <v-col cols="4">
                       <v-card variant="tonal" class="pa-4">
-                        <div class="text-caption text-grey mb-1">С бонусом (ДА)</div>
+                        <div class="text-caption text-grey mb-1">KPI к выплате (ДА)</div>
                         <div class="text-h4 font-weight-bold text-success">
                           {{ kpiClientDetails.active.length }}
                         </div>
@@ -431,7 +430,7 @@
                     </v-col>
                     <v-col cols="4">
                       <v-card variant="tonal" class="pa-4">
-                        <div class="text-caption text-grey mb-1">Без бонуса</div>
+                        <div class="text-caption text-grey mb-1">Остальные клиенты</div>
                         <div class="text-h4 font-weight-bold text-grey">
                           {{ kpiClientDetails.was.length + kpiClientDetails.non.length }}
                         </div>
@@ -442,7 +441,7 @@
                   <!-- Выбор ставки KPI -->
                   <v-card class="mt-4 mb-4" variant="tonal">
                     <v-card-text>
-                      <div class="text-subtitle-1 font-weight-medium mb-3">Ставка KPI NO VAT</div>
+                      <div class="text-subtitle-1 font-weight-medium mb-3">Ставка KPI Без НДС</div>
                       <v-btn-toggle
                         v-model="selectedKpiRate[selectedManagerDetails.id]"
                         mandatory
@@ -468,7 +467,7 @@
                     <v-card-text>
                       <div class="d-flex align-center justify-space-between">
                         <div>
-                          <div class="text-caption text-grey">Сумма KPI NO VAT</div>
+                          <div class="text-caption text-grey">Сумма KPI Без НДС</div>
                           <div class="text-h3 font-weight-bold text-success">
                             {{ formatMoney(calculateKpiAmount(selectedManagerDetails)) }}
                           </div>
@@ -477,7 +476,7 @@
                             {{ (getSelectedKpiRate(selectedManagerDetails) * 100).toFixed(2) }}%
                           </div>
                           <div class="text-caption text-grey mt-1">
-                            База KPI: сумма максимальных пополнений за бонусный период по всем активным клиентам
+                            База KPI: Сумма максимальных пополнений за бонусный период
                           </div>
                         </div>
                         <v-icon size="48" color="success">ri-bar-chart-2-line</v-icon>
@@ -490,7 +489,7 @@
                     <v-expansion-panel>
                       <v-expansion-panel-title class="bg-success-light">
                         <v-icon start color="success">ri-checkbox-circle-line</v-icon>
-                        Клиенты с бонусом ({{ kpiClientDetails.active.length }})
+                        KPI к выплате ({{ kpiClientDetails.active.length }})
                         <template v-slot:actions>
                           <v-chip size="small" color="success" variant="tonal">
                             {{ formatMoney(kpiClientBaseTotal) }}
@@ -577,7 +576,7 @@
                     <v-expansion-panel>
                       <v-expansion-panel-title class="bg-warning-light">
                         <v-icon start color="warning">ri-history-line</v-icon>
-                        Клиенты с историей бонуса ({{ kpiClientDetails.was.length }})
+                        KPI был получен ранее ({{ kpiClientDetails.was.length }})
                         <template v-slot:actions>
                           <v-chip size="small" color="warning" variant="tonal">
                             {{ formatMoney(wasKpiClientNoVatTotal) }}
@@ -652,7 +651,7 @@
                     <v-expansion-panel>
                       <v-expansion-panel-title class="text-grey">
                         <v-icon start color="grey">ri-eye-off-line</v-icon>
-                        Клиенты без бонуса ({{ kpiClientDetails.non.length }})
+                        KPI еще не получен ({{ kpiClientDetails.non.length }})
                         <template v-slot:actions>
                           <v-chip size="small" color="grey" variant="tonal">
                             {{ formatMoney(nonKpiClientNoVatTotal) }}
@@ -718,8 +717,6 @@
                               color="success"
                               variant="tonal"
                               @click="setBonusStatus(item.client, 'ДА')"
-                              :disabled="!item.firstFillDate"
-                              :title="!item.firstFillDate ? 'Нет даты первой заправки' : ''"
                             >
                               <v-icon size="small">ri-check-line</v-icon>
                               Сделать ДА
@@ -731,17 +728,63 @@
                   </v-expansion-panels>
                 </v-window-item>
 
-                <!-- Таб: KPI VAT (в разработке) -->
+                <!-- Таб: KPI VAT -->
                 <v-window-item value="kpiVat">
-                  <v-card class="text-center pa-8" variant="tonal">
-                    <v-icon size="64" color="grey-lighten-1" class="mb-4">ri-tools-line</v-icon>
-                    <h3 class="text-h6 text-grey">Раздел в разработке</h3>
-                    <p class="text-body-2 text-grey">Здесь будет отображаться KPI для VAT операций</p>
-                    
-                    <v-chip class="mt-4" color="warning" variant="tonal">
-                      Планируется к релизу в следующем обновлении
-                    </v-chip>
-                  </v-card>
+                  <v-row>
+                    <v-col cols="12">
+                      <v-card variant="tonal" class="pa-4 mb-4">
+                        <v-card-text>
+                          <div class="text-subtitle-1 font-weight-medium mb-3">Ручной ввод KPI НДС</div>
+                          <v-text-field
+                            :model-value="manualKpiVat[selectedManagerDetails.id]"
+                            @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)"
+                            label="Сумма KPI НДС"
+                            prefix="₽"
+                            variant="outlined"
+                            density="compact"
+                            type="text"
+                            :placeholder="formatNumber(0)"
+                            hint="Введите сумму в рублях"
+                            persistent-hint
+                          >
+                            <template v-slot:append>
+                              <v-btn
+                                icon
+                                variant="text"
+                                size="small"
+                                @click="updateManualKpiVat(selectedManagerDetails.id, 0)"
+                                title="Очистить"
+                              >
+                                <v-icon>ri-close-line</v-icon>
+                              </v-btn>
+                            </template>
+                          </v-text-field>
+                          
+                          <div class="d-flex align-center justify-space-between mt-2 text-caption text-grey">
+                            <span>Текущее значение:</span>
+                            <span class="font-weight-medium text-primary">{{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}</span>
+                          </div>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                  
+                  <!-- История ввода -->
+                  <v-expansion-panels>
+                    <v-expansion-panel>
+                      <v-expansion-panel-title>
+                        <v-icon start>ri-history-line</v-icon>
+                        История ввода KPI НДС
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                        <v-card variant="tonal" class="pa-4 text-center text-grey">
+                          <v-icon size="48" color="grey-lighten-1" class="mb-2">ri-timer-line</v-icon>
+                          <p>Здесь будет отображаться история изменений</p>
+                          <p class="text-caption">Функция в разработке</p>
+                        </v-card>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
                 </v-window-item>
               </v-window>
             </v-card-text>
@@ -753,18 +796,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useKpiStore } from '../stores/kpiStore';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useKpiStore } from '../stores/kpiStore';  // ← с большой 'K'!
 import { bufferService } from '@/services/bufferService';
 import type { Manager } from '@/types/kpi.types';
 
-const store = useKpiStore();
+const store = useKpiStore();  // ← с большой 'K'!
 const loading = ref(false);
 const activeTab = ref('maintenance');
 
-// Состояние фильтров - декабрь 2025 по умолчанию
-const selectedYear = ref('2025');
-const selectedMonth = ref('12');
+// Состояние фильтров - текущий месяц по умолчанию
+const currentDate = new Date();
+const selectedYear = ref(currentDate.getFullYear().toString());
+const selectedMonth = ref((currentDate.getMonth() + 1).toString().padStart(2, '0'));
+
 const showDetailsDialog = ref(false);
 const selectedManagerDetails = ref<any>(null);
 
@@ -781,8 +826,11 @@ const kpiNoVatRates = ref([
 // Выбранные ставки KPI для каждого менеджера
 const selectedKpiRate = ref<Record<string, number>>({});
 
+// Состояние для ручного ввода KPI НДС по каждому менеджеру
+const manualKpiVat = ref<Record<string, number>>({});
+
 // Данные bonusHistory
-const bonusHistory = ref<any[]>([]);
+const bonushistory = computed(() => store.bonusHistory);
 
 // Кастомные статусы бонусов (переопределение из файла)
 const customBonusStatus = ref<Record<string, {
@@ -790,9 +838,124 @@ const customBonusStatus = ref<Record<string, {
   bonusMonth: string | null;
 }>>({});
 
+// Состояние для хранения KPI всех менеджеров (не только текущего)
+const managerKpiValues = ref<Record<string, number>>({});
+
+// Триггер для принудительного обновления computed свойств
+const forceUpdate = ref(0);
+
+// Функция для загрузки состояния из localStorage
+const loadStateFromStorage = () => {
+  try {
+    console.log('📂 Загрузка состояния из localStorage...');
+    
+    // Загружаем кастомные статусы
+    const savedCustomStatus = localStorage.getItem('kpi_custom_bonus_status');
+    if (savedCustomStatus) {
+      customBonusStatus.value = JSON.parse(savedCustomStatus);
+      console.log('✅ Загружены кастомные статусы:', Object.keys(customBonusStatus.value).length);
+    }
+    
+    // Загружаем KPI менеджеров
+    const savedManagerKpi = localStorage.getItem('kpi_manager_values');
+    if (savedManagerKpi) {
+      managerKpiValues.value = JSON.parse(savedManagerKpi);
+      console.log('✅ Загружены KPI менеджеров:', managerKpiValues.value);
+    }
+    
+    // Загружаем ставки ведения
+    const savedRates = localStorage.getItem('kpi_selected_rates');
+    if (savedRates) {
+      selectedRate.value = JSON.parse(savedRates);
+    }
+    
+    // Загружаем ставки KPI
+    const savedKpiRates = localStorage.getItem('kpi_selected_kpi_rates');
+    if (savedKpiRates) {
+      selectedKpiRate.value = JSON.parse(savedKpiRates);
+    }
+    
+    // Загружаем ручной ввод KPI VAT
+    const savedManualKpiVat = localStorage.getItem('kpi_manual_vat');
+    if (savedManualKpiVat) {
+      manualKpiVat.value = JSON.parse(savedManualKpiVat);
+    }
+    
+    // Загружаем активный таб
+    const savedTab = localStorage.getItem('kpi_active_tab');
+    if (savedTab) {
+      activeTab.value = savedTab;
+    }
+    
+    // Загружаем выбранный год/месяц
+    const savedYear = localStorage.getItem('kpi_selected_year');
+    if (savedYear) {
+      selectedYear.value = savedYear;
+    }
+    
+    const savedMonth = localStorage.getItem('kpi_selected_month');
+    if (savedMonth) {
+      selectedMonth.value = savedMonth;
+    }
+    
+    // ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ: создаем триггер для перерисовки
+    forceUpdate.value = Date.now();
+    
+    console.log('✅ Состояние загружено, forceUpdate:', forceUpdate.value);
+    
+  } catch (e) {
+    console.error('Ошибка загрузки состояния:', e);
+  }
+};
+
+// Функция для сохранения состояния в localStorage
+const saveStateToStorage = () => {
+  try {
+    localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
+    localStorage.setItem('kpi_manager_values', JSON.stringify(managerKpiValues.value));
+    localStorage.setItem('kpi_selected_rates', JSON.stringify(selectedRate.value));
+    localStorage.setItem('kpi_selected_kpi_rates', JSON.stringify(selectedKpiRate.value));
+    localStorage.setItem('kpi_manual_vat', JSON.stringify(manualKpiVat.value));
+    localStorage.setItem('kpi_active_tab', activeTab.value);
+    localStorage.setItem('kpi_selected_year', selectedYear.value);
+    localStorage.setItem('kpi_selected_month', selectedMonth.value);
+  } catch (e) {
+    console.error('Ошибка сохранения состояния:', e);
+  }
+};
+
+// Функция для принудительного пересчета всех computed
+const refreshAllData = () => {
+  forceUpdate.value = Date.now();
+};
+
+// Следим за изменениями и сохраняем
+watch([customBonusStatus, managerKpiValues, selectedRate, selectedKpiRate, manualKpiVat, activeTab, selectedYear, selectedMonth], () => {
+  saveStateToStorage();
+}, { deep: true });
+
+// Функция для форматирования ввода числа
+const parseNumberInput = (value: string): number => {
+  // Убираем все кроме цифр и точки
+  const cleaned = value.replace(/[^\d.]/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+};
+
+// Функция для обновления KPI VAT с сохранением
+const updateManualKpiVat = (managerId: string, value: any) => {
+  const numValue = typeof value === 'string' ? parseNumberInput(value) : value;
+  manualKpiVat.value[managerId] = numValue;
+  saveStateToStorage();
+};
+
+// Функция для форматирования отображения
+const formatNumber = (value: number): string => {
+  return new Intl.NumberFormat('ru-RU').format(value);
+};
+
 // Годы (от 2024 до текущего + 1)
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: currentYear - 2023 + 2 }, (_, i) => (2024 + i).toString());
+const years = Array.from({ length: 5 }, (_, i) => (2024 + i).toString());
 
 // Месяцы
 const months = [
@@ -827,41 +990,41 @@ const maintenanceClientHeaders = [
   { title: 'Пополнения (NO_VAT)', key: 'totalAmount', sortable: true, align: 'end' as const },
   { title: 'Ведение', key: 'maintenance', sortable: true, align: 'end' as const },
   { title: 'Доля', key: 'share', sortable: true, align: 'end' as const },
-  { title: 'Операций', key: 'operations', sortable: true, align: 'center' as const }
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
 ];
 
 // Заголовки для таблицы KPI клиентов (с бонусом)
 const kpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
-  { title: 'База KPI (NO_VAT)', key: 'kpiBase', sortable: true, align: 'end' as const },
+  { title: 'База KPI Без НДС', key: 'kpiBase', sortable: true, align: 'end' as const },
   { title: 'Сумма KPI', key: 'kpiAmount', sortable: true, align: 'end' as const },
   { title: 'Бонусный месяц', key: 'bonusMonth', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
-  { title: 'Операций', key: 'operations', sortable: true, align: 'center' as const }
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
 ];
 
 // Заголовки для таблицы клиентов с историей бонуса (БЫЛ)
 const wasKpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
-  { title: 'NO_VAT операции', key: 'noVatAmount', sortable: true, align: 'end' as const },
+  { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
   { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
   { title: 'Месяц бонуса', key: 'bonusMonth', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
-  { title: 'Операций', key: 'operations', sortable: true, align: 'center' as const }
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
 ];
 
 // Заголовки для таблицы клиентов без бонуса (НЕТ)
 const nonKpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
-  { title: 'NO_VAT операции', key: 'noVatAmount', sortable: true, align: 'end' as const },
+  { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
   { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
-  { title: 'Операций', key: 'operations', sortable: true, align: 'center' as const },
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
 // Разрешенные роли
-const allowedRoles = ['Менеджер', 'Старший Менеджер'];
+const allowedRoles = ['Менеджер', 'Старший Менеджер',];
 
 // Фильтрованные менеджеры из системы
 const filteredManagers = computed(() => {
@@ -880,13 +1043,22 @@ const managersStats = computed(() => {
   return bufferService.getManagersStats(year, month);
 });
 
-// Реальные фиксированные планы пополнений на декабрь 2025
+// Актуальные планы пополнений
 const plans: Record<string, number> = {
-  'crm_7': 25400000,    // Федосеенко Д
-  'crm_22': 5600000,   // Сартаков Р
-  'crm_23': 10400000,  // Воропаев С 
-  'crm_24': 8000000,   // Храмов Д
-  'crm_25': 3000000    // Архипова А
+  'crm_7': 18500000,   // Федосеенко Дана
+  'crm_18': 6150000,   // Воропаев Степан
+  'crm_21': 6500000,   // Храмов Дмитрий
+  'crm_22': 3000000,   // Сартаков Роман
+  'crm_24': 3250000,   // Архипова Анна
+  'crm_12': 22000000,  // Кошарный Евгений (Руководитель ОП)
+  'crm_32': 1200000,   // Масленников Никита
+  'crm_33': 300000,    // Массаков Даниил
+  'crm_34': 300000,    // Марушкевич Иван
+  'crm_36': 300000,    // Кухарь Роман
+  'crm_37': 300000,    // Самедов Али
+  'crm_40': 300000,    // Овсянников Артем
+  'crm_41': 300000,    // Сысоева Кристина
+  'crm_42': 300000,    // Морева Кристина
 };
 
 // Проверка разрешена ли ставка для менеджера
@@ -903,6 +1075,7 @@ const getAllowedRates = (manager: Manager): string[] => {
   if (manager.allowedMaintenanceRates?.includes('m015')) rates.push('0.15%');
   if (manager.allowedMaintenanceRates?.includes('m020')) rates.push('0.20%');
   if (manager.allowedMaintenanceRates?.includes('m030')) rates.push('0.30%');
+  if (manager.allowedMaintenanceRates?.includes('m150')) rates.push('1.50%');
   return rates;
 };
 
@@ -913,15 +1086,16 @@ const getSelectedRate = (item: any): number => {
   }
   
   const manager = item.originalManager;
-  if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015;
-  if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;
-  if (manager.allowedMaintenanceRates?.includes('m030')) return 0.003;
-  return 0.0015;
+  if (manager.allowedMaintenanceRates?.includes('m150')) return 0.015;  // 1.5%
+  if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015; // 0.15%
+  if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;  // 0.2%
+  if (manager.allowedMaintenanceRates?.includes('m030')) return 0.003;  // 0.3%
+  return 0.015; // По умолчанию 1.5%
 };
 
 // Получить выбранную ставку KPI
 const getSelectedKpiRate = (item: any): number => {
-  return selectedKpiRate.value[item.id] || 0.01;
+  return selectedKpiRate.value[item.id] || 0.015; // По умолчанию 1.5%
 };
 
 // Рассчитать выплату с учетом выбранной ставки (ведение)
@@ -969,9 +1143,9 @@ const getClientBonusStatus = (
   }
   
   // Ищем запись в bonusHistory
-  const bonus = bonusHistory.value.find(b => 
-    b.client === clientName && b.currentManager === managerName
-  );
+  const bonus = store.bonusHistory.find(b => 
+  b.client === clientName && b.currentManager === managerName
+);
   
   // Если есть запись в файле - используем её статус
   if (bonus) {
@@ -1032,36 +1206,81 @@ const getClientBonusStatus = (
         fileStatus: bonus.status
       };
     }
+    
+    // Для статуса "НЕТ" - возвращаем НЕТ
+    if (bonus.status === 'НЕТ') {
+      return {
+        status: 'НЕТ',
+        firstFillDate: bonus.firstFillDate || null,
+        maxAmount: 0,
+        maxMonth: null,
+        hasActiveBonus: false,
+        allMonthsCompleted: false,
+        fileStatus: bonus.status
+      };
+    }
   }
   
-  // Если нет записи в файле или статус "НЕТ" - возвращаем НЕТ
+  // Если нет записи в файле - возвращаем НЕТ
   return {
     status: 'НЕТ',
-    firstFillDate: bonus?.firstFillDate || null,
+    firstFillDate: null,
     maxAmount: 0,
     maxMonth: null,
     hasActiveBonus: false,
     allMonthsCompleted: false,
-    fileStatus: bonus?.status
+    fileStatus: null
   };
 };
 
 // Установить статус бонуса для клиента
 const setBonusStatus = (clientName: string, status: string) => {
-  if (!selectedManagerDetails.value) return;
+  console.log('%c========== НАЖАТА КНОПКА "СДЕЛАТЬ ДА" ==========', 'background: #4CAF50; color: white; font-size: 14px');
   
-  const managerName = selectedManagerDetails.value.originalManager.displayName;
+  if (!selectedManagerDetails.value) {
+    console.error('❌ Ошибка: selectedManagerDetails отсутствует');
+    alert('Ошибка: выберите менеджера');
+    return;
+  }
+  
+  const manager = selectedManagerDetails.value.originalManager;
+  const managerName = manager.displayName;
+  const managerId = selectedManagerDetails.value.id;
+  
   const customKey = `${clientName}_${managerName}`;
-  
-  // Получаем текущий месяц
   const currentMonthKey = `${selectedYear.value}-${selectedMonth.value}`;
   
-  customBonusStatus.value[customKey] = {
-    status,
-    bonusMonth: currentMonthKey
+  console.log('📝 Сохраняем кастомный статус:', { customKey, status, currentMonthKey });
+  
+  // Сохраняем статус
+  customBonusStatus.value = {
+    ...customBonusStatus.value,
+    [customKey]: {
+      status,
+      bonusMonth: currentMonthKey
+    }
   };
   
+  // Сохраняем в localStorage
+  localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
+  
+  // Пересчитываем KPI для этого менеджера
+  setTimeout(() => {
+    // Находим менеджера в списке
+    const managerItem = managerRatings.value.find(m => m.id === managerId);
+    if (managerItem) {
+      // Сохраняем его KPI
+      managerKpiValues.value[managerId] = managerItem.managerKpi || 0;
+      saveStateToStorage();
+      console.log(`💾 Сохранен KPI для ${managerName}:`, managerItem.managerKpi);
+    }
+    
+    // Принудительное обновление
+    forceUpdate.value = Date.now();
+  }, 100);
+  
   console.log(`✅ Статус для клиента ${clientName} установлен как ${status}`);
+  alert(`✅ Статус для клиента "${clientName}" изменен на "${status}"`);
 };
 
 // Цвет для статуса бонуса
@@ -1074,7 +1293,7 @@ const getBonusStatusColor = (status: string): string => {
   }
 };
 
-// Рейтинги менеджеров на основе реальных данных
+// Рейтинги менеджеров
 const managerRatings = computed(() => {
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
@@ -1087,13 +1306,17 @@ const managerRatings = computed(() => {
     let vatAmount = 0;
     let uniqueClients = 0;
     
-    const searchNames = [manager.displayName, ...(manager.aliases || [])].map(n => n.toLowerCase().trim());
+    // Собираем все имена для поиска
+    const searchNames = [
+      manager.displayName,
+      ...(manager.aliases || [])
+    ].map(n => n?.toLowerCase().trim()).filter(Boolean);
     
+    // Ищем точное совпадение в статистике буфера
     for (const [bufferManager, data] of bufferStats.entries()) {
       const bufferManagerLower = bufferManager.toLowerCase().trim();
-      if (searchNames.some(name => 
-        bufferManagerLower.includes(name) || name.includes(bufferManagerLower)
-      )) {
+      
+      if (searchNames.some(name => name === bufferManagerLower)) {
         totalAmount = data.totalAmount;
         noVatAmount = data.noVatAmount;
         vatAmount = data.vatAmount;
@@ -1105,9 +1328,32 @@ const managerRatings = computed(() => {
     
     const plan = plans[manager.id] || 80000;
     const fact = totalAmount;
-    const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
-    const payment = noVatAmount * rate;
     const planPercent = plan > 0 ? (fact / plan) * 100 : 0;
+    
+    // Ведение
+    const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
+    const maintenancePayment = noVatAmount * rate;
+    
+    // KPI менеджера - ИСПОЛЬЗУЕМ СОХРАНЕННОЕ ЗНАЧЕНИЕ
+    let managerKpi = 0;
+    
+    // Если есть сохраненное значение, используем его
+    if (managerKpiValues.value[manager.id] !== undefined) {
+      managerKpi = managerKpiValues.value[manager.id];
+    } 
+    // Иначе если это текущий открытый менеджер, вычисляем
+    else if (selectedManagerDetails.value?.id === manager.id) {
+      managerKpi = kpiClientDetails.value.active.reduce((sum, client) => sum + client.kpiAmount, 0);
+      // Сохраняем вычисленное значение
+      managerKpiValues.value[manager.id] = managerKpi;
+      saveStateToStorage();
+    }
+    
+    // KPI VAT из ручного ввода
+    const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
+    
+    // Общая выплата
+    const payment = maintenancePayment + managerKpi + kpiVatAmount;
     
     return {
       id: manager.id,
@@ -1118,6 +1364,9 @@ const managerRatings = computed(() => {
       fact,
       planPercent,
       payment,
+      maintenancePayment,
+      managerKpi,
+      kpiVatAmount,
       operationsCount,
       totalAmount,
       noVatAmount,
@@ -1135,14 +1384,19 @@ const maintenanceClientDetails = computed(() => {
   const month = parseInt(selectedMonth.value);
   const manager = selectedManagerDetails.value.originalManager;
   
+  const searchNames = [
+    manager.displayName,
+    ...(manager.aliases || [])
+  ].map(n => n?.toLowerCase().trim()).filter(Boolean);
+  
   let allOps: any[] = [];
-  const searchNames = [manager.displayName, ...(manager.aliases || [])];
   
   searchNames.forEach(name => {
-    const ops = bufferService.getOperationsByManagerAndMonth(name, year, month);
+    const ops = bufferService.getOperationsByManagerNames([name], year, month);
     allOps = [...allOps, ...ops];
   });
   
+  // Убираем дубликаты
   const uniqueOps = Array.from(
     new Map(allOps.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
   );
@@ -1190,6 +1444,9 @@ const maintenanceClientDetails = computed(() => {
 
 // Детализация по клиентам для KPI
 const kpiClientDetails = computed(() => {
+  // Принудительное обновление при изменении forceUpdate
+  const update = forceUpdate.value;
+  
   if (!selectedManagerDetails.value) return { active: [], was: [], non: [] };
   
   const year = parseInt(selectedYear.value);
@@ -1198,6 +1455,8 @@ const kpiClientDetails = computed(() => {
   const managerName = manager.displayName;
   const managerAliases = manager.aliases || [];
   const allManagerNames = [managerName, ...managerAliases];
+  
+  console.log('🔄 Пересчет kpiClientDetails, forceUpdate:', update);
   
   // Собираем все операции менеджера по месяцам
   const monthsToCheck = [];
@@ -1216,7 +1475,7 @@ const kpiClientDetails = computed(() => {
     let monthOps: any[] = [];
     
     allManagerNames.forEach(name => {
-      const ops = bufferService.getOperationsByManagerAndMonth(name, y, m);
+      const ops = bufferService.getOperationsByManagerNames([name], y, m);
       monthOps = [...monthOps, ...ops];
     });
     
@@ -1242,7 +1501,7 @@ const kpiClientDetails = computed(() => {
   const clientCurrentMap = new Map();
   
   // 1. Сначала добавляем всех клиентов из bonusHistory для этого менеджера
-  const managerBonuses = bonusHistory.value.filter(b => 
+  const managerBonuses = bonushistory.value.filter(b => 
     allManagerNames.some(name => b.currentManager === name)
   );
   
@@ -1252,6 +1511,7 @@ const kpiClientDetails = computed(() => {
         client: bonus.client,
         totalAmount: 0,
         noVatAmount: 0,
+        vatAmount: 0,
         operationsCount: 0,
         firstFillDate: bonus.firstFillDate || null,
         clientStatus: bonus.status,
@@ -1275,6 +1535,7 @@ const kpiClientDetails = computed(() => {
         client: op.client,
         totalAmount: 0,
         noVatAmount: 0,
+        vatAmount: 0,
         operationsCount: 0,
         firstFillDate: null,
         clientStatus: 'НЕТ',
@@ -1293,6 +1554,8 @@ const kpiClientDetails = computed(() => {
     
     if (op.clientType === 'NO_VAT') {
       data.noVatAmount += op.amount;
+    } else if (op.clientType === 'VAT') {
+      data.vatAmount += op.amount;
     }
   });
   
@@ -1330,9 +1593,8 @@ const kpiClientDetails = computed(() => {
         data.maxAmountMonth = maxMonth;
         
         // Для клиентов со статусом "ДА" из файла, показываем максимальную сумму за период
-        // даже если в текущем месяце 0
         if (data.clientStatus === 'ДА') {
-          data.kpiBaseAmount = maxAmount; // Сумма для расчета KPI (максимальная за период)
+          data.kpiBaseAmount = maxAmount;
         }
         
       } catch (e) {
@@ -1346,20 +1608,16 @@ const kpiClientDetails = computed(() => {
   
   const rate = getSelectedKpiRate(selectedManagerDetails.value);
   
-  // Разделяем на три категории на основе clientStatus
+  // Разделяем на три категории на основе clientStatus и типа клиента
   const active = allClients
-    .filter(data => data.clientStatus === 'ДА')
+    .filter(data => data.clientStatus === 'ДА' && data.noVatAmount > 0)
     .map(data => {
-      // Для расчета используем максимальную сумму за период, если она есть
       const baseAmount = data.kpiBaseAmount || data.noVatAmount;
       
       return {
         ...data,
-        // База для KPI (то, что показываем в колонке NO_VAT)
         displayAmount: baseAmount,
-        // Сумма KPI
         kpiAmount: baseAmount * rate,
-        // Информация для подсказки
         baseInfo: data.kpiBaseAmount ? `Макс. за период: ${formatMoney(data.kpiBaseAmount)}` : null,
         monthInfo: data.maxAmountMonth ? `Бонусный месяц: ${data.maxAmountMonth}` : null,
         warning: !data.hasOperations && !data.kpiBaseAmount ? 'Нет операций' : null
@@ -1367,11 +1625,11 @@ const kpiClientDetails = computed(() => {
     });
   
   const was = allClients
-    .filter(data => data.clientStatus === 'БЫЛ')
+    .filter(data => data.clientStatus === 'БЫЛ' && data.noVatAmount > 0)
     .map(data => ({ ...data }));
   
   const non = allClients
-    .filter(data => data.clientStatus === 'НЕТ')
+    .filter(data => data.clientStatus === 'НЕТ' && data.noVatAmount > 0)
     .map(data => ({ ...data }));
   
   return { active, was, non };
@@ -1380,7 +1638,6 @@ const kpiClientDetails = computed(() => {
 // Общая сумма базы KPI по клиентам с бонусом
 const kpiClientBaseTotal = computed(() => {
   return kpiClientDetails.value.active.reduce((sum, item) => {
-    // Используем displayAmount для суммы (это максимальная сумма за период)
     return sum + (item.displayAmount || 0);
   }, 0);
 });
@@ -1419,6 +1676,7 @@ const selectedMonthName = computed(() => {
 const getRoleIcon = (role?: string): string => {
   switch(role) {
     case 'Старший Менеджер': return 'ri-computer-line';
+    case 'Руководитель ОП': return 'ri-team-line';
     case 'Менеджер': return 'ri-user-line';
     default: return 'ri-user-line';
   }
@@ -1427,6 +1685,7 @@ const getRoleIcon = (role?: string): string => {
 const getRoleColor = (role?: string): string => {
   switch(role) {
     case 'Старший Менеджер': return 'error';
+    case 'Руководитель ОП': return 'primary';
     case 'Менеджер': return 'success';
     default: return 'grey';
   }
@@ -1434,13 +1693,13 @@ const getRoleColor = (role?: string): string => {
 
 const getPercentColor = (percent: number): string => {
   if (percent >= 100) return 'success';
-  if (percent >= 80) return 'warning';
+  if (percent >= 50) return 'warning';
   return 'error';
 };
 
 const getPercentTextColor = (percent: number): string => {
   if (percent >= 100) return 'text-success';
-  if (percent >= 80) return 'text-warning';
+  if (percent >= 50) return 'text-warning';
   return 'text-error';
 };
 
@@ -1458,6 +1717,14 @@ const formatMoney = (amount: number): string => {
   }).format(amount);
 };
 
+// Сохранить состояние диалога
+const saveDialogState = (isOpen: boolean) => {
+  if (!isOpen && selectedManagerDetails.value) {
+    // При закрытии диалога сохраняем состояние
+    saveStateToStorage();
+  }
+};
+
 // Открыть детали менеджера
 const openManagerDetails = (item: any) => {
   selectedManagerDetails.value = item;
@@ -1467,10 +1734,23 @@ const openManagerDetails = (item: any) => {
   }
   
   if (!selectedKpiRate.value[item.id]) {
-    selectedKpiRate.value[item.id] = 0.01;
+    selectedKpiRate.value[item.id] = 0.015; // По умолчанию 1.5%
   }
   
-  activeTab.value = 'maintenance';
+  // Инициализируем KPI VAT, если ещё нет
+  if (manualKpiVat.value[item.id] === undefined) {
+    manualKpiVat.value[item.id] = 0;
+  }
+  
+  // Восстанавливаем последний активный таб для этого менеджера
+  const savedTabKey = `kpi_tab_${item.id}`;
+  const savedTab = localStorage.getItem(savedTabKey);
+  if (savedTab) {
+    activeTab.value = savedTab;
+  } else {
+    activeTab.value = 'maintenance';
+  }
+  
   showDetailsDialog.value = true;
 };
 
@@ -1482,26 +1762,59 @@ const refreshData = () => {
   }, 500);
 };
 
+
 // Загрузка данных
 onMounted(async () => {
   loading.value = true;
   try {
-    await store.loadManagers();
-    await store.loadMaintenanceRates();
-    await store.loadKpiRates();
+    console.log('📥 Загрузка данных...');
     
-    // Загружаем bonusHistory.json
-    const response = await fetch('/api/bonusHistory');
-    const data = await response.json();
-    bonusHistory.value = data.bonuses;
-    console.log('✅ Bonus history loaded:', bonusHistory.value.length, 'records');
+    // Загружаем сохраненное состояние
+    loadStateFromStorage();
+    
+    // Загружаем менеджеров из JSON
+    try {
+      console.log('🔄 Загрузка /data/managers.json...');
+      const response = await fetch('/data/managers.json');
+      if (response.ok) {
+        const data = await response.json();
+        store.managers = data.managers;
+        store.maintenanceRates = data.maintenanceRates;
+        store.kpiRates = data.kpiRates;
+        console.log(`✅ Загружено ${data.managers.length} менеджеров`);
+      } else {
+        console.warn('⚠️ managers.json не найден, используем API');
+        await store.loadManagers();
+        await store.loadMaintenanceRates();
+        await store.loadKpiRates();
+      }
+    } catch (error) {
+      console.error('❌ Ошибка загрузки managers.json:', error);
+      await store.loadManagers();
+      await store.loadMaintenanceRates();
+      await store.loadKpiRates();
+    }
+    
+    // Загружаем buffer.json через store
+    await store.loadBufferData();
+    
+    // Загружаем bonusHistory.json через store
+    await store.loadBonusHistory();
     
   } catch (error) {
-    console.error('❌ Ошибка загрузки данных:', error);
+    console.error('❌ Критическая ошибка:', error);
   } finally {
     loading.value = false;
   }
 });
+
+// Сохраняем активный таб при его изменении
+watch(activeTab, (newTab) => {
+  if (selectedManagerDetails.value) {
+    localStorage.setItem(`kpi_tab_${selectedManagerDetails.value.id}`, newTab);
+  }
+});
+
 </script>
 
 <style scoped>
