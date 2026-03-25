@@ -1,17 +1,21 @@
-// vite.config.js
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vuetify from 'vite-plugin-vuetify'
-import path from 'path'
+import { resolve } from 'path'
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    vuetify({ autoImport: true }),
-  ],
+  plugins: [vue()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': resolve(__dirname, 'src')
     }
+  },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: resolve(__dirname, 'index.html')
+    }
+  },
+  server: {
+    port: 3000
   }
 })
