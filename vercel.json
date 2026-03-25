@@ -13,11 +13,11 @@
     },
     {
       "src": "/(.*\\.(css|js|map|ico|png|jpg|jpeg|svg|woff2?|ttf|eot))$",
-      "dest": "/frontend/dist/$1"
+      "dest": "/dist/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "dest": "/dist/index.html"
     }
   ]
 }
