@@ -26,7 +26,7 @@ export default function handler(req, res) {
       clientType: "NO_VAT",
       legalEntity: "Кард Сервис",
       managerId: "crm_7",
-      managerName: "Дана"
+      manager: "Дана"
     },
     {
       date: "20-01-2025",
@@ -35,7 +35,7 @@ export default function handler(req, res) {
       clientType: "VAT",
       legalEntity: "Газпромнефть",
       managerId: "crm_18",
-      managerName: "Степан"
+      manager: "Степан"
     },
     {
       date: "25-01-2025",
@@ -44,7 +44,7 @@ export default function handler(req, res) {
       clientType: "NO_VAT",
       legalEntity: "Кард Сервис",
       managerId: "crm_7",
-      managerName: "Дана"
+      manager: "Дана"
     }
   ];
 
