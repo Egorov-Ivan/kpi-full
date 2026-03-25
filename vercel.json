@@ -7,7 +7,7 @@
       "dest": "/api/$1"
     },
     {
-      "src": "/(.*\\.(js|css|map|ico|png|jpg|jpeg|svg|woff2?|ttf|eot))$",
+      "src": "/(.*\\.(js|css|map|ico|png|jpg|jpeg|svg|woff2?|ttf|eot|json))$",
       "dest": "/$1"
     },
     {
