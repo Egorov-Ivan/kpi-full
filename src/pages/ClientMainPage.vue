@@ -270,7 +270,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-const API_BASE_URL = 'https://kpi-project.vercel.app'
+const API_BASE_URL = 'https://kpi-ashen.vercel.app'
 
 const notificationThreshold = ref(500)
 const isEditing = ref(false)
