@@ -1,5 +1,16 @@
 <template>
   <div class="client-main-page">
+    <!-- Баннер уведомления при входе в кабинет -->
+    <div v-if="showBanner" class="warning-banner">
+      <div class="warning-content">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="white"/>
+        </svg>
+        <span>Ваш баланс ({{ currentBalance }} руб.) ниже порога уведомления ({{ notificationThreshold }} руб.)</span>
+        <button class="close-banner" @click="showBanner = false">×</button>
+      </div>
+    </div>
+
     <main class="main-content">
       <div class="content-container">
         <!-- Верхняя панель с табами и кнопками -->
@@ -19,6 +30,12 @@
                 <path d="M5 4H15V8H19V20H5V4ZM3.9985 2C3.44749 2 3 2.44405 3 2.9918V21.0082C3 21.5447 3.44476 22 3.9934 22H20.0066C20.5551 22 21 21.5489 21 20.9925L20.9997 7L16 2H3.9985ZM10.4999 7.5C10.4999 9.07749 10.0442 10.9373 9.27493 12.6534C8.50287 14.3757 7.46143 15.8502 6.37524 16.7191L7.55464 18.3321C10.4821 16.3804 13.7233 15.0421 16.8585 15.49L17.3162 13.5513C14.6435 12.6604 12.4999 9.98994 12.4999 7.5H10.4999ZM11.0999 13.4716C11.3673 12.8752 11.6042 12.2563 11.8037 11.6285C12.2753 12.3531 12.8553 13.0182 13.5101 13.5953C12.5283 13.7711 11.5665 14.0596 10.6352 14.4276C10.7999 14.1143 10.9551 13.7948 11.0999 13.4716Z" fill="#E60410"></path>
               </svg>
               Скачать договор
+            </button>
+            <button class="btn-outline" @click="simulateBalanceDrop">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="#E60410"/>
+              </svg>
+              Симулировать снижение баланса
             </button>
           </div>
         </div>
@@ -49,7 +66,7 @@
                 </svg>
               </div>
               <p class="stat-label">Баланс</p>
-              <h4 class="stat-value">339,07</h4>
+              <h4 class="stat-value">{{ currentBalance }}</h4>
               <p class="stat-unit">Рублей</p>
             </div>
             <div class="stat-item">
@@ -278,7 +295,10 @@ const editValue = ref(500)
 const userEmail = ref('egorov.ivan.w@gmail.com')
 const userName = ref('ИП Руденко Станислав Владимирович')
 const userId = ref('user-123')
+const currentBalance = ref(339.07)
+const showBanner = ref(false)
 
+// Загрузка порога
 const loadThreshold = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/save-threshold?userId=${userId.value}`)
@@ -290,6 +310,7 @@ const loadThreshold = async () => {
   }
 }
 
+// Сохранение порога
 const saveThreshold = async () => {
   if (!isNaN(editValue.value) && editValue.value >= 0) {
     notificationThreshold.value = editValue.value
@@ -309,9 +330,9 @@ const saveThreshold = async () => {
       console.error('Ошибка сохранения:', error)
     }
     
-    const currentBalance = 339.07
-    if (currentBalance <= editValue.value) {
-      sendNotification(currentBalance, editValue.value)
+    // Проверяем, нужно ли отправить уведомление
+    if (currentBalance.value <= editValue.value) {
+      await checkAndSendNotification(currentBalance.value, editValue.value)
     } else {
       alert(`Порог сохранен: ${editValue.value} руб.`)
     }
@@ -319,6 +340,39 @@ const saveThreshold = async () => {
   isEditing.value = false
 }
 
+// Проверка и отправка уведомления (защита от спама)
+const checkAndSendNotification = async (balance: number, threshold: number) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/check-balance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId.value,
+        balance: balance,
+        threshold: threshold,
+        email: userEmail.value,
+        userName: userName.value
+      })
+    })
+    
+    const result = await response.json()
+    
+    if (result.notified) {
+      console.log('Уведомление отправлено')
+      if (result.emailSent) {
+        alert(`📧 Уведомление отправлено на ${userEmail.value}`)
+      }
+      showBanner.value = true
+    }
+    
+    return result
+  } catch (error) {
+    console.error('Ошибка проверки:', error)
+    return { notified: false }
+  }
+}
+
+// Отправка уведомления (прямой вызов)
 const sendNotification = async (balance: number, threshold: number) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/send-notification`, {
@@ -336,6 +390,7 @@ const sendNotification = async (balance: number, threshold: number) => {
     
     if (result.success) {
       alert(`Уведомление отправлено на ${userEmail.value}`)
+      showBanner.value = true
     } else {
       alert(`Ошибка: ${result.error}`)
     }
@@ -345,17 +400,40 @@ const sendNotification = async (balance: number, threshold: number) => {
   }
 }
 
+// Ручная отправка
 const manualSendTest = () => {
-  const currentBalance = 339.07
-  if (currentBalance <= notificationThreshold.value) {
-    sendNotification(currentBalance, notificationThreshold.value)
+  if (currentBalance.value <= notificationThreshold.value) {
+    sendNotification(currentBalance.value, notificationThreshold.value)
   } else {
-    alert(`Текущий баланс (${currentBalance} руб.) выше порога (${notificationThreshold.value} руб.)`)
+    alert(`Текущий баланс (${currentBalance.value} руб.) выше порога (${notificationThreshold.value} руб.)`)
+  }
+}
+
+// Симуляция снижения баланса (для демонстрации)
+const simulateBalanceDrop = async () => {
+  const newBalance = 400 // ниже порога 500
+  currentBalance.value = newBalance
+  
+  // Обновляем отображение баланса
+  const balanceElement = document.querySelector('.stat-item:nth-child(2) .stat-value')
+  if (balanceElement) {
+    balanceElement.textContent = newBalance.toString()
+  }
+  
+  // Проверяем и отправляем уведомление
+  await checkAndSendNotification(newBalance, notificationThreshold.value)
+}
+
+// Проверка при входе в кабинет
+const checkBalanceOnEntry = () => {
+  if (currentBalance.value <= notificationThreshold.value) {
+    showBanner.value = true
   }
 }
 
 onMounted(() => {
   loadThreshold()
+  checkBalanceOnEntry()
 })
 
 const startEditing = () => {
@@ -369,6 +447,7 @@ const cancelEditing = () => {
 </script>
 
 <style scoped>
+/* Все существующие стили остаются */
 .client-main-page {
   min-height: 100vh;
   background-color: #F8F9FC;
@@ -383,6 +462,46 @@ const cancelEditing = () => {
   margin: 0 auto;
 }
 
+/* Баннер уведомления */
+.warning-banner {
+  background: #E60410;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  margin-left: 24px;
+  margin-right: 24px;
+  animation: slideDown 0.3s ease;
+}
+
+.warning-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.close-banner {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Остальные стили из предыдущей версии */
 .top-bar {
   display: flex;
   justify-content: space-between;
@@ -416,6 +535,7 @@ const cancelEditing = () => {
 .action-buttons-group {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .btn-primary {
