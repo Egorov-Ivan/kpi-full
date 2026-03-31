@@ -275,7 +275,7 @@ const API_BASE_URL = 'https://kpi-project.vercel.app'
 const notificationThreshold = ref(500)
 const isEditing = ref(false)
 const editValue = ref(500)
-const userEmail = ref('d.fedoseenko@benzigo.ru')
+const userEmail = ref('egorov.ivan.w@gmail.com')
 const userName = ref('ИП Руденко Станислав Владимирович')
 const userId = ref('user-123')
 
