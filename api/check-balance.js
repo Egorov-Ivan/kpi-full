@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   // 1. Баланс ниже порога
   // 2. Предыдущее уведомление было больше часа назад (или его не было)
   const shouldNotify = balance <= threshold && 
-    (!lastNotification || now - lastNotification.timestamp > 24 * 60 * 60 * 1000);
+    (!lastNotification || now - lastNotification.timestamp > 60 * 1000);
 
   if (shouldNotify) {
     // Отправляем email через существующий эндпоинт
