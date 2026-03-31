@@ -64,14 +64,10 @@ export default async function handler(req, res) {
             </div>
             <div class="content">
               <h2>Здравствуйте, ${userName}!</h2>
-              <p>Ваш баланс на топливном счете достиг критического уровня.</p>
+              <p>Ваш баланс на счете достиг порога уведомления.</p>
               <div class="balance">${balance} руб.</div>
               <p>Порог уведомления: ${threshold} руб.</p>
-              <p>Внимание! Баланс ниже установленного порога.</p>
               <p>Рекомендуем пополнить счет:</p>
-              <div style="text-align: center;">
-                <a href="https://benzigo.ru/accounting" class="button">Пополнить счет</a>
-              </div>
               <p>Если у вас есть вопросы, свяжитесь с менеджером:</p>
               <p>📧 d.fedoseenko@benzigo.ru<br>📞 +7 996 410-39-81</p>
             </div>
@@ -88,8 +84,6 @@ export default async function handler(req, res) {
 
 Ваш баланс: ${balance} руб.
 Порог уведомления: ${threshold} руб.
-
-Внимание! Баланс ниже установленного порога.
 Рекомендуем пополнить счет
 
 С уважением,
