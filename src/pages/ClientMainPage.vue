@@ -59,7 +59,7 @@
                 </svg>
               </div>
               <p class="stat-label">Расход в этом месяце</p>
-              <h4 class="stat-value">64&nbsp;373,6</h4>
+              <h4 class="stat-value">64 373,6</h4>
               <p class="stat-unit">Рублей</p>
             </div>
             <div class="stat-item">
@@ -69,7 +69,7 @@
                 </svg>
               </div>
               <p class="stat-label">Ваша выгода в этом месяце</p>
-              <h4 class="stat-value">13&nbsp;725</h4>
+              <h4 class="stat-value">13 725</h4>
               <p class="stat-unit">Рублей</p>
             </div>
           </div>
@@ -77,7 +77,6 @@
 
         <!-- Пороги и последнее пополнение -->
         <div class="thresholds-and-replenishment">
-          <!-- Левая часть: пороги -->
           <div class="thresholds-wrapper">
             <div class="two-columns">
               <!-- Порог отключения -->
@@ -93,7 +92,7 @@
                 <h4 class="stat-value">0</h4>
               </div>
 
-              <!-- Порог уведомления (редактируемый) -->
+              <!-- Порог уведомления -->
               <div class="card notification-threshold-card">
                 <div class="threshold-header">
                   <div class="stat-icon bg-info">
@@ -109,7 +108,6 @@
                 </div>
                 <p class="stat-label">Порог уведомления, руб</p>
                 <div class="threshold-control">
-                  <!-- Режим отображения -->
                   <template v-if="!isEditing">
                     <h4 class="stat-value">{{ notificationThreshold }}</h4>
                     <button class="edit-threshold-btn" @click="startEditing" title="Редактировать порог">
@@ -118,8 +116,6 @@
                       </svg>
                     </button>
                   </template>
-                  
-                  <!-- Режим редактирования -->
                   <template v-else>
                     <input 
                       v-model.number="editValue" 
@@ -148,7 +144,6 @@
             </div>
           </div>
 
-          <!-- Правая часть: последнее пополнение -->
           <div class="replenishment-wrapper">
             <div class="card last-replenishment-card">
               <div class="card-header">
@@ -167,7 +162,7 @@
                 </div>
                 <div>
                   <p class="detail-label">Сумма</p>
-                  <p class="detail-value">26&nbsp;500</p>
+                  <p class="detail-value">26 500</p>
                 </div>
                 <div>
                   <p class="detail-label">Номер документа</p>
@@ -231,7 +226,7 @@
                   <tr>
                     <td class="invoice-number">С260206-110</td>
                     <td>06-02-2026</td>
-                    <td>5&nbsp;000</td>
+                    <td>5 000</td>
                     <td class="text-right">
                       <button class="download-btn">
                         <span>Скачать</span>
@@ -244,7 +239,7 @@
                   <tr>
                     <td class="invoice-number">С251219-112</td>
                     <td>19-12-2025</td>
-                    <td>1&nbsp;000</td>
+                    <td>1 000</td>
                     <td class="text-right">
                       <button class="download-btn">
                         <span>Скачать</span>
@@ -275,17 +270,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-// Ваш URL после деплоя (замените на свой)
-const API_BASE_URL = 'https://ваш-проект.vercel.app'
+const API_BASE_URL = 'https://kpi-project.vercel.app'
 
 const notificationThreshold = ref(500)
 const isEditing = ref(false)
 const editValue = ref(500)
 const userEmail = ref('d.fedoseenko@benzigo.ru')
 const userName = ref('ИП Руденко Станислав Владимирович')
-const userId = ref('user-123') // В реальном проекте - ID из авторизации
+const userId = ref('user-123')
 
-// Загрузка порога
 const loadThreshold = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/save-threshold?userId=${userId.value}`)
@@ -297,7 +290,6 @@ const loadThreshold = async () => {
   }
 }
 
-// Сохранение порога
 const saveThreshold = async () => {
   if (!isNaN(editValue.value) && editValue.value >= 0) {
     notificationThreshold.value = editValue.value
@@ -312,7 +304,7 @@ const saveThreshold = async () => {
           email: userEmail.value
         })
       })
-      console.log('✅ Порог сохранен на сервере')
+      console.log('Порог сохранен на сервере')
     } catch (error) {
       console.error('Ошибка сохранения:', error)
     }
@@ -321,13 +313,12 @@ const saveThreshold = async () => {
     if (currentBalance <= editValue.value) {
       sendNotification(currentBalance, editValue.value)
     } else {
-      alert(`✅ Порог сохранен: ${editValue.value} руб.`)
+      alert(`Порог сохранен: ${editValue.value} руб.`)
     }
   }
   isEditing.value = false
 }
 
-// Отправка уведомления
 const sendNotification = async (balance: number, threshold: number) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/send-notification`, {
@@ -344,17 +335,16 @@ const sendNotification = async (balance: number, threshold: number) => {
     const result = await response.json()
     
     if (result.success) {
-      alert(`✅ Уведомление отправлено на ${userEmail.value}`)
+      alert(`Уведомление отправлено на ${userEmail.value}`)
     } else {
-      alert(`❌ Ошибка: ${result.error}`)
+      alert(`Ошибка: ${result.error}`)
     }
   } catch (error) {
     console.error('Ошибка отправки:', error)
-    alert('❌ Не удалось отправить уведомление')
+    alert('Не удалось отправить уведомление')
   }
 }
 
-// Ручная отправка тестового уведомления
 const manualSendTest = () => {
   const currentBalance = 339.07
   if (currentBalance <= notificationThreshold.value) {
@@ -379,7 +369,6 @@ const cancelEditing = () => {
 </script>
 
 <style scoped>
-/* Все стили остаются как в предыдущей версии */
 .client-main-page {
   min-height: 100vh;
   background-color: #F8F9FC;
@@ -394,7 +383,6 @@ const cancelEditing = () => {
   margin: 0 auto;
 }
 
-/* Верхняя панель */
 .top-bar {
   display: flex;
   justify-content: space-between;
@@ -442,11 +430,6 @@ const cancelEditing = () => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
 }
 
 .btn-primary.small {
@@ -466,24 +449,14 @@ const cancelEditing = () => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.btn-outline:hover {
-  background: rgba(230, 4, 16, 0.05);
-}
-
-/* Карточки */
 .card {
   background: white;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 16px;
   border: 1px solid #E8E9ED;
-}
-
-.company-card {
-  padding: 24px;
 }
 
 .company-name {
@@ -558,7 +531,6 @@ const cancelEditing = () => {
   margin: 0;
 }
 
-/* Пороги и последнее пополнение */
 .thresholds-and-replenishment {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -595,12 +567,6 @@ const cancelEditing = () => {
   align-items: center;
   justify-content: center;
   color: #8F9197;
-  transition: all 0.2s;
-}
-
-.edit-threshold-btn:hover {
-  background: #F5F5F5;
-  color: #E60410;
 }
 
 .threshold-input {
@@ -615,45 +581,28 @@ const cancelEditing = () => {
   text-align: center;
 }
 
-.threshold-input:focus {
-  border-color: #E60410;
-  box-shadow: 0 0 0 2px rgba(230, 4, 16, 0.1);
-}
-
 .edit-actions {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.save-btn, .cancel-btn {
+.save-btn {
   background: none;
   border: none;
   cursor: pointer;
   padding: 6px;
   border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.save-btn {
   color: #4CAF50;
 }
 
-.save-btn:hover {
-  background: #E8F5E9;
-  color: #45a049;
-}
-
 .cancel-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
   color: #f44336;
-}
-
-.cancel-btn:hover {
-  background: #FFEBEE;
-  color: #da190b;
 }
 
 .threshold-note {
@@ -694,10 +643,6 @@ const cancelEditing = () => {
   color: #E60410;
   cursor: pointer;
   font-size: 13px;
-}
-
-.link-btn svg {
-  fill: currentColor;
 }
 
 .replenishment-details {
@@ -788,10 +733,6 @@ const cancelEditing = () => {
   border-bottom: 1px solid #E8E9ED;
 }
 
-.invoice-number {
-  font-weight: 500;
-}
-
 .text-right {
   text-align: right;
 }
@@ -807,10 +748,6 @@ const cancelEditing = () => {
   font-size: 12px;
 }
 
-.download-btn:hover {
-  color: #E60410;
-}
-
 .test-email-btn {
   position: absolute;
   top: 24px;
@@ -824,15 +761,8 @@ const cancelEditing = () => {
   align-items: center;
   justify-content: center;
   color: #8F9197;
-  transition: all 0.2s;
 }
 
-.test-email-btn:hover {
-  background: #F5F5F5;
-  color: #2196F3;
-}
-
-/* Адаптивность */
 @media (max-width: 1024px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -840,7 +770,6 @@ const cancelEditing = () => {
   
   .thresholds-and-replenishment {
     grid-template-columns: 1fr;
-    gap: 16px;
   }
   
   .thresholds-wrapper .two-columns {
@@ -855,21 +784,15 @@ const cancelEditing = () => {
   
   .two-columns.bottom-sections {
     grid-template-columns: 1fr;
-    gap: 16px;
   }
   
   .thresholds-wrapper .two-columns {
     grid-template-columns: 1fr;
-    gap: 16px;
   }
   
   .top-bar {
     flex-direction: column;
     align-items: stretch;
-  }
-  
-  .action-buttons-group {
-    justify-content: center;
   }
   
   .replenishment-details {
