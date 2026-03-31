@@ -105,9 +105,19 @@
           :class="navItemClass"
           @click="showDevelopmentAlert('Лукойл')"
         ></v-list-item>
+
+
+        <v-list-item 
+          prepend-icon="ri-exchange-line" 
+          title="ЛК Клиент"
+          to="/client-main-page"
+          :active="$route.path === '/client-main-page'"
+          :class="navItemClass"
+        ></v-list-item>
       </v-list>
     </v-navigation-drawer>
 
+    
     <!-- Шапка -->
     <v-app-bar elevation="0" class="header">
       <v-app-bar-title class="text-h6 font-weight-medium">

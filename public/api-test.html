@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест API buffer</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        button { padding: 10px; margin: 5px; cursor: pointer; }
+        pre { background: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .success { color: green; }
+        .error { color: red; }
+        .section { margin: 20px 0; border: 1px solid #ccc; padding: 15px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тестирование API /api/buffer</h1>
+    
+    <div class="section">
+        <h3>📅 Тест 1: Все операции за январь 2025</h3>
+        <button onclick="testApi({ dateStart: '01-01-2025', dateEnd: '31-01-2025' })">Запустить</button>
+    </div>
+
+    <div class="section">
+        <h3>👤 Тест 2: Операции менеджера Дана (crm_7)</h3>
+        <button onclick="testApi({ dateStart: '01-01-2025', dateEnd: '31-01-2025', managerId: 'crm_7' })">Запустить</button>
+    </div>
+
+    <div class="section">
+        <h3>🏢 Тест 3: Только Газпромнефть</h3>
+        <button onclick="testApi({ dateStart: '01-01-2025', dateEnd: '31-01-2025', legalEntity: 'Газпромнефть' })">Запустить</button>
+    </div>
+
+    <div class="section">
+        <h3>🔍 Тест 4: Свой запрос</h3>
+        <textarea id="customRequest" rows="5" cols="50">{
+  "dateStart": "01-01-2025",
+  "dateEnd": "31-01-2025"
+}</textarea><br>
+        <button onclick="testApiCustom()">Отправить</button>
+    </div>
+
+    <div class="section">
+        <h3>📤 Результат:</h3>
+        <pre id="result">Нажмите на кнопку для теста...</pre>
+    </div>
+
+    <script>
+        const API_URL = 'https://kpi-ashen.vercel.app/api/buffer';
+
+        async function testApi(params) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Загрузка...';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <span class="success">✅ Статус: ${response.status}</span>\n
+                    📊 Получено операций: ${data.operations.length}\n\n
+                    ${JSON.stringify(data, null, 2)}
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Ошибка: ${error.message}</span>`;
+            }
+        }
+
+        async function testApiCustom() {
+            const customRequest = document.getElementById('customRequest').value;
+            try {
+                const params = JSON.parse(customRequest);
+                await testApi(params);
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<span class="error">❌ Неверный JSON: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

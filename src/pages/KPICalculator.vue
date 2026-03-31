@@ -1034,7 +1034,9 @@ const filteredManagers = computed(() => {
 });
 
 // Статистика буфера
-const bufferStats = bufferService.getBufferStats();
+const bufferStats = computed(() => {
+  return bufferService.getBufferStats();
+});
 
 // Получить статистику менеджеров из буфера за выбранный период
 const managersStats = computed(() => {
@@ -1392,7 +1394,7 @@ const maintenanceClientDetails = computed(() => {
   let allOps: any[] = [];
   
   searchNames.forEach(name => {
-    const ops = bufferService.getOperationsByManagerNames([name], year, month);
+    const ops = bufferService.getOperationsByManager(name, year, month);
     allOps = [...allOps, ...ops];
   });
   
@@ -1475,7 +1477,7 @@ const kpiClientDetails = computed(() => {
     let monthOps: any[] = [];
     
     allManagerNames.forEach(name => {
-      const ops = bufferService.getOperationsByManagerNames([name], y, m);
+      const ops = bufferService.getOperationsByManager(name, year, month);
       monthOps = [...monthOps, ...ops];
     });
     
@@ -1758,19 +1760,22 @@ const openManagerDetails = (item: any) => {
 const refreshData = async () => {
   loading.value = true;
   try {
-    // Загружаем данные за выбранный месяц
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
     
-    await store.loadBufferData(year, month);
-    // Остальные загрузки уже есть в onMounted
+    await store.loadDataForMonth(year, month);  // ← ЗАМЕНИТЕ ЭТУ СТРОКУ
+    
+    await store.loadManagers();
+    await store.loadMaintenanceRates();
+    await store.loadKpiRates();
+    await store.loadBonusHistory();
+    
   } catch (error) {
     console.error('Ошибка загрузки:', error);
   } finally {
     loading.value = false;
   }
 };
-
 
 // Загрузка данных
 onMounted(async () => {
@@ -1782,10 +1787,10 @@ onMounted(async () => {
     await store.loadKpiRates();
     await store.loadBonusHistory();
     
-    // Загружаем данные буфера за текущий месяц
+    // Загружаем данные за текущий месяц (теперь через loadDataForMonth)
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
-    await store.loadBufferData(year, month);
+    await store.loadDataForMonth(year, month);  // ← ЗАМЕНИТЕ ЭТУ СТРОКУ
     
   } catch (error) {
     console.error('Ошибка загрузки:', error);
