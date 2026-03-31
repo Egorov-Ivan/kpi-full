@@ -275,17 +275,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+// Ваш URL после деплоя (замените на свой)
+const API_BASE_URL = 'https://ваш-проект.vercel.app'
+
 const notificationThreshold = ref(500)
 const isEditing = ref(false)
 const editValue = ref(500)
 const userEmail = ref('d.fedoseenko@benzigo.ru')
 const userName = ref('ИП Руденко Станислав Владимирович')
-const userId = ref('user-123')
+const userId = ref('user-123') // В реальном проекте - ID из авторизации
 
 // Загрузка порога
 const loadThreshold = async () => {
   try {
-    const response = await fetch(`/api/save-threshold?userId=${userId.value}`)
+    const response = await fetch(`${API_BASE_URL}/api/save-threshold?userId=${userId.value}`)
     const data = await response.json()
     notificationThreshold.value = data.threshold
     if (data.email) userEmail.value = data.email
@@ -300,7 +303,7 @@ const saveThreshold = async () => {
     notificationThreshold.value = editValue.value
     
     try {
-      await fetch('/api/save-threshold', {
+      await fetch(`${API_BASE_URL}/api/save-threshold`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -327,7 +330,7 @@ const saveThreshold = async () => {
 // Отправка уведомления
 const sendNotification = async (balance: number, threshold: number) => {
   try {
-    const response = await fetch('/api/send-notification', {
+    const response = await fetch(`${API_BASE_URL}/api/send-notification`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
