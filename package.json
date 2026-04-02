@@ -10,6 +10,7 @@
     "server": "json-server --watch server/db.json --port 3000"
   },
   "dependencies": {
+    "@maxhub/max-bot-api": "^0.2.2",
     "axios": "^1.13.5",
     "googleapis": "^171.4.0",
     "nodemailer": "^8.0.4",

@@ -117,12 +117,33 @@
                       <path d="M12 2C8.13 2 5 5.13 5 9v4c0 .78.16 1.53.46 2.22L4.2 17.1c-.39.78.05 1.72.9 1.9.19.04.39.05.59.05h12.62c.2 0 .4-.01.59-.05.85-.18 1.29-1.12.9-1.9l-1.26-2.88c.3-.69.46-1.44.46-2.22V9c0-3.87-3.13-7-7-7zM8.5 19.5c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5h-7z" fill="white"/>
                     </svg>
                   </div>
-                  <button class="test-email-btn" @click="manualSendTest" title="Отправить уведомление">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor"/>
-                    </svg>
-                  </button>
+                  <div class="header-buttons">
+                    <button class="test-email-btn" @click="manualSendTest" title="Отправить уведомление">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor"/>
+                      </svg>
+                    </button>
+                    <div class="settings-dropdown">
+                      <button class="settings-btn" @click="toggleDropdown" title="Настройки">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.33-.02-.64-.06-.94l2.02-1.58c.18-.14.23-.38.12-.56l-1.89-3.28c-.12-.19-.36-.26-.56-.18l-2.38.96c-.5-.38-1.06-.68-1.66-.88L14.45 3.5c-.04-.2-.2-.34-.4-.34h-3.78c-.2 0-.36.14-.4.34l-.3 2.52c-.6.2-1.16.5-1.66.88l-2.38-.96c-.2-.08-.44-.01-.56.18l-1.89 3.28c-.12.19-.07.42.12.56l2.02 1.58c-.04.3-.06.61-.06.94 0 .33.02.64.06.94l-2.02 1.58c-.18.14-.23.38-.12.56l1.89 3.28c.12.19.36.26.56.18l2.38-.96c.5.38 1.06.68 1.66.88l.3 2.52c.04.2.2.34.4.34h3.78c.2 0 .36-.14.4-.34l.3-2.52c.6-.2 1.16-.5 1.66-.88l2.38.96c.2.08.44.01.56-.18l1.89-3.28c.12-.19.07-.42-.12-.56l-2.02-1.58zM12 15c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z" fill="currentColor"/>
+                        </svg>
+                        <span v-if="notificationChannels.length > 0" class="channels-badge">{{ notificationChannels.length }}</span>
+                      </button>
+                      <div v-if="dropdownOpen" class="dropdown-menu">
+                        <label class="dropdown-item">
+                          <input type="checkbox" value="max" v-model="notificationChannels" @change="saveChannels">
+                          <span>Отправка уведомлений в МАХ</span>
+                        </label>
+                        <label class="dropdown-item">
+                          <input type="checkbox" value="email" v-model="notificationChannels" @change="saveChannels">
+                          <span>Отправка уведомлений на Email</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+                
                 <p class="stat-label">Порог уведомления, руб</p>
                 <div class="threshold-control">
                   <template v-if="!isEditing">
@@ -298,6 +319,37 @@ const userId = ref('user-123')
 const currentBalance = ref(339.07)
 const showBanner = ref(false)
 
+// Настройки уведомлений (множественный выбор)
+const dropdownOpen = ref(false)
+const notificationChannels = ref<string[]>([])
+
+// Загрузка сохраненных каналов
+const loadChannels = () => {
+  const saved = localStorage.getItem('notificationChannels')
+  if (saved) {
+    notificationChannels.value = JSON.parse(saved)
+  } else {
+    notificationChannels.value = ['email']
+  }
+}
+
+const toggleDropdown = () => {
+  dropdownOpen.value = !dropdownOpen.value
+}
+
+const saveChannels = () => {
+  localStorage.setItem('notificationChannels', JSON.stringify(notificationChannels.value))
+  console.log('Выбраны каналы уведомлений:', notificationChannels.value)
+}
+
+// Закрытие дропдауна при клике вне
+const handleClickOutside = (event: MouseEvent) => {
+  const dropdown = document.querySelector('.settings-dropdown')
+  if (dropdown && !dropdown.contains(event.target as Node)) {
+    dropdownOpen.value = false
+  }
+}
+
 // Загрузка порога
 const loadThreshold = async () => {
   try {
@@ -330,7 +382,6 @@ const saveThreshold = async () => {
       console.error('Ошибка сохранения:', error)
     }
     
-    // Проверяем, нужно ли отправить уведомление
     if (currentBalance.value <= editValue.value) {
       await checkAndSendNotification(currentBalance.value, editValue.value)
     } else {
@@ -372,31 +423,78 @@ const checkAndSendNotification = async (balance: number, threshold: number) => {
   }
 }
 
-// Отправка уведомления (прямой вызов)
+// Отправка уведомления по всем выбранным каналам
 const sendNotification = async (balance: number, threshold: number) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/send-notification`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: userEmail.value,
-        balance: balance,
-        threshold: threshold,
-        userName: userName.value
+  const channels = notificationChannels.value
+  
+  if (channels.length === 0) {
+    alert('⚠️ Не выбран ни один способ уведомления')
+    return
+  }
+  
+  let hasError = false
+  
+  // Отправка на Email
+  if (channels.includes('email')) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/send-notification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail.value,
+          balance: balance,
+          threshold: threshold,
+          userName: userName.value
+        })
       })
-    })
-    
-    const result = await response.json()
-    
-    if (result.success) {
-      alert(`Уведомление отправлено на ${userEmail.value}`)
-      showBanner.value = true
-    } else {
-      alert(`Ошибка: ${result.error}`)
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('✅ Email уведомление отправлено')
+      } else {
+        console.error('❌ Ошибка Email:', result.error)
+        hasError = true
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отправки Email:', error)
+      hasError = true
     }
-  } catch (error) {
-    console.error('Ошибка отправки:', error)
-    alert('Не удалось отправить уведомление')
+  }
+  
+  // Отправка в МАХ
+  if (channels.includes('max')) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/send-max`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          balance: balance,
+          threshold: threshold,
+          userName: userName.value
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('✅ Уведомление в МАХ отправлено')
+      } else {
+        console.error('❌ Ошибка МАХ:', result.error)
+        hasError = true
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отправки в МАХ:', error)
+      hasError = true
+    }
+  }
+  
+  if (!hasError) {
+    const channelNames = channels.map(c => c === 'email' ? 'Email' : 'МАХ').join(' и ')
+    alert(`✅ Уведомление отправлено через: ${channelNames}`)
+    showBanner.value = true
+  } else {
+    alert('❌ Ошибка при отправке некоторых уведомлений. Проверьте консоль.')
   }
 }
 
@@ -409,18 +507,16 @@ const manualSendTest = () => {
   }
 }
 
-// Симуляция снижения баланса (для демонстрации)
+// Симуляция снижения баланса
 const simulateBalanceDrop = async () => {
-  const newBalance = 400 // ниже порога 500
+  const newBalance = 400
   currentBalance.value = newBalance
   
-  // Обновляем отображение баланса
   const balanceElement = document.querySelector('.stat-item:nth-child(2) .stat-value')
   if (balanceElement) {
     balanceElement.textContent = newBalance.toString()
   }
   
-  // Проверяем и отправляем уведомление
   await checkAndSendNotification(newBalance, notificationThreshold.value)
 }
 
@@ -434,6 +530,8 @@ const checkBalanceOnEntry = () => {
 onMounted(() => {
   loadThreshold()
   checkBalanceOnEntry()
+  loadChannels()
+  document.addEventListener('click', handleClickOutside)
 })
 
 const startEditing = () => {
@@ -447,7 +545,6 @@ const cancelEditing = () => {
 </script>
 
 <style scoped>
-/* Все существующие стили остаются */
 .client-main-page {
   min-height: 100vh;
   background-color: #F8F9FC;
@@ -462,7 +559,6 @@ const cancelEditing = () => {
   margin: 0 auto;
 }
 
-/* Баннер уведомления */
 .warning-banner {
   background: #E60410;
   color: white;
@@ -501,7 +597,6 @@ const cancelEditing = () => {
   }
 }
 
-/* Остальные стили из предыдущей версии */
 .top-bar {
   display: flex;
   justify-content: space-between;
@@ -667,6 +762,100 @@ const cancelEditing = () => {
 
 .notification-threshold-card {
   position: relative;
+}
+
+.header-buttons {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 8px;
+}
+
+.settings-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border: 1px solid #E8E9ED;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 220px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 13px;
+  color: #2A2A2A;
+}
+
+.dropdown-item:hover {
+  background: #F5F5F5;
+}
+
+.dropdown-item input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #E60410;
+}
+
+.dropdown-item span {
+  cursor: pointer;
+}
+
+.test-email-btn, .settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8F9197;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.test-email-btn:hover {
+  background: #F5F5F5;
+  color: #2196F3;
+}
+
+.settings-btn:hover {
+  background: #F5F5F5;
+  color: #2A2A2A;
+}
+
+.channels-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #E60410;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .threshold-control {
@@ -866,21 +1055,6 @@ const cancelEditing = () => {
   color: #2A2A2A;
   cursor: pointer;
   font-size: 12px;
-}
-
-.test-email-btn {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #8F9197;
 }
 
 @media (max-width: 1024px) {
