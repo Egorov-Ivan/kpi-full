@@ -19,9 +19,13 @@ db.serialize(() => {
     )
   `);
   
+  // Удаляем старые таблицы если есть (для пересоздания с правильной структурой)
+  db.run(`DROP TABLE IF EXISTS crm_users`);
+  db.run(`DROP TABLE IF EXISTS crm_clients`);
+  
   // Таблица клиентов CRM
   db.run(`
-    CREATE TABLE IF NOT EXISTS crm_clients (
+    CREATE TABLE crm_clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       client_id TEXT UNIQUE NOT NULL,
       company_name TEXT NOT NULL,
@@ -29,12 +33,12 @@ db.serialize(() => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
-    if (!err) console.log('✅ Таблица crm_clients готова');
+    if (!err) console.log('✅ Таблица crm_clients создана');
   });
   
   // Таблица учетных записей CRM
   db.run(`
-    CREATE TABLE IF NOT EXISTS crm_users (
+    CREATE TABLE crm_users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       phone_number TEXT UNIQUE NOT NULL,
       username TEXT NOT NULL,
@@ -43,32 +47,28 @@ db.serialize(() => {
       FOREIGN KEY (client_id) REFERENCES crm_clients(client_id)
     )
   `, (err) => {
-    if (!err) console.log('✅ Таблица crm_users готова');
+    if (!err) console.log('✅ Таблица crm_users создана');
   });
   
-  // Добавляем моковые данные в CRM (если таблицы пустые)
-  db.get('SELECT COUNT(*) as count FROM crm_clients', (err, row) => {
-    if (!err && row && row.count === 0) {
-      // Добавляем клиентов
-      db.run(`
-        INSERT INTO crm_clients (client_id, company_name, balance)
-        VALUES 
-          ('ACC001', 'ИП Руденко С.В.', 339.07),
-          ('ACC002', 'ООО Тест', 1250.50),
-          ('ACC003', 'ИП Иванов', 89.30)
-      `);
-      
-      // Добавляем учетные записи
-      db.run(`
-        INSERT INTO crm_users (phone_number, username, client_id)
-        VALUES 
-          ('79939819869', 'Иван Егоров', 'ACC001'),
-          ('79123456789', 'Петр Сидоров', 'ACC002'),
-          ('79234567890', 'Игорь Иванов', 'ACC003')
-      `);
-      
-      console.log('✅ Добавлены моковые данные в CRM');
-    }
+  // Добавляем моковые данные в CRM
+  db.run(`
+    INSERT INTO crm_clients (client_id, company_name, balance)
+    VALUES 
+      ('ACC001', 'ИП Руденко С.В.', 339.07),
+      ('ACC002', 'ООО Тест', 1250.50),
+      ('ACC003', 'ИП Иванов', 89.30)
+  `, (err) => {
+    if (!err) console.log('✅ Добавлены моковые клиенты');
+  });
+  
+  db.run(`
+    INSERT INTO crm_users (phone_number, username, client_id)
+    VALUES 
+      ('79939819869', 'Иван Егоров', 'ACC001'),
+      ('79123456789', 'Петр Сидоров', 'ACC002'),
+      ('79234567890', 'Игорь Иванов', 'ACC003')
+  `, (err) => {
+    if (!err) console.log('✅ Добавлены моковые учетные записи');
   });
   
   console.log('✅ База данных инициализирована');
