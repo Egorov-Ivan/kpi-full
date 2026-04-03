@@ -11,34 +11,29 @@ if (!process.env.BOT_TOKEN) {
 
 const bot = new MaxBot(process.env.BOT_TOKEN);
 
-// Обработчик команды /start
 bot.on('start', async ({ userId, chatId }) => {
-  console.log(`👤 Обработка /start для userId: ${userId}`);
+  console.log(`👤 Пользователь: ${userId}`);
   
-  const message = `👋 Добро пожаловать!\n\n` +
+  const message = `👋 *Добро пожаловать в BenziGo бот!*\n\n` +
     `Я буду уведомлять вас, когда баланс станет ниже порога.\n\n` +
-    `📱 *Отправьте свой номер телефона*`;
+    `📱 *Пожалуйста, отправьте свой номер телефона*`;
   
   await bot.sendContactButton(userId, message);
-  console.log(`✅ Приветствие отправлено`);
+  console.log(`✅ Приветствие с кнопкой отправлено`);
 });
 
-// Обработчик команды /balance
 bot.on('balance', async ({ userId, chatId }) => {
   const user = await db.getUser(userId);
   const balance = user?.balance || 0;
   const threshold = user?.threshold || 500;
-  await bot.sendMessage(userId, `💰 *Баланс:* ${balance} руб.\n📊 *Порог:* ${threshold} руб.`);
-  console.log(`📊 Баланс отправлен`);
+  await bot.sendMessage(userId, `💰 *Ваш баланс:* ${balance} руб.\n📊 *Порог:* ${threshold} руб.`);
 });
 
-// Обработчик контакта
 bot.on('contact', async ({ userId, chatId, contact }) => {
-  console.log(`📱 Получен номер от ${userId}: ${contact.phone}`);
+  console.log(`📱 Получен номер: ${contact.phone}`);
   await bot.sendMessage(userId, `✅ Номер ${contact.phone} сохранен!\n\nТеперь вы будете получать уведомления.\n\nДля проверки баланса отправьте /balance`);
 });
 
-// Запускаем API
 const api = createApi(bot);
 const PORT = process.env.PORT || 3000;
 
@@ -46,5 +41,4 @@ api.listen(PORT, () => {
   console.log(`✅ API сервер запущен на http://localhost:${PORT}`);
 });
 
-// Запускаем бота
 bot.start().catch(console.error);
