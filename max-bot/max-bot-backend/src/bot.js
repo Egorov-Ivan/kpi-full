@@ -13,41 +13,16 @@ class MaxBot {
     this.handlers.set(command, handler);
   }
 
-  async sendMessage(chatId, text) {
-    try {
-      const response = await axios.post(
-        `${this.apiUrl}/messages?user_id=${chatId}`,
-        { text: text, format: 'markdown' },
-        { headers: { 'Authorization': `${this.token}`, 'Content-Type': 'application/json' } }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('❌ Ошибка:', error.response?.data || error.message);
-      throw error;
-    }
-  }
-
-  // Кнопка через reply_markup
-  async sendContactButton(chatId, text) {
+  async sendMessage(chatId, text, options = {}) {
     try {
       const payload = {
         text: text,
-        format: 'markdown',
-        reply_markup: {
-          keyboard: [
-            [
-              {
-                text: "📱 Отправить номер телефона",
-                request_contact: true
-              }
-            ]
-          ],
-          resize_keyboard: true,
-          one_time_keyboard: true
-        }
+        format: options.format || 'markdown'
       };
       
-      console.log('📤 Отправка кнопки пользователю:', chatId);
+      if (options.attachments) {
+        payload.attachments = options.attachments;
+      }
       
       const response = await axios.post(
         `${this.apiUrl}/messages?user_id=${chatId}`,
@@ -59,12 +34,70 @@ class MaxBot {
           }
         }
       );
-      console.log('✅ Кнопка отправлена');
       return response.data;
     } catch (error) {
       console.error('❌ Ошибка:', error.response?.data || error.message);
       throw error;
     }
+  }
+
+  // Создание inline клавиатуры
+  createInlineKeyboard(buttons) {
+    const keyboardRows = [];
+    
+    for (const row of buttons) {
+      const buttonRow = [];
+      for (const btn of row) {
+        const button = { text: btn.text };
+        
+        if (btn.type === 'callback') {
+          button.type = 'callback';
+          button.payload = btn.payload || btn.text;
+          if (btn.intent) button.intent = btn.intent;
+        } else if (btn.type === 'link') {
+          button.type = 'link';
+          button.url = btn.url;
+        } else if (btn.type === 'request_contact') {
+          button.type = 'request_contact';
+        } else if (btn.type === 'request_geo') {
+          button.type = 'request_geo_location';
+        }
+        
+        buttonRow.push(button);
+      }
+      keyboardRows.push(buttonRow);
+    }
+    
+    return {
+      type: 'inline_keyboard',
+      payload: {
+        buttons: keyboardRows
+      }
+    };
+  }
+
+  // Отправка сообщения с кнопкой запроса контакта
+  async sendContactRequest(chatId, text) {
+    const keyboard = this.createInlineKeyboard([
+      [{ text: "📱 Отправить номер телефона", type: "request_contact" }]
+    ]);
+    
+    return this.sendMessage(chatId, text, { attachments: [keyboard] });
+  }
+
+  // Отправка главного меню с кнопками
+  async sendMainMenu(chatId) {
+    const keyboard = this.createInlineKeyboard([
+      [
+        { text: "💰 Баланс", type: "callback", payload: "balance" },
+        { text: "⚙️ Настройки", type: "callback", payload: "settings" }
+      ],
+      [
+        { text: "🔗 Пополнить счет", type: "link", url: "https://benzigo.ru/accounting" }
+      ]
+    ]);
+    
+    return this.sendMessage(chatId, "👋 *Главное меню*\n\nВыберите действие:", { attachments: [keyboard] });
   }
 
   async getUpdates() {
@@ -85,15 +118,16 @@ class MaxBot {
   }
 
   async processUpdate(update) {
-    console.log('📨 Получено обновление');
+    console.log('📨 Получено обновление тип:', update.update_type);
     
     const db = require('./db');
     
+    // Запуск бота
     if (update.update_type === 'bot_started') {
       const userId = update.user_id;
       const chatId = update.chat_id || userId;
       
-      console.log(`👤 Новый пользователь: ${userId}`);
+      console.log(`👤 Бот запущен пользователем: ${userId}`);
       await db.saveUser(userId, chatId);
       
       const startHandler = this.handlers.get('start');
@@ -103,6 +137,40 @@ class MaxBot {
       return;
     }
     
+    // Обработка callback запросов (нажатия на кнопки)
+    if (update.update_type === 'message_callback') {
+      const callback = update.callback;
+      const userId = callback.user_id;
+      const chatId = callback.chat_id || userId;
+      const payload = callback.payload;
+      
+      console.log(`🔘 Нажата кнопка: ${payload} от ${userId}`);
+      
+      if (payload === 'balance') {
+        const balanceHandler = this.handlers.get('balance');
+        if (balanceHandler) {
+          await balanceHandler({ userId, chatId });
+        }
+      } else if (payload === 'settings') {
+        const settingsHandler = this.handlers.get('settings');
+        if (settingsHandler) {
+          await settingsHandler({ userId, chatId });
+        }
+      }
+      
+      // Отвечаем на callback
+      try {
+        await axios.post(
+          `${this.apiUrl}/callback/answer`,
+          { callback_query_id: update.callback_id },
+          { headers: { 'Authorization': `${this.token}` } }
+        );
+      } catch (e) {}
+      
+      return;
+    }
+    
+    // Обычные сообщения
     if (!update.message) return;
     
     const msg = update.message;
@@ -110,7 +178,7 @@ class MaxBot {
     const userId = msg.sender?.user_id;
     const chatId = msg.recipient?.chat_id || userId;
     
-    console.log(`📨 Сообщение от ${userId}: ${text || '[контакт]'}`);
+    console.log(`📨 Сообщение от ${userId}: "${text || '[контакт]'}"`);
     
     // Обработка контакта
     if (msg.body?.attachments) {
@@ -131,13 +199,17 @@ class MaxBot {
             const contactHandler = this.handlers.get('contact');
             if (contactHandler) {
               await contactHandler({ userId, chatId, contact: { phone } });
+            } else {
+              await this.sendMainMenu(chatId);
             }
+            console.log(`📱 Номер ${phone} сохранен`);
           }
           return;
         }
       }
     }
     
+    // Команда /start
     if (text === '/start') {
       await db.saveUser(userId, chatId);
       
@@ -148,6 +220,7 @@ class MaxBot {
       return;
     }
     
+    // Команда /balance
     if (text === '/balance') {
       const balanceHandler = this.handlers.get('balance');
       if (balanceHandler) {
