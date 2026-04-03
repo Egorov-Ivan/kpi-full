@@ -6,31 +6,30 @@ class MaxBot {
     this.token = token;
     this.apiUrl = process.env.API_URL || 'https://platform-api.max.ru';
     this.lastUpdateId = 0;
-    this.handlers = new Map(); // Добавляем Map для обработчиков
+    this.handlers = new Map();
   }
 
-  // Регистрация обработчика команды
   on(command, handler) {
     this.handlers.set(command, handler);
   }
 
-  // Простая отправка сообщения
-  async sendMessage(chatId, text) {
+  // Отправка сообщения - используем user_id как chat_id
+  async sendMessage(userId, text) {
     try {
       const response = await axios.post(
-        `${this.apiUrl}/messages?user_id=${chatId}`,
+        `${this.apiUrl}/messages?user_id=${userId}`,
         { text: text, format: 'markdown' },
         { headers: { 'Authorization': `${this.token}`, 'Content-Type': 'application/json' } }
       );
       return response.data;
     } catch (error) {
-      console.error('❌ Ошибка:', error.response?.data || error.message);
+      console.error('❌ Ошибка отправки:', error.response?.data || error.message);
       throw error;
     }
   }
 
-  // Отправка с кнопкой контакта
-  async sendContactButton(chatId, text) {
+  // Отправка кнопки с номером телефона
+  async sendContactButton(userId, text) {
     try {
       const payload = {
         text: text,
@@ -52,17 +51,17 @@ class MaxBot {
         ]
       };
       
-      console.log('📤 Отправка кнопки контакта');
+      console.log('📤 Отправка кнопки контакта пользователю:', userId);
       
       const response = await axios.post(
-        `${this.apiUrl}/messages?user_id=${chatId}`,
+        `${this.apiUrl}/messages?user_id=${userId}`,
         payload,
         { headers: { 'Authorization': `${this.token}`, 'Content-Type': 'application/json' } }
       );
       console.log('✅ Кнопка отправлена');
       return response.data;
     } catch (error) {
-      console.error('❌ Ошибка:', error.response?.data || error.message);
+      console.error('❌ Ошибка отправки кнопки:', error.response?.data || error.message);
       throw error;
     }
   }
@@ -85,19 +84,18 @@ class MaxBot {
   }
 
   async processUpdate(update) {
-    console.log('📨 Получено обновление');
+    console.log('📨 Получено обновление тип:', update.update_type);
     
     const db = require('./db');
     
-    // Запуск бота
+    // bot_started - когда пользователь впервые запускает бота
     if (update.update_type === 'bot_started') {
       const userId = update.user_id;
-      const chatId = update.chat_id;
+      const chatId = update.chat_id || userId;
       
-      console.log(`👤 Новый пользователь: ${userId}`);
+      console.log(`👤 Бот запущен пользователем: ${userId}`);
       await db.saveUser(userId, chatId);
       
-      // Вызываем обработчик 'start' если есть
       const startHandler = this.handlers.get('start');
       if (startHandler) {
         await startHandler({ userId, chatId });
@@ -105,14 +103,15 @@ class MaxBot {
       return;
     }
     
+    // Обычные сообщения
     if (!update.message) return;
     
     const msg = update.message;
     const text = msg.body?.text || '';
     const userId = msg.sender?.user_id;
-    const chatId = msg.recipient?.chat_id;
+    const chatId = msg.recipient?.chat_id || userId;
     
-    console.log(`📨 Сообщение от ${userId}: ${text || '[контакт]'}`);
+    console.log(`📨 Сообщение от ${userId}: "${text || '[контакт]'}"`);
     
     // Обработка контакта
     if (msg.body?.attachments) {
@@ -130,22 +129,21 @@ class MaxBot {
           if (phone) {
             await db.saveUser(userId, chatId, phone);
             
-            // Вызываем обработчик 'contact'
             const contactHandler = this.handlers.get('contact');
             if (contactHandler) {
               await contactHandler({ userId, chatId, contact: { phone, vcf_info: att.payload.vcf_info } });
-            } else {
-              await this.sendMessage(userId, `✅ Номер ${phone} сохранен!`);
             }
-            console.log(`📱 Номер сохранен: ${phone}`);
+            console.log(`📱 Номер ${phone} сохранен`);
           }
           return;
         }
       }
     }
     
-    // Обработка команд /start и /balance
+    // Обработка команд
     if (text === '/start') {
+      await db.saveUser(userId, chatId);
+      
       const startHandler = this.handlers.get('start');
       if (startHandler) {
         await startHandler({ userId, chatId });
@@ -163,14 +161,18 @@ class MaxBot {
   }
 
   async start() {
-    console.log('🤖 Бот запущен');
+    console.log('🤖 Бот запущен, ожидание сообщений...');
+    let consecutiveErrors = 0;
+    
     while (true) {
       try {
         await this.getUpdates();
+        consecutiveErrors = 0;
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        console.error('❌ Ошибка:', error.message);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        consecutiveErrors++;
+        console.error(`❌ Ошибка (${consecutiveErrors}):`, error.message);
+        await new Promise(resolve => setTimeout(resolve, 5000 * Math.min(consecutiveErrors, 5)));
       }
     }
   }
