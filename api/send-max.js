@@ -17,20 +17,65 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { balance, threshold, userName } = req.body;
+  
+  // Данные из .env
+  const BOT_TOKEN = process.env.MAX_BOT_TOKEN;
+  const CHAT_ID = process.env.CHAT_ID || '12852993';
+  const API_URL = process.env.API_URL || 'https://platform-api.max.ru';
+  
+  // ID пользователя в MAX (из логов)
+  const MAX_USER_ID = '225236594';
+
+  if (!BOT_TOKEN) {
+    console.error('❌ MAX_BOT_TOKEN не настроен');
+    return res.status(500).json({ error: 'MAX_BOT_TOKEN not configured' });
+  }
+
   try {
-    const { balance, threshold, userName } = req.body;
+    const message = `⚠️ *Уведомление о низком балансе* ⚠️\n\n` +
+      `📊 *Баланс:* ${balance} руб.\n` +
+      `📉 *Порог уведомления:* ${threshold} руб.\n` +
+      `🆘 Баланс ниже установленного порога.\n\n` +
+      (userName ? `👤 *Клиент:* ${userName}\n\n` : '') +
+      `🔗 [Пополнить счет](https://benzigo.ru/accounting)`;
     
-    console.log('Получены данные:', { balance, threshold, userName });
-    
-    // Временно возвращаем успех для теста
-    res.status(200).json({ 
-      success: true, 
-      message: 'Тестовый ответ от API',
-      data: { balance, threshold, userName }
+    console.log('📤 Отправка в MAX API:', { 
+      url: `${API_URL}/v1/messages/send`,
+      chatId: CHAT_ID,
+      userId: MAX_USER_ID,
+      message: message.substring(0, 100) + '...'
     });
     
+    // Реальный запрос к MAX API
+    const response = await fetch(`${API_URL}/v1/messages/send`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        user_id: MAX_USER_ID,
+        text: message,
+        parse_mode: 'Markdown'
+      })
+    });
+    
+    const result = await response.json();
+    console.log('📨 Ответ MAX API:', result);
+    
+    if (response.ok) {
+      console.log('✅ Уведомление в МАХ отправлено');
+      res.status(200).json({ success: true, result });
+    } else {
+      console.error('❌ Ошибка MAX API:', result);
+      res.status(500).json({ error: 'MAX API error', details: result });
+    }
+    
   } catch (error) {
-    console.error('Ошибка:', error);
+    console.error('❌ Ошибка:', error);
     res.status(500).json({ error: error.message });
   }
 }
