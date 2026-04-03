@@ -1,4 +1,4 @@
-// src/bot.js
+// src/bot.js - упрощенная рабочая версия
 const axios = require('axios');
 
 class MaxBot {
@@ -9,100 +9,82 @@ class MaxBot {
     this.handlers = new Map();
   }
 
-  async sendMessage(chatId, text, options = {}) {
+  // Простая отправка сообщения
+  async sendMessage(chatId, text) {
     try {
-      const payload = {
-        text: text,
-        format: options.format || 'markdown'
-      };
-      
-      if (options.attachments) {
-        payload.attachments = options.attachments;
-      }
-      
       const response = await axios.post(
         `${this.apiUrl}/messages?user_id=${chatId}`,
-        payload,
-        {
-          headers: {
-            'Authorization': `${this.token}`,
-            'Content-Type': 'application/json'
-          }
-        }
+        { text: text, format: 'markdown' },
+        { headers: { 'Authorization': `${this.token}`, 'Content-Type': 'application/json' } }
       );
       return response.data;
     } catch (error) {
-      console.error('❌ Ошибка отправки:', error.response?.data || error.message);
+      console.error('❌ Ошибка:', error.response?.data || error.message);
       throw error;
     }
   }
 
-  async sendMessageWithButtons(chatId, text, buttonList) {
-    const buttons = [];
-    
-    for (const row of buttonList) {
-      const buttonRow = [];
-      for (const btn of row) {
-        const button = { text: btn.text };
-        if (btn.url) {
-          button.url = btn.url;
-          button.type = 'url';
-        }
-        if (btn.callback_data) {
-          button.callback_data = btn.callback_data;
-          button.type = 'callback';
-        }
-        if (btn.request_contact) {
-          button.request_contact = true;
-          button.type = 'request_contact';
-        }
-        buttonRow.push(button);
-      }
-      buttons.push(buttonRow);
+  // Отправка с кнопкой контакта (рабочий формат)
+  async sendContactButton(chatId, text) {
+    try {
+      const payload = {
+        text: text,
+        format: 'markdown',
+        attachments: [
+          {
+            type: 'keyboard',
+            payload: {
+              buttons: [
+                [
+                  {
+                    text: "📱 Отправить номер",
+                    type: "request_contact"
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      };
+      
+      console.log('📤 Отправка кнопки контакта');
+      
+      const response = await axios.post(
+        `${this.apiUrl}/messages?user_id=${chatId}`,
+        payload,
+        { headers: { 'Authorization': `${this.token}`, 'Content-Type': 'application/json' } }
+      );
+      console.log('✅ Кнопка отправлена');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Ошибка:', error.response?.data || error.message);
+      throw error;
     }
-    
-    const attachments = [
-      {
-        type: 'inline_keyboard',
-        payload: { buttons }
-      }
-    ];
-    
-    return this.sendMessage(chatId, text, { attachments });
-  }
-
-  on(command, handler) {
-    this.handlers.set(command, handler);
   }
 
   async getUpdates() {
     try {
       const response = await axios.get(
         `${this.apiUrl}/updates`,
-        {
-          params: { offset: this.lastUpdateId + 1, limit: 100 },
-          headers: { 'Authorization': `${this.token}` }
-        }
+        { params: { offset: this.lastUpdateId + 1, limit: 100 }, headers: { 'Authorization': `${this.token}` } }
       );
       
       const updates = response.data.updates || [];
-      
       for (const update of updates) {
         await this.processUpdate(update);
         this.lastUpdateId = update.update_id;
       }
     } catch (error) {
-      if (error.response?.status !== 404) {
-        throw error;
-      }
+      if (error.response?.status !== 404) throw error;
     }
   }
 
   async processUpdate(update) {
-    console.log('📨 Получено обновление:', JSON.stringify(update, null, 2));
+    console.log('📨 Получено обновление');
     
     const db = require('./db');
     
+    // Запуск бота
     if (update.update_type === 'bot_started') {
       const userId = update.user_id;
       const chatId = update.chat_id;
@@ -110,15 +92,8 @@ class MaxBot {
       console.log(`👤 Новый пользователь: ${userId}`);
       await db.saveUser(userId, chatId);
       
-      const message = `👋 *Добро пожаловать!*\n\n` +
-        `Я буду уведомлять вас, когда баланс станет ниже порога.\n\n` +
-        `📱 *Отправьте свой номер телефона*`;
-      
-      const buttons = [
-        [{ text: "📱 Отправить номер", request_contact: true }]
-      ];
-      
-      await this.sendMessageWithButtons(userId, message, buttons);
+      const message = `👋 Добро пожаловать!\n\nОтправьте ваш номер телефона:`;
+      await this.sendContactButton(userId, message);
       return;
     }
     
@@ -146,58 +121,40 @@ class MaxBot {
           
           if (phone) {
             await db.saveUser(userId, chatId, phone);
-            
-            const message = `✅ *Номер ${phone} сохранен!*\n\nВыберите действие:`;
-            
-            const buttons = [
-              [{ text: "💰 Баланс", callback_data: "balance" }],
-              [{ text: "⚙️ Настройки", callback_data: "settings" }],
-              [{ text: "🔗 Пополнить", url: "https://benzigo.ru/accounting" }]
-            ];
-            
-            await this.sendMessageWithButtons(userId, message, buttons);
+            await this.sendMessage(userId, `✅ Номер ${phone} сохранен! Теперь вы будете получать уведомления.`);
+            console.log(`📱 Номер сохранен: ${phone}`);
           }
           return;
         }
       }
     }
     
+    // Команда /start
     if (text === '/start') {
-      const user = await db.getUser(userId);
-      
-      const message = user && user.phone_number 
-        ? `👋 *Главное меню*`
-        : `👋 *Добро пожаловать!*\n\nОтправьте номер телефона:`;
-      
-      const buttons = user && user.phone_number
-        ? [
-            [{ text: "💰 Баланс", callback_data: "balance" }],
-            [{ text: "⚙️ Настройки", callback_data: "settings" }],
-            [{ text: "🔗 Пополнить", url: "https://benzigo.ru/accounting" }]
-          ]
-        : [{ text: "📱 Отправить номер", request_contact: true }];
-      
-      await this.sendMessageWithButtons(userId, message, buttons);
+      const message = `👋 Главное меню\n\nОтправьте /balance для проверки баланса`;
+      await this.sendMessage(userId, message);
       return;
     }
     
-    // Остальная обработка...
-    console.log(`ℹ️ Неизвестное сообщение от ${userId}`);
+    // Команда /balance
+    if (text === '/balance') {
+      const user = await db.getUser(userId);
+      const balance = user?.balance || 0;
+      const threshold = user?.threshold || 500;
+      await this.sendMessage(userId, `💰 Баланс: ${balance} руб.\n📊 Порог: ${threshold} руб.`);
+      return;
+    }
   }
 
   async start() {
-    console.log('🤖 Бот запущен, ожидание сообщений...');
-    let consecutiveErrors = 0;
-    
+    console.log('🤖 Бот запущен');
     while (true) {
       try {
         await this.getUpdates();
-        consecutiveErrors = 0;
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        consecutiveErrors++;
-        console.error(`❌ Ошибка (${consecutiveErrors}):`, error.message);
-        await new Promise(resolve => setTimeout(resolve, 5000 * consecutiveErrors));
+        console.error('❌ Ошибка:', error.message);
+        await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
   }
