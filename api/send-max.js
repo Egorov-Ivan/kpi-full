@@ -17,41 +17,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { balance, threshold, userName } = req.body;
-
-  // Определяем URL для вызова
-  const isProduction = process.env.VERCEL_ENV === 'production';
-  const apiUrl = isProduction 
-    ? `https://${process.env.VERCEL_URL}/api/send-max-direct`
-    : 'http://localhost:3000/api/send-message';
-
   try {
-    console.log(`📤 Отправка запроса: ${apiUrl}`);
+    const { balance, threshold, userName } = req.body;
     
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        balance: balance,
-        threshold: threshold,
-        userName: userName
-      })
+    console.log('Получены данные:', { balance, threshold, userName });
+    
+    // Временно возвращаем успех для теста
+    res.status(200).json({ 
+      success: true, 
+      message: 'Тестовый ответ от API',
+      data: { balance, threshold, userName }
     });
-
-    const result = await response.json();
-    console.log('📨 Ответ:', result);
-
-    if (response.ok) {
-      console.log('✅ Уведомление в МАХ отправлено');
-      res.status(200).json({ success: true, result });
-    } else {
-      console.error('❌ Ошибка:', result);
-      res.status(500).json({ error: 'MAX bot error', details: result });
-    }
+    
   } catch (error) {
-    console.error('❌ Ошибка при вызове:', error);
+    console.error('Ошибка:', error);
     res.status(500).json({ error: error.message });
   }
 }
