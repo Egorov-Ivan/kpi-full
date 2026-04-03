@@ -141,7 +141,7 @@ class MaxBot {
       const userId = update.user_id;
       
       console.log(`👤 Бот запущен пользователем: ${userId}`);
-      await db.saveUser(userId, null);
+      await db.saveBotUser(userId, null);
       
       const startHandler = this.handlers.get('start');
       if (startHandler) {
