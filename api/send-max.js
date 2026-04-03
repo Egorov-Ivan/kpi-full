@@ -20,79 +20,51 @@ export default async function handler(req, res) {
   const { balance, threshold, userName } = req.body;
   
   const BOT_TOKEN = process.env.MAX_BOT_TOKEN;
-  const CHAT_ID = process.env.MAX_CHAT_ID;
+  const USER_ID = '225236594'; // ID пользователя из логов (Иван Егоров)
   const API_URL = 'https://platform-api.max.ru';
 
-  // Логируем наличие переменных
-  console.log('🔍 Проверка переменных:', {
-    hasToken: !!BOT_TOKEN,
-    hasChatId: !!CHAT_ID,
-    tokenPrefix: BOT_TOKEN ? BOT_TOKEN.substring(0, 20) : 'none',
-    chatId: CHAT_ID
-  });
-
   if (!BOT_TOKEN) {
+    console.error('❌ MAX_BOT_TOKEN не настроен');
     return res.status(500).json({ error: 'MAX_BOT_TOKEN not configured' });
   }
 
-  if (!CHAT_ID) {
-    return res.status(500).json({ error: 'MAX_CHAT_ID not configured' });
-  }
-
   try {
-    const message = `⚠️ Уведомление о низком балансе ⚠️\n\nБаланс: ${balance} руб.\nПорог: ${threshold} руб.\n\nКлиент: ${userName}\n\nПополнить счет: https://benzigo.ru/accounting`;
+    const message = `⚠️ *Уведомление о низком балансе* ⚠️\n\n` +
+      `📊 *Баланс:* ${balance} руб.\n` +
+      `📉 *Порог уведомления:* ${threshold} руб.\n` +
+      `🆘 Баланс ниже установленного порога.\n\n` +
+      (userName ? `👤 *Клиент:* ${userName}\n\n` : '') +
+      `🔗 [Пополнить счет](https://benzigo.ru/accounting)`;
+
+    // Правильный endpoint согласно документации MAX [citation:5]
+    const url = `${API_URL}/messages?user_id=${USER_ID}`;
     
-    // Пробуем разные варианты endpoint'ов
-    const endpoints = [
-      `${API_URL}/v1/messages/send`,
-      `${API_URL}/messages/send`,
-      `${API_URL}/send`,
-      `${API_URL}/bot/sendMessage`
-    ];
-    
-    let lastError = null;
-    
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`📤 Пробуем endpoint: ${endpoint}`);
-        
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': BOT_TOKEN,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: message
-          })
-        });
-        
-        const result = await response.json();
-        console.log(`📨 Ответ от ${endpoint}:`, { status: response.status, result });
-        
-        if (response.ok) {
-          console.log('✅ Уведомление отправлено через:', endpoint);
-          return res.status(200).json({ success: true, endpoint, result });
-        }
-        
-        lastError = { endpoint, status: response.status, result };
-      } catch (e) {
-        console.log(`❌ Ошибка на ${endpoint}:`, e.message);
-        lastError = { endpoint, error: e.message };
-      }
-    }
-    
-    // Если ни один endpoint не сработал
-    console.error('❌ Все endpointы не сработали:', lastError);
-    return res.status(500).json({ 
-      error: 'MAX API error', 
-      details: lastError,
-      message: 'Ни один из endpointов не ответил успешно'
+    console.log('📤 Отправка в MAX:', { url, messageLength: message.length });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': BOT_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: message,
+        format: 'markdown'  // Поддерживается markdown форматирование [citation:5]
+      })
     });
-    
+
+    const result = await response.json();
+    console.log('📨 Ответ MAX API:', { status: response.status, result });
+
+    if (response.ok) {
+      console.log('✅ Уведомление в МАХ отправлено');
+      res.status(200).json({ success: true, result });
+    } else {
+      console.error('❌ Ошибка MAX API:', result);
+      res.status(500).json({ error: 'MAX API error', details: result });
+    }
   } catch (error) {
-    console.error('❌ Критическая ошибка:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('❌ Ошибка:', error);
+    res.status(500).json({ error: error.message });
   }
 }
