@@ -14,6 +14,11 @@ class MaxBot {
   }
 
   async sendMessage(chatId, text, options = {}) {
+    if (!chatId) {
+      console.error('❌ Ошибка: chatId не указан');
+      return;
+    }
+    
     try {
       const payload = {
         text: text,
@@ -41,7 +46,6 @@ class MaxBot {
     }
   }
 
-  // Создание inline клавиатуры
   createInlineKeyboard(buttons) {
     const keyboardRows = [];
     
@@ -59,8 +63,6 @@ class MaxBot {
           button.url = btn.url;
         } else if (btn.type === 'request_contact') {
           button.type = 'request_contact';
-        } else if (btn.type === 'request_geo') {
-          button.type = 'request_geo_location';
         }
         
         buttonRow.push(button);
@@ -76,7 +78,6 @@ class MaxBot {
     };
   }
 
-  // Отправка сообщения с кнопкой запроса контакта
   async sendContactRequest(chatId, text) {
     const keyboard = this.createInlineKeyboard([
       [{ text: "📱 Отправить номер телефона", type: "request_contact" }]
@@ -85,7 +86,6 @@ class MaxBot {
     return this.sendMessage(chatId, text, { attachments: [keyboard] });
   }
 
-  // Отправка главного меню с кнопками
   async sendMainMenu(chatId) {
     const keyboard = this.createInlineKeyboard([
       [
@@ -125,9 +125,9 @@ class MaxBot {
     // Запуск бота
     if (update.update_type === 'bot_started') {
       const userId = update.user_id;
-      const chatId = update.chat_id || userId;
+      const chatId = update.chat_id;
       
-      console.log(`👤 Бот запущен пользователем: ${userId}`);
+      console.log(`👤 Бот запущен пользователем: ${userId}, chat_id: ${chatId}`);
       await db.saveUser(userId, chatId);
       
       const startHandler = this.handlers.get('start');
@@ -137,11 +137,11 @@ class MaxBot {
       return;
     }
     
-    // Обработка callback запросов (нажатия на кнопки)
+    // Обработка callback запросов
     if (update.update_type === 'message_callback') {
       const callback = update.callback;
       const userId = callback.user_id;
-      const chatId = callback.chat_id || userId;
+      const chatId = callback.chat_id;
       const payload = callback.payload;
       
       console.log(`🔘 Нажата кнопка: ${payload} от ${userId}`);
@@ -158,7 +158,6 @@ class MaxBot {
         }
       }
       
-      // Отвечаем на callback
       try {
         await axios.post(
           `${this.apiUrl}/callback/answer`,
@@ -176,9 +175,9 @@ class MaxBot {
     const msg = update.message;
     const text = msg.body?.text || '';
     const userId = msg.sender?.user_id;
-    const chatId = msg.recipient?.chat_id || userId;
+    const chatId = msg.recipient?.chat_id;
     
-    console.log(`📨 Сообщение от ${userId}: "${text || '[контакт]'}"`);
+    console.log(`📨 Сообщение от ${userId}, chat_id: ${chatId}, текст: "${text || '[контакт]'}"`);
     
     // Обработка контакта
     if (msg.body?.attachments) {
@@ -194,15 +193,15 @@ class MaxBot {
           }
           
           if (phone) {
+            // Сохраняем пользователя с правильным chat_id
             await db.saveUser(userId, chatId, phone);
             
             const contactHandler = this.handlers.get('contact');
             if (contactHandler) {
+              // Передаем правильный chatId
               await contactHandler({ userId, chatId, contact: { phone } });
-            } else {
-              await this.sendMainMenu(chatId);
             }
-            console.log(`📱 Номер ${phone} сохранен`);
+            console.log(`📱 Номер ${phone} сохранен для userId: ${userId}, chatId: ${chatId}`);
           }
           return;
         }

@@ -12,17 +12,18 @@ if (!process.env.BOT_TOKEN) {
 const bot = new MaxBot(process.env.BOT_TOKEN);
 
 bot.on('start', async ({ userId, chatId }) => {
-  console.log(`👤 Приветствие для ${userId}`);
+  console.log(`👤 Приветствие для userId: ${userId}, chatId: ${chatId}`);
   
   const message = `👋 *Добро пожаловать в BenziGo бот!*\n\n` +
     `Я буду уведомлять вас, когда баланс станет ниже порога.\n\n` +
     `📱 *Пожалуйста, отправьте свой номер телефона*`;
   
-  await bot.sendContactRequest(userId, message);
+  await bot.sendContactRequest(chatId, message);
   console.log(`✅ Приветствие отправлено`);
 });
 
 bot.on('balance', async ({ userId, chatId }) => {
+  console.log(`📊 Запрос баланса для userId: ${userId}, chatId: ${chatId}`);
   const user = await db.getUser(userId);
   const balance = user?.balance || 0;
   const threshold = user?.threshold || 500;
@@ -34,7 +35,7 @@ bot.on('balance', async ({ userId, chatId }) => {
 });
 
 bot.on('contact', async ({ userId, chatId, contact }) => {
-  console.log(`📱 Получен номер: ${contact.phone}`);
+  console.log(`📱 Получен номер от ${userId}: ${contact.phone}, chatId: ${chatId}`);
   await bot.sendMessage(chatId, `✅ Номер ${contact.phone} сохранен!\n\nТеперь вы будете получать уведомления.`);
   await bot.sendMainMenu(chatId);
 });
