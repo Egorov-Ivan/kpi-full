@@ -207,7 +207,7 @@ class MaxBot {
           }
           
           if (phone) {
-            await db.BotUser(userId, null, phone);
+            await db.saveBotUser(userId, null, phone);
             
             const contactHandler = this.handlers.get('contact');
             if (contactHandler) {
