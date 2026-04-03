@@ -13,9 +13,10 @@ class MaxBot {
     this.handlers.set(command, handler);
   }
 
-  async sendMessage(chatId, text, options = {}) {
-    if (!chatId) {
-      console.error('❌ Ошибка: chatId не указан');
+  // Всегда отправляем сообщение используя user_id
+  async sendMessage(userId, text, options = {}) {
+    if (!userId) {
+      console.error('❌ Ошибка: userId не указан');
       return;
     }
     
@@ -29,8 +30,10 @@ class MaxBot {
         payload.attachments = options.attachments;
       }
       
+      console.log(`📤 Отправка сообщения пользователю ${userId}`);
+      
       const response = await axios.post(
-        `${this.apiUrl}/messages?user_id=${chatId}`,
+        `${this.apiUrl}/messages?user_id=${userId}`,
         payload,
         {
           headers: {
@@ -39,9 +42,10 @@ class MaxBot {
           }
         }
       );
+      console.log(`✅ Сообщение отправлено пользователю ${userId}`);
       return response.data;
     } catch (error) {
-      console.error('❌ Ошибка:', error.response?.data || error.message);
+      console.error('❌ Ошибка отправки:', error.response?.data || error.message);
       throw error;
     }
   }
@@ -78,15 +82,15 @@ class MaxBot {
     };
   }
 
-  async sendContactRequest(chatId, text) {
+  async sendContactRequest(userId, text) {
     const keyboard = this.createInlineKeyboard([
       [{ text: "📱 Отправить номер телефона", type: "request_contact" }]
     ]);
     
-    return this.sendMessage(chatId, text, { attachments: [keyboard] });
+    return this.sendMessage(userId, text, { attachments: [keyboard] });
   }
 
-  async sendMainMenu(chatId) {
+  async sendMainMenu(userId) {
     const keyboard = this.createInlineKeyboard([
       [
         { text: "💰 Баланс", type: "callback", payload: "balance" },
@@ -97,7 +101,7 @@ class MaxBot {
       ]
     ]);
     
-    return this.sendMessage(chatId, "👋 *Главное меню*\n\nВыберите действие:", { attachments: [keyboard] });
+    return this.sendMessage(userId, "👋 *Главное меню*\n\nВыберите действие:", { attachments: [keyboard] });
   }
 
   async getUpdates() {
@@ -141,7 +145,6 @@ class MaxBot {
     if (update.update_type === 'message_callback') {
       const callback = update.callback;
       const userId = callback.user_id;
-      const chatId = callback.chat_id;
       const payload = callback.payload;
       
       console.log(`🔘 Нажата кнопка: ${payload} от ${userId}`);
@@ -149,12 +152,12 @@ class MaxBot {
       if (payload === 'balance') {
         const balanceHandler = this.handlers.get('balance');
         if (balanceHandler) {
-          await balanceHandler({ userId, chatId });
+          await balanceHandler({ userId });
         }
       } else if (payload === 'settings') {
         const settingsHandler = this.handlers.get('settings');
         if (settingsHandler) {
-          await settingsHandler({ userId, chatId });
+          await settingsHandler({ userId });
         }
       }
       
@@ -175,9 +178,8 @@ class MaxBot {
     const msg = update.message;
     const text = msg.body?.text || '';
     const userId = msg.sender?.user_id;
-    const chatId = msg.recipient?.chat_id;
     
-    console.log(`📨 Сообщение от ${userId}, chat_id: ${chatId}, текст: "${text || '[контакт]'}"`);
+    console.log(`📨 Сообщение от пользователя ${userId}: "${text || '[контакт]'}"`);
     
     // Обработка контакта
     if (msg.body?.attachments) {
@@ -193,15 +195,13 @@ class MaxBot {
           }
           
           if (phone) {
-            // Сохраняем пользователя с правильным chat_id
-            await db.saveUser(userId, chatId, phone);
+            await db.saveUser(userId, null, phone);
             
             const contactHandler = this.handlers.get('contact');
             if (contactHandler) {
-              // Передаем правильный chatId
-              await contactHandler({ userId, chatId, contact: { phone } });
+              await contactHandler({ userId, contact: { phone } });
             }
-            console.log(`📱 Номер ${phone} сохранен для userId: ${userId}, chatId: ${chatId}`);
+            console.log(`📱 Номер ${phone} сохранен для userId: ${userId}`);
           }
           return;
         }
@@ -210,11 +210,11 @@ class MaxBot {
     
     // Команда /start
     if (text === '/start') {
-      await db.saveUser(userId, chatId);
+      await db.saveUser(userId, null);
       
       const startHandler = this.handlers.get('start');
       if (startHandler) {
-        await startHandler({ userId, chatId });
+        await startHandler({ userId });
       }
       return;
     }
@@ -223,7 +223,7 @@ class MaxBot {
     if (text === '/balance') {
       const balanceHandler = this.handlers.get('balance');
       if (balanceHandler) {
-        await balanceHandler({ userId, chatId });
+        await balanceHandler({ userId });
       }
       return;
     }

@@ -11,39 +11,39 @@ if (!process.env.BOT_TOKEN) {
 
 const bot = new MaxBot(process.env.BOT_TOKEN);
 
-bot.on('start', async ({ userId, chatId }) => {
-  console.log(`👤 Приветствие для userId: ${userId}, chatId: ${chatId}`);
+bot.on('start', async ({ userId }) => {
+  console.log(`👤 Приветствие для userId: ${userId}`);
   
   const message = `👋 *Добро пожаловать в BenziGo бот!*\n\n` +
     `Я буду уведомлять вас, когда баланс станет ниже порога.\n\n` +
     `📱 *Пожалуйста, отправьте свой номер телефона*`;
   
-  await bot.sendContactRequest(chatId, message);
+  await bot.sendContactRequest(userId, message);
   console.log(`✅ Приветствие отправлено`);
 });
 
-bot.on('balance', async ({ userId, chatId }) => {
-  console.log(`📊 Запрос баланса для userId: ${userId}, chatId: ${chatId}`);
+bot.on('balance', async ({ userId }) => {
+  console.log(`📊 Запрос баланса для userId: ${userId}`);
   const user = await db.getUser(userId);
   const balance = user?.balance || 0;
   const threshold = user?.threshold || 500;
   
   const message = `💰 *Ваш баланс:* ${balance} руб.\n📊 *Порог:* ${threshold} руб.`;
-  await bot.sendMessage(chatId, message);
-  await bot.sendMainMenu(chatId);
+  await bot.sendMessage(userId, message);
+  await bot.sendMainMenu(userId);
   console.log(`📊 Баланс отправлен`);
 });
 
-bot.on('contact', async ({ userId, chatId, contact }) => {
-  console.log(`📱 Получен номер от ${userId}: ${contact.phone}, chatId: ${chatId}`);
-  await bot.sendMessage(chatId, `✅ Номер ${contact.phone} сохранен!\n\nТеперь вы будете получать уведомления.`);
-  await bot.sendMainMenu(chatId);
+bot.on('contact', async ({ userId, contact }) => {
+  console.log(`📱 Получен номер от ${userId}: ${contact.phone}`);
+  await bot.sendMessage(userId, `✅ Номер ${contact.phone} сохранен!\n\nТеперь вы будете получать уведомления.`);
+  await bot.sendMainMenu(userId);
 });
 
-bot.on('settings', async ({ userId, chatId }) => {
+bot.on('settings', async ({ userId }) => {
   const user = await db.getUser(userId);
   const message = `⚙️ *Настройки*\n\n📊 Порог: ${user?.threshold || 500} руб.\n📱 Телефон: ${user?.phone_number || 'не указан'}`;
-  await bot.sendMessage(chatId, message);
+  await bot.sendMessage(userId, message);
 });
 
 const api = createApi(bot);
