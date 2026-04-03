@@ -1,4 +1,4 @@
-// src/bot.js - упрощенная рабочая версия
+// src/bot.js
 const axios = require('axios');
 
 class MaxBot {
@@ -6,7 +6,12 @@ class MaxBot {
     this.token = token;
     this.apiUrl = process.env.API_URL || 'https://platform-api.max.ru';
     this.lastUpdateId = 0;
-    this.handlers = new Map();
+    this.handlers = new Map(); // Добавляем Map для обработчиков
+  }
+
+  // Регистрация обработчика команды
+  on(command, handler) {
+    this.handlers.set(command, handler);
   }
 
   // Простая отправка сообщения
@@ -24,7 +29,7 @@ class MaxBot {
     }
   }
 
-  // Отправка с кнопкой контакта (рабочий формат)
+  // Отправка с кнопкой контакта
   async sendContactButton(chatId, text) {
     try {
       const payload = {
@@ -92,8 +97,11 @@ class MaxBot {
       console.log(`👤 Новый пользователь: ${userId}`);
       await db.saveUser(userId, chatId);
       
-      const message = `👋 Добро пожаловать!\n\nОтправьте ваш номер телефона:`;
-      await this.sendContactButton(userId, message);
+      // Вызываем обработчик 'start' если есть
+      const startHandler = this.handlers.get('start');
+      if (startHandler) {
+        await startHandler({ userId, chatId });
+      }
       return;
     }
     
@@ -121,7 +129,14 @@ class MaxBot {
           
           if (phone) {
             await db.saveUser(userId, chatId, phone);
-            await this.sendMessage(userId, `✅ Номер ${phone} сохранен! Теперь вы будете получать уведомления.`);
+            
+            // Вызываем обработчик 'contact'
+            const contactHandler = this.handlers.get('contact');
+            if (contactHandler) {
+              await contactHandler({ userId, chatId, contact: { phone, vcf_info: att.payload.vcf_info } });
+            } else {
+              await this.sendMessage(userId, `✅ Номер ${phone} сохранен!`);
+            }
             console.log(`📱 Номер сохранен: ${phone}`);
           }
           return;
@@ -129,19 +144,20 @@ class MaxBot {
       }
     }
     
-    // Команда /start
+    // Обработка команд /start и /balance
     if (text === '/start') {
-      const message = `👋 Главное меню\n\nОтправьте /balance для проверки баланса`;
-      await this.sendMessage(userId, message);
+      const startHandler = this.handlers.get('start');
+      if (startHandler) {
+        await startHandler({ userId, chatId });
+      }
       return;
     }
     
-    // Команда /balance
     if (text === '/balance') {
-      const user = await db.getUser(userId);
-      const balance = user?.balance || 0;
-      const threshold = user?.threshold || 500;
-      await this.sendMessage(userId, `💰 Баланс: ${balance} руб.\n📊 Порог: ${threshold} руб.`);
+      const balanceHandler = this.handlers.get('balance');
+      if (balanceHandler) {
+        await balanceHandler({ userId, chatId });
+      }
       return;
     }
   }
