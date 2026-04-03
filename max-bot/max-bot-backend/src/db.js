@@ -13,7 +13,8 @@ db.serialize(() => {
       max_chat_id INTEGER NOT NULL,
       phone_number TEXT,
       balance REAL DEFAULT 0,
-      threshold REAL DEFAULT 100,
+      threshold REAL DEFAULT 500,
+      state TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -52,6 +53,58 @@ function updateBalance(userId, balance) {
   });
 }
 
+// Обновить порог
+function updateThreshold(userId, threshold) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE users SET threshold = ? WHERE max_user_id = ?',
+      [threshold, userId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this);
+      }
+    );
+  });
+}
+
+// Сохранить состояние пользователя
+function setUserState(userId, state) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE users SET state = ? WHERE max_user_id = ?',
+      [state, userId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this);
+      }
+    );
+  });
+}
+
+// Получить состояние пользователя
+function getUserState(userId) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT state FROM users WHERE max_user_id = ?', [userId], (err, row) => {
+      if (err) reject(err);
+      else resolve(row?.state || null);
+    });
+  });
+}
+
+// Очистить состояние пользователя
+function clearUserState(userId) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE users SET state = NULL WHERE max_user_id = ?',
+      [userId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this);
+      }
+    );
+  });
+}
+
 // Получить пользователя
 function getUser(userId) {
   return new Promise((resolve, reject) => {
@@ -72,4 +125,13 @@ function getAllUsers() {
   });
 }
 
-module.exports = { saveUser, updateBalance, getUser, getAllUsers };
+module.exports = { 
+  saveUser, 
+  updateBalance, 
+  updateThreshold,
+  setUserState,
+  getUserState,
+  clearUserState,
+  getUser, 
+  getAllUsers 
+};

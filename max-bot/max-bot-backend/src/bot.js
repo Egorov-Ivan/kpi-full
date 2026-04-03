@@ -9,16 +9,26 @@ class MaxBot {
     this.handlers = new Map();
   }
 
-  // Отправить сообщение пользователю (исправлено: user_id в URL)
+  // Отправить сообщение пользователю
   async sendMessage(chatId, text, options = {}) {
     try {
+      const payload = {
+        text: text,
+        format: options.format || 'markdown'
+      };
+      
+      // Добавляем клавиатуру если есть (правильный формат MAX)
+      if (options.keyboard) {
+        payload.reply_markup = {
+          inline_keyboard: options.keyboard
+        };
+      }
+      
+      console.log('📤 Отправка сообщения:', { chatId, textLength: text.length, hasKeyboard: !!options.keyboard });
+      
       const response = await axios.post(
         `${this.apiUrl}/messages?user_id=${chatId}`,
-        {
-          text: text,
-          format: options.format || 'markdown',
-          ...options
-        },
+        payload,
         {
           headers: {
             'Authorization': `${this.token}`,
@@ -34,15 +44,29 @@ class MaxBot {
   }
 
   // Отправить сообщение с кнопками
-  async sendMessageWithButtons(chatId, text, buttons) {
-    return this.sendMessage(chatId, text, {
-      attachments: [
-        {
-          type: 'inline_keyboard',
-          payload: { buttons }
+  async sendMessageWithKeyboard(chatId, text, buttons) {
+    // Формат кнопок для MAX API
+    const keyboard = [];
+    
+    for (const row of buttons) {
+      const buttonRow = [];
+      for (const btn of row) {
+        const button = { text: btn.text };
+        if (btn.url) {
+          button.url = btn.url;
         }
-      ]
-    });
+        if (btn.callback_data) {
+          button.callback_data = btn.callback_data;
+        }
+        if (btn.request_contact) {
+          button.request_contact = true;
+        }
+        buttonRow.push(button);
+      }
+      keyboard.push(buttonRow);
+    }
+    
+    return this.sendMessage(chatId, text, { keyboard });
   }
 
   // Зарегистрировать обработчик команды
@@ -78,45 +102,28 @@ class MaxBot {
   async processUpdate(update) {
     console.log('📨 Получено обновление:', JSON.stringify(update, null, 2));
     
-    // Обработка события запуска бота (bot_started)
+    const db = require('./db');
     
-// При первом запуске бота
-if (update.update_type === 'bot_started') {
-  const userId = update.user_id;
-  const chatId = update.chat_id;
-  
-  console.log(`👤 Пользователь запустил бота: ${userId}`);
-  
-  const db = require('./db');
-  await db.saveUser(userId, chatId);
-  
-  const message = `👋 *Добро пожаловать в бот уведомлений!*\n\n` +
-    `Я буду предупреждать вас, когда баланс станет ниже установленного порога.\n\n` +
-    `📱 *Для начала работы отправьте свой номер телефона*, чтобы связать аккаунт с биллингом.`;
-  
-  const keyboard = {
-    buttons: [
-      [
-        {
-          type: 'request_contact',
-          text: '📱 Отправить номер телефона'
-        }
-      ]
-    ]
-  };
-  
-  await this.sendMessage(userId, message, {
-    attachments: [
-      {
-        type: 'inline_keyboard',
-        payload: keyboard
-      }
-    ]
-  });
-  
-  console.log(`✅ Приветствие с кнопкой отправлено пользователю ${userId}`);
-  return;
-}
+    // Обработка запуска бота
+    if (update.update_type === 'bot_started') {
+      const userId = update.user_id;
+      const chatId = update.chat_id;
+      
+      console.log(`👤 Пользователь запустил бота: ${userId}`);
+      await db.saveUser(userId, chatId);
+      
+      const message = `👋 *Добро пожаловать в BenziGo_bot!*\n\n` +
+        `Я буду уведомлять вас, когда баланс станет ниже порога.\n\n` +
+        `📱 *Для начала работы отправьте свой номер телефона*`;
+      
+      const buttons = [
+        [{ text: "📱 Отправить номер", request_contact: true }]
+      ];
+      
+      await this.sendMessageWithKeyboard(userId, message, buttons);
+      console.log(`✅ Приветствие отправлено пользователю ${userId}`);
+      return;
+    }
     
     // Обработка обычных сообщений
     if (!update.message) return;
@@ -124,100 +131,15 @@ if (update.update_type === 'bot_started') {
     const msg = update.message;
     const text = msg.body?.text || '';
     const userId = msg.sender?.user_id;
+    const chatId = msg.recipient?.chat_id;
     
-    console.log(`📨 Получено сообщение от ${userId}: ${text}`);
+    console.log(`📨 Получено сообщение от ${userId}: ${text || '[контакт]'}`);
     
-    // Обработка команды /start
-    // Обработка команды /start
-if (text === '/start') {
-  const db = require('./db');
-  await db.saveUser(userId, userId);
-  
-  const message = `👋 Добро пожаловать!\n\n` +
-    `Я буду уведомлять вас, когда баланс станет ниже порога.\n\n` +
-    `📱 *Пожалуйста, отправьте свой номер телефона*, чтобы мы могли связать ваш аккаунт с биллингом.`;
-  
-  // Создаем клавиатуру с кнопкой для отправки контакта
-  const keyboard = {
-    buttons: [
-      [
-        {
-          type: 'request_contact',
-          text: '📱 Отправить номер телефона'
-        }
-      ]
-    ]
-  };
-  
-  // Отправляем сообщение с кнопкой
-  await this.sendMessage(userId, message, {
-    attachments: [
-      {
-        type: 'inline_keyboard',
-        payload: keyboard
-      }
-    ]
-  });
-  
-  console.log(`✅ Приветствие с кнопкой отправлено пользователю ${userId}`);
-  return;
-}
-    
-    if (text === '/balance') {
-  const db = require('./db');
-  const user = await db.getUser(userId);
-  
-  if (user) {
-    const message = `💰 *Ваш баланс:* ${user.balance} руб.\n` +
-      `📊 *Порог уведомления:* ${user.threshold} руб.\n\n` +
-      `Что хотите сделать?`;
-    
-    // Кнопки для действий
-    const keyboard = {
-      buttons: [
-        [
-          {
-            type: 'url',
-            text: '💰 Пополнить счет',
-            url: 'https://benzigo.ru/accounting'
-          },
-          {
-            type: 'callback',
-            text: '⚙️ Изменить порог',
-            callback_data: 'change_threshold'
-          }
-        ],
-        [
-          {
-            type: 'callback',
-            text: '🔄 Обновить баланс',
-            callback_data: 'refresh_balance'
-          }
-        ]
-      ]
-    };
-    
-    await this.sendMessage(userId, message, {
-      attachments: [
-        {
-          type: 'inline_keyboard',
-          payload: keyboard
-        }
-      ]
-    });
-    console.log(`📊 Меню баланса с кнопками отправлено пользователю ${userId}`);
-  } else {
-    await this.sendMessage(userId, 'ℹ️ Вы еще не зарегистрированы. Напишите /start');
-  }
-  return;
-}
-    
-    // Обработка контакта (номера телефона)
+    // Обработка контакта
     if (msg.body?.attachments) {
       for (const att of msg.body.attachments) {
         if (att.type === 'contact' && att.payload?.vcf_info) {
           let phone = '';
-          
           const match = att.payload.vcf_info.match(/TEL[^:]*:(\+?\d+)/i);
           if (match) {
             phone = match[1].replace(/\D/g, '');
@@ -225,74 +147,158 @@ if (text === '/start') {
               phone = '7' + phone.slice(1);
             }
           }
-          // Обработка callback-запросов (нажатия на кнопки)
-if (update.update_type === 'callback_query') {
-  const callback = update.callback_query;
-  const userId = callback.user_id;
-  const callbackData = callback.data;
-  const chatId = callback.chat_id;
-  
-  console.log(`🔘 Нажата кнопка: ${callbackData} от пользователя ${userId}`);
-  
-  const db = require('./db');
-  
-  switch (callbackData) {
-    case 'change_threshold':
-      // Отправляем сообщение с запросом нового порога
-      await this.sendMessage(chatId, "✏️ Введите новый порог уведомления (в рублях):");
-      // Сохраняем состояние, что пользователь ожидает ввода порога
-      // Для этого нужно добавить поле state в БД или использовать временное хранилище
-      console.log(`📝 Запрошен ввод нового порога для пользователя ${userId}`);
-      break;
-      
-    case 'refresh_balance':
-      // Обновляем баланс из биллинга
-      const user = await db.getUser(userId);
-      if (user && user.phone_number) {
-        // Здесь должен быть запрос к вашему API биллинга
-        // Пока используем демо-логику
-        const newBalance = Math.floor(Math.random() * 1000);
-        await db.updateBalance(userId, newBalance);
-        
-        const message = `🔄 *Баланс обновлен:* ${newBalance} руб.`;
-        await this.sendMessage(chatId, message);
-        console.log(`📊 Баланс обновлен для ${userId}: ${newBalance} руб.`);
-      } else {
-        await this.sendMessage(chatId, "❌ Не удалось обновить баланс. Номер телефона не найден.");
-      }
-      break;
-      
-    default:
-      console.log(`⚠️ Неизвестный callback: ${callbackData}`);
-  }
-  
-  // Отправляем ответ на callback (чтобы убрать индикатор загрузки)
-  await axios.post(
-    `${this.apiUrl}/callback/answer`,
-    { callback_query_id: callback.id },
-    { headers: { 'Authorization': `${this.token}` } }
-  ).catch(() => {});
-  
-  return;
-}
-
-
-
+          
           if (phone) {
-            const db = require('./db');
-            await db.saveUser(userId, userId, phone);
-            await this.sendMessage(userId, `✅ Номер ${phone} успешно сохранен! Теперь вы будете получать уведомления о балансе.\n\nДля проверки баланса отправьте /balance`);
-            console.log(`📱 Номер сохранен для пользователя ${userId}: ${phone}`);
+            await db.saveUser(userId, chatId, phone);
+            
+            const message = `✅ *Номер ${phone} успешно сохранен!*\n\n` +
+              `Теперь вы можете управлять уведомлениями.`;
+            
+            const buttons = [
+              [{ text: "💰 Баланс", callback_data: "show_balance" }],
+              [{ text: "⚙️ Настройки", callback_data: "settings" }],
+              [{ text: "🔗 Пополнить счет", url: "https://benzigo.ru/accounting" }]
+            ];
+            
+            await this.sendMessageWithKeyboard(userId, message, buttons);
+            console.log(`📱 Номер сохранен для ${userId}: ${phone}`);
           } else {
-            await this.sendMessage(userId, '❌ Не удалось распознать номер. Пожалуйста, отправьте номер еще раз.');
-            console.log(`⚠️ Не удалось распознать номер от пользователя ${userId}`);
+            await this.sendMessage(userId, '❌ Не удалось распознать номер. Попробуйте еще раз.');
           }
           return;
         }
       }
     }
     
-    console.log(`ℹ️ Неизвестный тип сообщения от ${userId}`);
+    // Главное меню
+    if (text === '/start' || text === 'Меню' || text === '🔙 Главное меню') {
+      const user = await db.getUser(userId);
+      
+      if (user && user.phone_number) {
+        const message = `👋 *Главное меню*\n\nВыберите действие:`;
+        const buttons = [
+          [{ text: "💰 Баланс", callback_data: "show_balance" }],
+          [{ text: "⚙️ Настройки", callback_data: "settings" }],
+          [{ text: "🔗 Пополнить счет", url: "https://benzigo.ru/accounting" }]
+        ];
+        await this.sendMessageWithKeyboard(userId, message, buttons);
+      } else {
+        const message = `👋 *Добро пожаловать!*\n\nПожалуйста, отправьте ваш номер телефона:`;
+        const buttons = [
+          [{ text: "📱 Отправить номер", request_contact: true }]
+        ];
+        await this.sendMessageWithKeyboard(userId, message, buttons);
+      }
+      return;
+    }
+    
+    // Обработка callback-запросов (нажатия на кнопки)
+    if (update.update_type === 'callback_query') {
+      const callback = update.callback_query;
+      const userId = callback.user_id;
+      const callbackData = callback.data;
+      const chatId = callback.chat_id;
+      
+      console.log(`🔘 Нажата кнопка: ${callbackData} от ${userId}`);
+      
+      const user = await db.getUser(userId);
+      
+      switch (callbackData) {
+        case 'show_balance':
+          const balanceMsg = `💰 *Ваш баланс:* ${user?.balance || 0} руб.\n📊 *Порог:* ${user?.threshold || 500} руб.`;
+          const balanceButtons = [
+            [{ text: "🔄 Обновить", callback_data: "refresh_balance" }],
+            [{ text: "⚙️ Изменить порог", callback_data: "change_threshold" }],
+            [{ text: "🔙 Главное меню", callback_data: "main_menu" }]
+          ];
+          await this.sendMessageWithKeyboard(chatId, balanceMsg, balanceButtons);
+          break;
+          
+        case 'refresh_balance':
+          const newBalanceMsg = `💰 *Ваш баланс:* ${user?.balance || 0} руб.\n📊 *Порог:* ${user?.threshold || 500} руб.`;
+          const refreshButtons = [
+            [{ text: "🔄 Обновить", callback_data: "refresh_balance" }],
+            [{ text: "⚙️ Изменить порог", callback_data: "change_threshold" }],
+            [{ text: "🔙 Главное меню", callback_data: "main_menu" }]
+          ];
+          await this.sendMessageWithKeyboard(chatId, newBalanceMsg, refreshButtons);
+          break;
+          
+        case 'change_threshold':
+          await this.sendMessage(chatId, "✏️ Введите новый порог уведомления (в рублях):");
+          await db.setUserState(userId, 'waiting_for_threshold');
+          break;
+          
+        case 'settings':
+          const settingsMsg = `⚙️ *Настройки*\n\n` +
+            `📊 Текущий порог: ${user?.threshold || 500} руб.\n` +
+            `📱 Номер телефона: ${user?.phone_number || 'не указан'}`;
+          const settingsButtons = [
+            [{ text: "✏️ Изменить порог", callback_data: "change_threshold" }],
+            [{ text: "📱 Сменить номер", callback_data: "change_phone" }],
+            [{ text: "🔙 Главное меню", callback_data: "main_menu" }]
+          ];
+          await this.sendMessageWithKeyboard(chatId, settingsMsg, settingsButtons);
+          break;
+          
+        case 'main_menu':
+          const menuMsg = `👋 *Главное меню*\n\nВыберите действие:`;
+          const menuButtons = [
+            [{ text: "💰 Баланс", callback_data: "show_balance" }],
+            [{ text: "⚙️ Настройки", callback_data: "settings" }],
+            [{ text: "🔗 Пополнить счет", url: "https://benzigo.ru/accounting" }]
+          ];
+          await this.sendMessageWithKeyboard(chatId, menuMsg, menuButtons);
+          break;
+          
+        case 'change_phone':
+          await this.sendMessage(chatId, "📱 Отправьте новый номер телефона через кнопку контакта:");
+          await db.setUserState(userId, 'waiting_for_phone');
+          break;
+          
+        default:
+          console.log(`⚠️ Неизвестный callback: ${callbackData}`);
+      }
+      
+      // Отвечаем на callback
+      try {
+        await axios.post(
+          `${this.apiUrl}/callback/answer`,
+          { callback_query_id: callback.id },
+          { headers: { 'Authorization': `${this.token}` } }
+        );
+      } catch (e) {}
+      
+      return;
+    }
+    
+    // Обработка текстового ввода (для порога)
+    if (text && !text.startsWith('/')) {
+      const userState = await db.getUserState(userId);
+      
+      if (userState === 'waiting_for_threshold') {
+        const newThreshold = parseInt(text);
+        if (!isNaN(newThreshold) && newThreshold > 0) {
+          await db.updateThreshold(userId, newThreshold);
+          await this.sendMessage(userId, `✅ Порог изменен на ${newThreshold} руб.`);
+          await db.clearUserState(userId);
+          
+          // Показываем главное меню
+          const menuMsg = `👋 *Главное меню*`;
+          const menuButtons = [
+            [{ text: "💰 Баланс", callback_data: "show_balance" }],
+            [{ text: "⚙️ Настройки", callback_data: "settings" }],
+            [{ text: "🔗 Пополнить счет", url: "https://benzigo.ru/accounting" }]
+          ];
+          await this.sendMessageWithKeyboard(userId, menuMsg, menuButtons);
+        } else {
+          await this.sendMessage(userId, `❌ Введите корректное число.`);
+        }
+        return;
+      }
+    }
+    
+    console.log(`ℹ️ Неизвестное сообщение от ${userId}`);
   }
 
   // Запуск Long Polling
@@ -304,7 +310,7 @@ if (update.update_type === 'callback_query') {
       try {
         await this.getUpdates();
         consecutiveErrors = 0;
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
         consecutiveErrors++;
         console.error(`❌ Ошибка (${consecutiveErrors}):`, error.message);
