@@ -19,13 +19,20 @@ export default async function handler(req, res) {
 
   const { balance, threshold, userName } = req.body;
   
-  const BOT_TOKEN = process.env.MAX_BOT_TOKEN;
-  const USER_ID = '225236594'; // ID пользователя из логов (Иван Егоров)
+  // Используем BOT_TOKEN (не MAX_BOT_TOKEN)
+  const BOT_TOKEN = process.env.BOT_TOKEN;
+  const USER_ID = '225236594';
   const API_URL = 'https://platform-api.max.ru';
 
+  // Логируем для отладки
+  console.log('🔍 Проверка переменных:', {
+    hasBOT_TOKEN: !!BOT_TOKEN,
+    tokenPrefix: BOT_TOKEN ? BOT_TOKEN.substring(0, 20) : 'none'
+  });
+
   if (!BOT_TOKEN) {
-    console.error('❌ MAX_BOT_TOKEN не настроен');
-    return res.status(500).json({ error: 'MAX_BOT_TOKEN not configured' });
+    console.error('❌ BOT_TOKEN не настроен в Vercel');
+    return res.status(500).json({ error: 'BOT_TOKEN not configured' });
   }
 
   try {
@@ -36,10 +43,9 @@ export default async function handler(req, res) {
       (userName ? `👤 *Клиент:* ${userName}\n\n` : '') +
       `🔗 [Пополнить счет](https://benzigo.ru/accounting)`;
 
-    // Правильный endpoint согласно документации MAX [citation:5]
     const url = `${API_URL}/messages?user_id=${USER_ID}`;
     
-    console.log('📤 Отправка в MAX:', { url, messageLength: message.length });
+    console.log('📤 Отправка в MAX:', { url });
 
     const response = await fetch(url, {
       method: 'POST',
@@ -49,18 +55,18 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         text: message,
-        format: 'markdown'  // Поддерживается markdown форматирование [citation:5]
+        format: 'markdown'
       })
     });
 
     const result = await response.json();
-    console.log('📨 Ответ MAX API:', { status: response.status, result });
+    console.log('📨 Ответ:', { status: response.status, result });
 
     if (response.ok) {
       console.log('✅ Уведомление в МАХ отправлено');
       res.status(200).json({ success: true, result });
     } else {
-      console.error('❌ Ошибка MAX API:', result);
+      console.error('❌ Ошибка:', result);
       res.status(500).json({ error: 'MAX API error', details: result });
     }
   } catch (error) {
