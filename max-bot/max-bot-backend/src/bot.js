@@ -27,30 +27,31 @@ class MaxBot {
     }
   }
 
-  // Рабочая кнопка отправки номера телефона
+  // Кнопка через reply_markup
   async sendContactButton(chatId, text) {
     try {
+      const payload = {
+        text: text,
+        format: 'markdown',
+        reply_markup: {
+          keyboard: [
+            [
+              {
+                text: "📱 Отправить номер телефона",
+                request_contact: true
+              }
+            ]
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        }
+      };
+      
+      console.log('📤 Отправка кнопки пользователю:', chatId);
+      
       const response = await axios.post(
         `${this.apiUrl}/messages?user_id=${chatId}`,
-        {
-          text: text,
-          format: 'markdown',
-          attachments: [
-            {
-              type: 'keyboard',
-              payload: {
-                buttons: [
-                  [
-                    {
-                      text: "📱 Отправить номер телефона",
-                      type: "request_contact"
-                    }
-                  ]
-                ]
-              }
-            }
-          ]
-        },
+        payload,
         {
           headers: {
             'Authorization': `${this.token}`,
