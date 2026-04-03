@@ -13,7 +13,7 @@ class MaxBot {
     this.handlers.set(command, handler);
   }
 
-  // Всегда отправляем сообщение используя user_id
+  // Отправка сообщения пользователю по user_id
   async sendMessage(userId, text, options = {}) {
     if (!userId) {
       console.error('❌ Ошибка: userId не указан');
@@ -50,6 +50,7 @@ class MaxBot {
     }
   }
 
+  // Создание inline клавиатуры
   createInlineKeyboard(buttons) {
     const keyboardRows = [];
     
@@ -67,6 +68,8 @@ class MaxBot {
           button.url = btn.url;
         } else if (btn.type === 'request_contact') {
           button.type = 'request_contact';
+        } else if (btn.type === 'request_geo') {
+          button.type = 'request_geo_location';
         }
         
         buttonRow.push(button);
@@ -82,6 +85,7 @@ class MaxBot {
     };
   }
 
+  // Отправка кнопки запроса контакта
   async sendContactRequest(userId, text) {
     const keyboard = this.createInlineKeyboard([
       [{ text: "📱 Отправить номер телефона", type: "request_contact" }]
@@ -90,6 +94,7 @@ class MaxBot {
     return this.sendMessage(userId, text, { attachments: [keyboard] });
   }
 
+  // Отправка главного меню
   async sendMainMenu(userId) {
     const keyboard = this.createInlineKeyboard([
       [
@@ -104,11 +109,15 @@ class MaxBot {
     return this.sendMessage(userId, "👋 *Главное меню*\n\nВыберите действие:", { attachments: [keyboard] });
   }
 
+  // Получение обновлений
   async getUpdates() {
     try {
       const response = await axios.get(
         `${this.apiUrl}/updates`,
-        { params: { offset: this.lastUpdateId + 1, limit: 100 }, headers: { 'Authorization': `${this.token}` } }
+        { 
+          params: { offset: this.lastUpdateId + 1, limit: 100 }, 
+          headers: { 'Authorization': `${this.token}` } 
+        }
       );
       
       const updates = response.data.updates || [];
@@ -121,27 +130,27 @@ class MaxBot {
     }
   }
 
+  // Обработка обновления
   async processUpdate(update) {
     console.log('📨 Получено обновление тип:', update.update_type);
     
     const db = require('./db');
     
-    // Запуск бота
+    // bot_started - пользователь запустил бота
     if (update.update_type === 'bot_started') {
       const userId = update.user_id;
-      const chatId = update.chat_id;
       
-      console.log(`👤 Бот запущен пользователем: ${userId}, chat_id: ${chatId}`);
-      await db.saveUser(userId, chatId);
+      console.log(`👤 Бот запущен пользователем: ${userId}`);
+      await db.saveUser(userId, null);
       
       const startHandler = this.handlers.get('start');
       if (startHandler) {
-        await startHandler({ userId, chatId });
+        await startHandler({ userId });
       }
       return;
     }
     
-    // Обработка callback запросов
+    // message_callback - нажатие на кнопку
     if (update.update_type === 'message_callback') {
       const callback = update.callback;
       const userId = callback.user_id;
@@ -161,13 +170,16 @@ class MaxBot {
         }
       }
       
+      // Ответ на callback (убираем индикатор загрузки)
       try {
         await axios.post(
           `${this.apiUrl}/callback/answer`,
           { callback_query_id: update.callback_id },
           { headers: { 'Authorization': `${this.token}` } }
         );
-      } catch (e) {}
+      } catch (e) {
+        console.log('⚠️ Не удалось ответить на callback:', e.message);
+      }
       
       return;
     }
@@ -181,7 +193,7 @@ class MaxBot {
     
     console.log(`📨 Сообщение от пользователя ${userId}: "${text || '[контакт]'}"`);
     
-    // Обработка контакта
+    // Обработка контакта (отправка номера телефона)
     if (msg.body?.attachments) {
       for (const att of msg.body.attachments) {
         if (att.type === 'contact' && att.payload?.vcf_info) {
@@ -227,17 +239,52 @@ class MaxBot {
       }
       return;
     }
+    
+    // Обработка текстового ввода (например, для изменения порога)
+    if (text && !text.startsWith('/')) {
+      const userState = await db.getUserState(userId);
+      
+      if (userState === 'waiting_for_threshold') {
+        const newThreshold = parseInt(text);
+        if (!isNaN(newThreshold) && newThreshold > 0) {
+          await db.updateThreshold(userId, newThreshold);
+          await this.sendMessage(userId, `✅ Порог уведомления изменен на ${newThreshold} руб.`);
+          await db.clearUserState(userId);
+          await this.sendMainMenu(userId);
+        } else {
+          await this.sendMessage(userId, `❌ Пожалуйста, введите корректное число.`);
+        }
+        return;
+      }
+    }
   }
 
+  // Запуск бота
   async start() {
-    console.log('🤖 Бот запущен');
+    console.log('🤖 Бот запущен, ожидание сообщений...');
+    let consecutiveErrors = 0;
+    
     while (true) {
       try {
         await this.getUpdates();
+        consecutiveErrors = 0;
         await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
-        console.error('❌ Ошибка:', error.message);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        consecutiveErrors++;
+        console.error(`❌ Ошибка (${consecutiveErrors}):`, error.message);
+        
+        if (error.response?.status === 429) {
+          const waitTime = Math.min(10000 * Math.pow(2, consecutiveErrors - 1), 60000);
+          console.log(`⚠️ Слишком много запросов. Пауза ${waitTime / 1000} сек...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else if (error.response?.status === 404) {
+          console.error('❌ Эндпоинт /updates не найден. Проверьте API_URL в .env');
+          await new Promise(resolve => setTimeout(resolve, 30000));
+        } else {
+          const waitTime = Math.min(10000 * consecutiveErrors, 60000);
+          console.log(`🔄 Повторная попытка через ${waitTime / 1000} сек...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
       }
     }
   }
