@@ -207,7 +207,7 @@ class MaxBot {
           }
           
           if (phone) {
-            await db.saveUser(userId, null, phone);
+            await db.BotUser(userId, null, phone);
             
             const contactHandler = this.handlers.get('contact');
             if (contactHandler) {
@@ -222,7 +222,7 @@ class MaxBot {
     
     // Команда /start
     if (text === '/start') {
-      await db.saveUser(userId, null);
+      await db.saveBotUser(userId, null);
       
       const startHandler = this.handlers.get('start');
       if (startHandler) {
