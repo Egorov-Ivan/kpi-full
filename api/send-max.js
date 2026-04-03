@@ -19,17 +19,21 @@ export default async function handler(req, res) {
 
   const { balance, threshold, userName } = req.body;
   
-  // Данные из .env
+  // Используем правильные имена переменных из Vercel
   const BOT_TOKEN = process.env.MAX_BOT_TOKEN;
-  const CHAT_ID = process.env.CHAT_ID || '12852993';
-  const API_URL = process.env.API_URL || 'https://platform-api.max.ru';
+  const CHAT_ID = process.env.MAX_CHAT_ID;  // ← исправлено
+  const API_URL = 'https://platform-api.max.ru';
   
-  // ID пользователя в MAX (из логов)
-  const MAX_USER_ID = '225236594';
+  const MAX_USER_ID = '225236594'; // ID пользователя из логов
 
   if (!BOT_TOKEN) {
     console.error('❌ MAX_BOT_TOKEN не настроен');
     return res.status(500).json({ error: 'MAX_BOT_TOKEN not configured' });
+  }
+
+  if (!CHAT_ID) {
+    console.error('❌ MAX_CHAT_ID не настроен');
+    return res.status(500).json({ error: 'MAX_CHAT_ID not configured' });
   }
 
   try {
@@ -43,23 +47,20 @@ export default async function handler(req, res) {
     console.log('📤 Отправка в MAX API:', { 
       url: `${API_URL}/v1/messages/send`,
       chatId: CHAT_ID,
-      userId: MAX_USER_ID,
-      message: message.substring(0, 100) + '...'
+      userId: MAX_USER_ID
     });
     
-    // Реальный запрос к MAX API
+    // Пробуем разные возможные форматы запроса
+    // Формат 1: с chat_id
     const response = await fetch(`${API_URL}/v1/messages/send`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${BOT_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         chat_id: CHAT_ID,
-        user_id: MAX_USER_ID,
-        text: message,
-        parse_mode: 'Markdown'
+        text: message
       })
     });
     
