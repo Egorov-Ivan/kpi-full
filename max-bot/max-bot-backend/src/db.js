@@ -4,14 +4,13 @@ const path = require('path');
 
 const db = new sqlite3.Database(path.join(__dirname, '../users.db'));
 
-// Создаем таблицы (без NOT NULL для max_chat_id)
+// Создаем таблицы
 db.serialize(() => {
   // Таблица пользователей бота
   db.run(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS bot_users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       max_user_id INTEGER UNIQUE NOT NULL,
-      max_chat_id INTEGER,
       phone_number TEXT,
       balance REAL DEFAULT 0,
       threshold REAL DEFAULT 500,
@@ -20,53 +19,73 @@ db.serialize(() => {
     )
   `);
   
-  // Таблица CRM пользователей
+  // Таблица клиентов CRM
   db.run(`
-    CREATE TABLE IF NOT EXISTS crm_users (
+    CREATE TABLE IF NOT EXISTS crm_clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      phone_number TEXT UNIQUE NOT NULL,
-      account_id TEXT NOT NULL,
-      company_name TEXT,
+      client_id TEXT UNIQUE NOT NULL,
+      company_name TEXT NOT NULL,
       balance REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
-    if (err) {
-      console.error('❌ Ошибка создания crm_users:', err.message);
-    } else {
-      console.log('✅ Таблица crm_users создана/проверена');
-    }
+    if (!err) console.log('✅ Таблица crm_clients готова');
   });
   
-  // Добавляем моковые данные в CRM (если таблица пустая)
-  db.get('SELECT COUNT(*) as count FROM crm_users', (err, row) => {
+  // Таблица учетных записей CRM
+  db.run(`
+    CREATE TABLE IF NOT EXISTS crm_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone_number TEXT UNIQUE NOT NULL,
+      username TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES crm_clients(client_id)
+    )
+  `, (err) => {
+    if (!err) console.log('✅ Таблица crm_users готова');
+  });
+  
+  // Добавляем моковые данные в CRM (если таблицы пустые)
+  db.get('SELECT COUNT(*) as count FROM crm_clients', (err, row) => {
     if (!err && row && row.count === 0) {
+      // Добавляем клиентов
       db.run(`
-        INSERT INTO crm_users (phone_number, account_id, company_name, balance)
+        INSERT INTO crm_clients (client_id, company_name, balance)
         VALUES 
-          ('79939819869', 'ACC001', 'ИП Руденко С.В.', 339.07),
-          ('79123456789', 'ACC002', 'ООО Тест', 1250.50),
-          ('79234567890', 'ACC003', 'ИП Иванов', 89.30)
-      `, (err2) => {
-        if (!err2) console.log('✅ Добавлены моковые данные в crm_users');
-      });
+          ('ACC001', 'ИП Руденко С.В.', 339.07),
+          ('ACC002', 'ООО Тест', 1250.50),
+          ('ACC003', 'ИП Иванов', 89.30)
+      `);
+      
+      // Добавляем учетные записи
+      db.run(`
+        INSERT INTO crm_users (phone_number, username, client_id)
+        VALUES 
+          ('79939819869', 'Иван Егоров', 'ACC001'),
+          ('79123456789', 'Петр Сидоров', 'ACC002'),
+          ('79234567890', 'Игорь Иванов', 'ACC003')
+      `);
+      
+      console.log('✅ Добавлены моковые данные в CRM');
     }
   });
   
   console.log('✅ База данных инициализирована');
 });
 
-// Сохранить пользователя (max_chat_id может быть NULL)
-function saveUser(userId, chatId = null, phoneNumber = null) {
+// ============ BOT USERS ============
+
+// Сохранить пользователя бота
+function saveBotUser(userId, phoneNumber = null) {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare(`
-      INSERT INTO users (max_user_id, max_chat_id, phone_number)
-      VALUES (?, ?, ?)
+      INSERT INTO bot_users (max_user_id, phone_number)
+      VALUES (?, ?)
       ON CONFLICT(max_user_id) DO UPDATE SET
-        max_chat_id = COALESCE(?, max_chat_id),
         phone_number = COALESCE(?, phone_number)
     `);
-    stmt.run(userId, chatId, phoneNumber, chatId, phoneNumber, function(err) {
+    stmt.run(userId, phoneNumber, phoneNumber, function(err) {
       if (err) reject(err);
       else resolve(this);
     });
@@ -74,11 +93,21 @@ function saveUser(userId, chatId = null, phoneNumber = null) {
   });
 }
 
-// Обновить баланс
-function updateBalance(userId, balance) {
+// Получить пользователя бота
+function getBotUser(userId) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM bot_users WHERE max_user_id = ?', [userId], (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+}
+
+// Обновить баланс пользователя бота
+function updateBotBalance(userId, balance) {
   return new Promise((resolve, reject) => {
     db.run(
-      'UPDATE users SET balance = ? WHERE max_user_id = ?',
+      'UPDATE bot_users SET balance = ? WHERE max_user_id = ?',
       [balance, userId],
       function(err) {
         if (err) reject(err);
@@ -92,7 +121,7 @@ function updateBalance(userId, balance) {
 function updateThreshold(userId, threshold) {
   return new Promise((resolve, reject) => {
     db.run(
-      'UPDATE users SET threshold = ? WHERE max_user_id = ?',
+      'UPDATE bot_users SET threshold = ? WHERE max_user_id = ?',
       [threshold, userId],
       function(err) {
         if (err) reject(err);
@@ -102,11 +131,11 @@ function updateThreshold(userId, threshold) {
   });
 }
 
-// Сохранить состояние пользователя
+// Сохранить состояние
 function setUserState(userId, state) {
   return new Promise((resolve, reject) => {
     db.run(
-      'UPDATE users SET state = ? WHERE max_user_id = ?',
+      'UPDATE bot_users SET state = ? WHERE max_user_id = ?',
       [state, userId],
       function(err) {
         if (err) reject(err);
@@ -116,21 +145,21 @@ function setUserState(userId, state) {
   });
 }
 
-// Получить состояние пользователя
+// Получить состояние
 function getUserState(userId) {
   return new Promise((resolve, reject) => {
-    db.get('SELECT state FROM users WHERE max_user_id = ?', [userId], (err, row) => {
+    db.get('SELECT state FROM bot_users WHERE max_user_id = ?', [userId], (err, row) => {
       if (err) reject(err);
       else resolve(row?.state || null);
     });
   });
 }
 
-// Очистить состояние пользователя
+// Очистить состояние
 function clearUserState(userId) {
   return new Promise((resolve, reject) => {
     db.run(
-      'UPDATE users SET state = NULL WHERE max_user_id = ?',
+      'UPDATE bot_users SET state = NULL WHERE max_user_id = ?',
       [userId],
       function(err) {
         if (err) reject(err);
@@ -140,33 +169,67 @@ function clearUserState(userId) {
   });
 }
 
-// Получить пользователя
-function getUser(userId) {
+// ============ CRM ============
+
+// Поиск учетной записи в CRM по номеру телефона
+function findCrmUserByPhone(phoneNumber) {
   return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM users WHERE max_user_id = ?', [userId], (err, row) => {
+    db.get(`
+      SELECT u.*, c.company_name, c.balance 
+      FROM crm_users u
+      JOIN crm_clients c ON u.client_id = c.client_id
+      WHERE u.phone_number = ?
+    `, [phoneNumber], (err, row) => {
       if (err) reject(err);
       else resolve(row);
     });
   });
 }
 
-// Получить всех пользователей
-function getAllUsers() {
+// Получить клиента по ID
+function getCrmClientByClientId(clientId) {
   return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM users', (err, rows) => {
+    db.get('SELECT * FROM crm_clients WHERE client_id = ?', [clientId], (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+}
+
+// Получить всех клиентов
+function getAllCrmClients() {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM crm_clients', (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
     });
   });
 }
 
+// Обновить баланс клиента в CRM
+function updateCrmClientBalance(clientId, balance) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE crm_clients SET balance = ? WHERE client_id = ?',
+      [balance, clientId],
+      function(err) {
+        if (err) reject(err);
+        else resolve(this);
+      }
+    );
+  });
+}
+
 module.exports = { 
-  saveUser, 
-  updateBalance, 
+  saveBotUser,
+  getBotUser,
+  updateBotBalance,
   updateThreshold,
   setUserState,
   getUserState,
   clearUserState,
-  getUser, 
-  getAllUsers 
+  findCrmUserByPhone,
+  getCrmClientByClientId,
+  getAllCrmClients,
+  updateCrmClientBalance
 };
