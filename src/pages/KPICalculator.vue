@@ -1042,26 +1042,56 @@ const bufferStats = computed(() => {
 const managersStats = computed(() => {
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
-  return bufferService.getManagersStats(year, month);
+  const monthStr = month.toString().padStart(2, '0');
+  
+  // Фильтруем операции из store за выбранный месяц
+  const filteredOps = store.bufferData.filter(op => {
+    if (!op.date) return false;
+    const [day, opMonth, opYear] = op.date.split('-');
+    return parseInt(opYear) === year && parseInt(opMonth) === month;
+  });
+  
+  console.log(`📊 Фильтрация за ${year}-${monthStr}: ${filteredOps.length} операций из ${store.bufferData.length}`);
+  
+  // Группируем по managerId
+  const stats = new Map();
+  
+  filteredOps.forEach(op => {
+    const managerId = op.managerId;
+    if (!managerId) return;
+    
+    if (!stats.has(managerId)) {
+      stats.set(managerId, {
+        manager: op.manager,
+        managerId: managerId,
+        totalAmount: 0,
+        noVatAmount: 0,
+        vatAmount: 0,
+        operationsCount: 0,
+        uniqueClients: new Set()
+      });
+    }
+    
+    const stat = stats.get(managerId);
+    stat.totalAmount += op.amount;
+    stat.operationsCount += 1;
+    stat.uniqueClients.add(op.client);
+    
+    if (op.clientType === 'NO_VAT') {
+      stat.noVatAmount += op.amount;
+    } else {
+      stat.vatAmount += op.amount;
+    }
+  });
+  
+  // Преобразуем Set в число
+  for (const [, stat] of stats.entries()) {
+    stat.uniqueClients = stat.uniqueClients.size;
+  }
+  
+  return stats;
 });
 
-// Актуальные планы пополнений
-const plans: Record<string, number> = {
-  'crm_7': 18500000,   // Федосеенко Дана
-  'crm_18': 6150000,   // Воропаев Степан
-  'crm_21': 6500000,   // Храмов Дмитрий
-  'crm_22': 3000000,   // Сартаков Роман
-  'crm_24': 3250000,   // Архипова Анна
-  'crm_12': 22000000,  // Кошарный Евгений (Руководитель ОП)
-  'crm_32': 1200000,   // Масленников Никита
-  'crm_33': 300000,    // Массаков Даниил
-  'crm_34': 300000,    // Марушкевич Иван
-  'crm_36': 300000,    // Кухарь Роман
-  'crm_37': 300000,    // Самедов Али
-  'crm_40': 300000,    // Овсянников Артем
-  'crm_41': 300000,    // Сысоева Кристина
-  'crm_42': 300000,    // Морева Кристина
-};
 
 // Проверка разрешена ли ставка для менеджера
 const isRateAllowed = (manager: Manager, rateId: string): boolean => {
@@ -1328,7 +1358,7 @@ const managerRatings = computed(() => {
       }
     }
     
-    const plan = plans[manager.id] || 80000;
+    const plan = manager.plan || 80000;
     const fact = totalAmount;
     const planPercent = plan > 0 ? (fact / plan) * 100 : 0;
     
