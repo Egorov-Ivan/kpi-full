@@ -8,7 +8,7 @@ export interface BufferOperation {
   legalEntity: string;
   managerId?: string;
   manager?: string;
-  managerName?: string;  // ← добавляем managerName
+  managerName?: string;
   operationId?: string;
 }
 
@@ -77,9 +77,10 @@ class BufferService {
     }
   }
 
-  // НОВЫЙ МЕТОД: обновить данные в bufferService
+  // НОВЫЙ МЕТОД: обновить данные в bufferService из API
   updateOperations(operations: BufferOperation[]) {
     this.operations = operations;
+    this.initialized = true;
     console.log(`✅ BufferService обновлен: ${this.operations.length} записей`);
   }
 
@@ -123,15 +124,15 @@ class BufferService {
   const clientSet = new Map<string, Set<string>>();
   
   operations.forEach(op => {
-    // Определяем имя менеджера (приоритет: managerName > manager)
-    const managerName = op.managerName || op.manager;
-    if (!managerName) return;
-    
+    // 🔥 ГРУППИРУЕМ ПО managerId (а не по имени)
     const managerId = op.managerId;
-    const key = managerId || managerName; // используем ID как ключ, если есть
+    if (!managerId) return;
     
-    if (!stats.has(key)) {
-      stats.set(key, {
+    // Имя менеджера берём из op.manager или op.managerName
+    const managerName = op.manager || op.managerName || `Менеджер ${managerId}`;
+    
+    if (!stats.has(managerId)) {
+      stats.set(managerId, {
         manager: managerName,
         managerId: managerId,
         totalAmount: 0,
@@ -140,11 +141,10 @@ class BufferService {
         operationsCount: 0,
         uniqueClients: 0
       });
-      clientSet.set(key, new Set());
+      clientSet.set(managerId, new Set());
     }
     
-    const stat = stats.get(key)!;
-    
+    const stat = stats.get(managerId)!;
     stat.totalAmount += op.amount;
     stat.operationsCount += 1;
     
@@ -155,13 +155,13 @@ class BufferService {
     }
     
     if (op.client) {
-      clientSet.get(key)!.add(op.client);
+      clientSet.get(managerId)!.add(op.client);
     }
   });
   
   // Обновляем количество уникальных клиентов
-  for (const [key, stat] of stats.entries()) {
-    stat.uniqueClients = clientSet.get(key)?.size || 0;
+  for (const [managerId, stat] of stats.entries()) {
+    stat.uniqueClients = clientSet.get(managerId)?.size || 0;
   }
   
   return stats;
