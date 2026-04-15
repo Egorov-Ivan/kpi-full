@@ -1327,8 +1327,6 @@ const getBonusStatusColor = (status: string): string => {
 
 // Рейтинги менеджеров
 const managerRatings = computed(() => {
-  const year = parseInt(selectedYear.value);
-  const month = parseInt(selectedMonth.value);
   const bufferStats = managersStats.value;
   
   return filteredManagers.value.map((manager) => {
@@ -1338,24 +1336,14 @@ const managerRatings = computed(() => {
     let vatAmount = 0;
     let uniqueClients = 0;
     
-    // Собираем все имена для поиска
-    const searchNames = [
-      manager.displayName,
-      ...(manager.aliases || [])
-    ].map(n => n?.toLowerCase().trim()).filter(Boolean);
-    
-    // Ищем точное совпадение в статистике буфера
-    for (const [bufferManager, data] of bufferStats.entries()) {
-      const bufferManagerLower = bufferManager.toLowerCase().trim();
-      
-      if (searchNames.some(name => name === bufferManagerLower)) {
-        totalAmount = data.totalAmount;
-        noVatAmount = data.noVatAmount;
-        vatAmount = data.vatAmount;
-        operationsCount = data.operationsCount;
-        uniqueClients = data.uniqueClients;
-        break;
-      }
+    // 🔥 ИСПРАВЛЕНО: ищем по managerId, а не по имени
+    const statData = bufferStats.get(manager.id);
+    if (statData) {
+      totalAmount = statData.totalAmount;
+      noVatAmount = statData.noVatAmount;
+      vatAmount = statData.vatAmount;
+      operationsCount = statData.operationsCount;
+      uniqueClients = statData.uniqueClients;
     }
     
     const plan = manager.plan || 80000;
@@ -1366,25 +1354,17 @@ const managerRatings = computed(() => {
     const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
     const maintenancePayment = noVatAmount * rate;
     
-    // KPI менеджера - ИСПОЛЬЗУЕМ СОХРАНЕННОЕ ЗНАЧЕНИЕ
+    // KPI менеджера
     let managerKpi = 0;
-    
-    // Если есть сохраненное значение, используем его
     if (managerKpiValues.value[manager.id] !== undefined) {
       managerKpi = managerKpiValues.value[manager.id];
-    } 
-    // Иначе если это текущий открытый менеджер, вычисляем
-    else if (selectedManagerDetails.value?.id === manager.id) {
+    } else if (selectedManagerDetails.value?.id === manager.id) {
       managerKpi = kpiClientDetails.value.active.reduce((sum, client) => sum + client.kpiAmount, 0);
-      // Сохраняем вычисленное значение
       managerKpiValues.value[manager.id] = managerKpi;
       saveStateToStorage();
     }
     
-    // KPI VAT из ручного ввода
     const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
-    
-    // Общая выплата
     const payment = maintenancePayment + managerKpi + kpiVatAmount;
     
     return {
