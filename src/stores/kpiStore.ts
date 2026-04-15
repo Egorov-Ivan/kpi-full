@@ -78,15 +78,15 @@ export const useKpiStore = defineStore('kpi', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
 
-  // ========== ЗАГРУЗКА МЕНЕДЖЕРОВ (API /managers/list/) ==========
+  // ========== ЗАГРУЗКА МЕНЕДЖЕРОВ (через прокси) ==========
   const loadManagers = async () => {
     loading.value = true;
     error.value = null;
     
     try {
-      console.log('📡 Запрос к API /managers/list/');
+      console.log('📡 Запрос к прокси /api/proxy/managers/list/');
       
-      const response = await fetch('https://api.benzigo.ru/managers/list/', {
+      const response = await fetch('/api/proxy/managers/list/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,6 @@ export const useKpiStore = defineStore('kpi', () => {
       const data = await response.json();
       
       if (data.status === 'ok' && data.managers && Array.isArray(data.managers)) {
-        // Преобразуем в формат, который ожидает калькулятор
         managers.value = data.managers.map((m: ApiManager) => ({
           id: String(m.managerId),
           displayName: m.managerName || m.fullName || `Менеджер ${m.managerId}`,
@@ -132,12 +131,12 @@ export const useKpiStore = defineStore('kpi', () => {
     }
   };
 
-  // ========== ЗАГРУЗКА ПЛАНОВ (API /managers/plans/) ==========
+  // ========== ЗАГРУЗКА ПЛАНОВ (через прокси) ==========
   const loadPlans = async (year: number, month: number) => {
     try {
-      console.log(`📡 Запрос к API /managers/plans/: year=${year}, month=${month}`);
+      console.log(`📡 Запрос к прокси /api/proxy/managers/plans/: year=${year}, month=${month}`);
       
-      const response = await fetch('https://api.benzigo.ru/managers/plans/', {
+      const response = await fetch('/api/proxy/managers/plans/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +152,6 @@ export const useKpiStore = defineStore('kpi', () => {
       const data = await response.json();
       
       if (data.status === 'ok' && data.plans && Array.isArray(data.plans)) {
-        // Сохраняем планы в managers (добавляем поле plan)
         data.plans.forEach((plan: ApiPlan) => {
           const manager = managers.value.find(m => m.id === String(plan.managerId));
           if (manager) {
@@ -219,13 +217,12 @@ export const useKpiStore = defineStore('kpi', () => {
     }
   };
 
-  // ========== ЗАГРУЗКА ОПЕРАЦИЙ (API /managers/replenishments/) ==========
+  // ========== ЗАГРУЗКА ОПЕРАЦИЙ (через прокси) ==========
   const loadBufferData = async (year?: number, month?: number) => {
     loading.value = true;
     error.value = null;
     
     try {
-      // Формируем даты в формате DD-MM-YYYY
       let dateStart: string | null = null;
       let dateEnd: string | null = null;
       
@@ -240,9 +237,9 @@ export const useKpiStore = defineStore('kpi', () => {
         body.dateEnd = dateEnd;
       }
       
-      console.log('📡 Запрос к API /managers/replenishments/:', body);
+      console.log('📡 Запрос к прокси /api/proxy/managers/replenishments/:', body);
       
-      const response = await fetch('https://api.benzigo.ru/managers/replenishments/', {
+      const response = await fetch('/api/proxy/managers/replenishments/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -258,7 +255,6 @@ export const useKpiStore = defineStore('kpi', () => {
       const data = await response.json();
       
       if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
-        // Преобразуем в формат, который ожидает bufferService
         bufferData.value = data.replenishments.map((item: ApiReplenishment) => ({
           date: item.date,
           amount: parseFloat(item.amount),
@@ -367,7 +363,6 @@ export const useKpiStore = defineStore('kpi', () => {
 
   // ========== RETURN ==========
   return {
-    // Состояние
     managers,
     maintenanceRates,
     kpiRates,
@@ -376,7 +371,6 @@ export const useKpiStore = defineStore('kpi', () => {
     loading,
     error,
     
-    // Методы загрузки
     loadManagers,
     loadPlans,
     loadMaintenanceRates,
@@ -384,16 +378,11 @@ export const useKpiStore = defineStore('kpi', () => {
     loadBufferData,
     loadBonusHistory,
     
-    // Хелперы
     getManagerById,
     getManagerByName,
-    
-    // Методы для работы с буфером
     getAllBufferOperations,
     getBufferOperationsByManager,
     getBufferOperationsByPeriod,
-    
-    // Методы для работы с бонусной историей
     getBonusHistoryForManager,
     getBonusStatusForClient
   };
