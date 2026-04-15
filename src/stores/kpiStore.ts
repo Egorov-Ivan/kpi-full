@@ -1,292 +1,322 @@
 // src/stores/kpiStore.ts
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { getReplenishments, type Replenishment } from '@/services/crmApi.mock';
-import { bufferService, type BufferOperation } from '@/services/bufferService'; // ← добавлен импорт bufferService
+
+// Получаем токен из переменных окружения
+const ADR_TOKEN = import.meta.env.VITE_CRM_API_TOKEN;
+
+// Интерфейсы для типизации
+interface Manager {
+  id: string;
+  displayName: string;
+  role: string;
+  aliases: string[];
+  plan?: number;
+  originalManager?: any;
+}
+
+interface MaintenanceRate {
+  id: string;
+  value: number;
+  label: string;
+}
+
+interface KpiRate {
+  id: string;
+  value: number;
+  label: string;
+}
+
+interface BufferOperation {
+  date: string;
+  amount: number;
+  client: string;
+  clientType: 'VAT' | 'NO_VAT';
+  legalEntity: string;
+  managerId: string;
+  manager: string;
+  operationId?: string;
+}
+
+interface BonusHistory {
+  client: string;
+  currentManager?: string;
+  manager?: string;
+  status?: string;
+  firstFillDate?: string;
+}
+
+interface ApiManager {
+  managerId: string;
+  fullName: string;
+  managerName: string;
+  role: string;
+}
+
+interface ApiPlan {
+  managerId: string;
+  amount: string;
+}
+
+interface ApiReplenishment {
+  managerId: string;
+  date: string;
+  amount: string;
+  client: string;
+  clientType: 'VAT' | 'NO_VAT';
+  legalEntity: string;
+  id?: string;
+}
 
 export const useKpiStore = defineStore('kpi', () => {
-  // ========== СОСТОЯНИЕ ==========
-  const managers = ref<any[]>([]);
-  const maintenanceRates = ref<any[]>([]);
-  const kpiRates = ref<any[]>([]);
-  const bufferData = ref<any[]>([]);
-  const bonusHistory = ref<any[]>([]);
+  // Состояние
+  const managers = ref<Manager[]>([]);
+  const maintenanceRates = ref<MaintenanceRate[]>([]);
+  const kpiRates = ref<KpiRate[]>([]);
+  const bufferData = ref<BufferOperation[]>([]);
+  const bonusHistory = ref<BonusHistory[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
-  
-  // ========== CRM СОСТОЯНИЕ ==========
-  const crmData = ref<Replenishment[]>([]);
-  const crmLoading = ref(false);
-  const crmError = ref<string | null>(null);
-  const useCrmSource = ref(true); // true = данные из CRM, false = из локального buffer.json
 
-  // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-
-  // Конвертация CRM данных в формат bufferData
-  const convertCrmToBufferFormat = (crmData: Replenishment[]): BufferOperation[] => {
-  return crmData.map(item => ({
-    date: item.date,
-    amount: item.amount,
-    client: item.client,
-    legalEntity: item.legalEntity,
-    manager: item.managerName,        // ← managerName → manager
-    managerName: item.managerName,    // ← для совместимости
-    managerId: item.managerId,
-    clientType: item.clientType,
-    operationType: 'replenishment'
-  }));
-};
-
-  // ========== МЕТОДЫ ==========
-
-  // Загрузка менеджеров
+  // ========== ЗАГРУЗКА МЕНЕДЖЕРОВ (API /managers/list/) ==========
   const loadManagers = async () => {
     loading.value = true;
-    try {
-      const response = await fetch('/data/managers.json');
-      const data = await response.json();
-      
-      if (data.managers && Array.isArray(data.managers)) {
-        managers.value = data.managers;
-        console.log(`✅ Менеджеры загружены: ${managers.value.length}`);
-      } else if (Array.isArray(data)) {
-        managers.value = data;
-        console.log(`✅ Менеджеры загружены: ${managers.value.length}`);
-      } else {
-        console.warn('⚠️ Неожиданный формат managers.json:', data);
-        managers.value = [];
-      }
-      
-      if (data.maintenanceRates) {
-        maintenanceRates.value = data.maintenanceRates;
-      }
-      if (data.kpiRates) {
-        kpiRates.value = data.kpiRates;
-      }
-      
-    } catch (error) {
-      console.error('❌ Ошибка загрузки менеджеров:', error);
-      managers.value = [
-        { id: "crm_7", displayName: "Федосеенко Дана", role: "Старший Менеджер", aliases: ["Дана"], allowedMaintenanceRates: ["m015", "m020", "m030", "m150"] },
-        { id: "crm_18", displayName: "Воропаев Степан", role: "Менеджер", aliases: ["Степан"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_21", displayName: "Храмов Дмитрий", role: "Менеджер", aliases: ["Дмитрий"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_22", displayName: "Сартаков Роман", role: "Менеджер", aliases: ["Роман"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_24", displayName: "Архипова Анна", role: "Менеджер", aliases: ["Анна"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_12", displayName: "Кошарный Евгений", role: "Руководитель ОП", aliases: ["Евгений"], allowedMaintenanceRates: ["m015", "m020", "m030"] },
-        { id: "crm_32", displayName: "Масленников Никита", role: "Менеджер", aliases: ["Никита"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_33", displayName: "Массаков Даниил", role: "Менеджер", aliases: ["Даниил"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_34", displayName: "Марушкевич Иван", role: "Менеджер", aliases: ["Иван"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_36", displayName: "Кухарь Роман", role: "Менеджер", aliases: ["Роман"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_37", displayName: "Самедов Али", role: "Менеджер", aliases: ["Али"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_40", displayName: "Овсянников Артем", role: "Менеджер", aliases: ["Артем"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_41", displayName: "Сысоева Кристина", role: "Менеджер", aliases: ["Кристина"], allowedMaintenanceRates: ["m015", "m020"] },
-        { id: "crm_42", displayName: "Морева Кристина", role: "Менеджер", aliases: ["Кристина"], allowedMaintenanceRates: ["m015", "m020"] },
-      ];
-    } finally {
-      loading.value = false;
-    }
-  };
-
-  // Загрузка ставок ведения
-  const loadMaintenanceRates = async () => {
-    if (maintenanceRates.value.length > 0) {
-      return maintenanceRates.value;
-    }
+    error.value = null;
     
     try {
-      const response = await fetch('/data/maintenance-rates.json');
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        maintenanceRates.value = data;
-      } else if (data.rates) {
-        maintenanceRates.value = data.rates;
-      } else {
-        maintenanceRates.value = [
-          { id: 'm015', value: 0.0015, label: '0.15%' },
-          { id: 'm020', value: 0.002, label: '0.20%' },
-          { id: 'm030', value: 0.003, label: '0.30%' },
-          { id: 'm150', value: 0.015, label: '1.50%' },
-        ];
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки ставок ведения:', error);
-      maintenanceRates.value = [
-        { id: 'm015', value: 0.0015, label: '0.15%' },
-        { id: 'm020', value: 0.002, label: '0.20%' },
-        { id: 'm030', value: 0.003, label: '0.30%' },
-        { id: 'm150', value: 0.015, label: '1.50%' },
-      ];
-    }
-  };
-
-  // Загрузка KPI ставок
-  const loadKpiRates = async () => {
-    if (kpiRates.value.length > 0) return kpiRates.value;
-    
-    try {
-      const response = await fetch('/data/kpi-rates.json');
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        kpiRates.value = data;
-      } else if (data.rates) {
-        kpiRates.value = data.rates;
-      } else {
-        kpiRates.value = [
-          { id: 'kpi_1', value: 0.015, label: '1.50%' },
-          { id: 'kpi_2', value: 0.02, label: '2.00%' },
-          { id: 'kpi_3', value: 0.03, label: '3.00%' },
-        ];
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки KPI ставок:', error);
-      kpiRates.value = [
-        { id: 'kpi_1', value: 0.015, label: '1.50%' },
-        { id: 'kpi_2', value: 0.02, label: '2.00%' },
-        { id: 'kpi_3', value: 0.03, label: '3.00%' },
-      ];
-    }
-  };
-
-  // Загрузка буфера данных (локальный JSON)
-  const loadBufferData = async (year?: number, month?: number) => {
-    try {
-      console.log('🔄 Загрузка /data/buffer.json...');
-      const response = await fetch('/data/buffer.json');
+      console.log('📡 Запрос к API /managers/list/');
+      
+      const response = await fetch('https://api.benzigo.ru/managers/list/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accessToken': ADR_TOKEN
+        },
+        body: JSON.stringify({})
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      let loadedData: any[] = [];
       
-      if (Array.isArray(data)) {
-        loadedData = data;
-        console.log(`✅ Буфер загружен из JSON: ${loadedData.length} записей`);
-      } else if (data.operations && Array.isArray(data.operations)) {
-        loadedData = data.operations;
-        console.log(`✅ Буфер загружен из JSON: ${loadedData.length} записей`);
-      } else if (data.data && Array.isArray(data.data)) {
-        loadedData = data.data;
-        console.log(`✅ Буфер загружен из JSON: ${loadedData.length} записей`);
+      if (data.status === 'ok' && data.managers && Array.isArray(data.managers)) {
+        // Преобразуем в формат, который ожидает калькулятор
+        managers.value = data.managers.map((m: ApiManager) => ({
+          id: String(m.managerId),
+          displayName: m.managerName || m.fullName || `Менеджер ${m.managerId}`,
+          role: m.role || 'Менеджер',
+          aliases: [m.managerName || m.fullName],
+          originalManager: m
+        }));
+        console.log(`✅ Менеджеры загружены из API: ${managers.value.length}`);
       } else {
-        console.warn('⚠️ Неожиданный формат buffer.json:', data);
-        loadedData = [];
+        throw new Error('Неверный формат ответа');
       }
+    } catch (err) {
+      console.error('❌ Ошибка загрузки менеджеров:', err);
+      error.value = 'Не удалось загрузить менеджеров';
       
-      bufferData.value = loadedData;
-      
-      // ← ОБНОВЛЯЕМ bufferService
-      bufferService.updateOperations(bufferData.value);
-      
-      return bufferData.value;
-    } catch (error) {
-      console.error('❌ Ошибка загрузки buffer.json:', error);
-      bufferData.value = [];
-      return [];
+      // Fallback: загружаем из JSON
+      try {
+        const response = await fetch('/data/managers.json');
+        const data = await response.json();
+        managers.value = data.managers || data;
+        console.log(`✅ Менеджеры загружены из JSON: ${managers.value.length}`);
+      } catch (jsonError) {
+        console.error('❌ Ошибка загрузки managers.json:', jsonError);
+      }
+    } finally {
+      loading.value = false;
     }
   };
 
-  // Загрузка истории бонусов
-  const loadBonusHistory = async () => {
+  // ========== ЗАГРУЗКА ПЛАНОВ (API /managers/plans/) ==========
+  const loadPlans = async (year: number, month: number) => {
     try {
-      const response = await fetch('/data/bonushistory.json');
+      console.log(`📡 Запрос к API /managers/plans/: year=${year}, month=${month}`);
+      
+      const response = await fetch('https://api.benzigo.ru/managers/plans/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accessToken': ADR_TOKEN
+        },
+        body: JSON.stringify({ year: String(year), month })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
-      if (Array.isArray(data)) {
-        bonusHistory.value = data;
-        console.log(`✅ История бонусов загружена: ${bonusHistory.value.length} записей`);
-      } else if (data.bonusHistory && Array.isArray(data.bonusHistory)) {
-        bonusHistory.value = data.bonusHistory;
-      } else {
-        bonusHistory.value = [];
+      if (data.status === 'ok' && data.plans && Array.isArray(data.plans)) {
+        // Сохраняем планы в managers (добавляем поле plan)
+        data.plans.forEach((plan: ApiPlan) => {
+          const manager = managers.value.find(m => m.id === String(plan.managerId));
+          if (manager) {
+            manager.plan = parseFloat(plan.amount);
+          }
+        });
+        console.log(`✅ Планы загружены из API: ${data.plans.length}`);
       }
-    } catch (error) {
-      console.error('❌ Ошибка загрузки bonushistory.json:', error);
-      bonusHistory.value = [];
+    } catch (err) {
+      console.error('❌ Ошибка загрузки планов:', err);
     }
   };
 
-  // ========== CRM МЕТОДЫ ==========
-
-  // Загрузка данных из CRM API
-  const loadCrmData = async (params: {
-    dateStart: string;
-    dateEnd?: string;
-    legalEntity?: string;
-    managerID?: string;
-    managername?: string;
-  }) => {
-    crmLoading.value = true;
-    crmError.value = null;
-    
+  // ========== ЗАГРУЗКА СТАВОК ВЕДЕНИЯ ==========
+  const loadMaintenanceRates = async () => {
     try {
-      console.log('🔄 Загрузка из CRM API...', params);
-      const response = await getReplenishments(params);
+      const response = await fetch('/data/managers.json');
+      const data = await response.json();
       
-      if (response.status === 'ok' && response.data.replenishments) {
-        crmData.value = response.data.replenishments;
-        console.log(`✅ CRM данные загружены: ${crmData.value.length} записей`);
-        
-        // Если включен режим использования CRM, обновляем bufferData
-        if (useCrmSource.value) {
-          const convertedData = convertCrmToBufferFormat(crmData.value);
-          bufferData.value = convertedData;
-          
-          // ← ОБНОВЛЯЕМ bufferService
-          bufferService.updateOperations(bufferData.value);
-          
-          console.log(`✅ Буфер обновлен из CRM: ${bufferData.value.length} записей`);
-        }
-        
-        return crmData.value;
+      if (data.maintenanceRates && Array.isArray(data.maintenanceRates)) {
+        maintenanceRates.value = data.maintenanceRates;
       } else {
-        throw new Error(response.message || 'Неизвестная ошибка');
+        maintenanceRates.value = [
+          { id: "m015", value: 0.0015, label: "0.15%" },
+          { id: "m020", value: 0.002, label: "0.20%" },
+          { id: "m030", value: 0.003, label: "0.30%" }
+        ];
       }
-      
+      console.log(`✅ Ставки ведения загружены: ${maintenanceRates.value.length}`);
     } catch (error) {
-      crmError.value = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      console.error('❌ Ошибка загрузки из CRM:', crmError.value);
-      return [];
-    } finally {
-      crmLoading.value = false;
+      console.error('❌ Ошибка загрузки ставок ведения:', error);
+      maintenanceRates.value = [
+        { id: "m015", value: 0.0015, label: "0.15%" },
+        { id: "m020", value: 0.002, label: "0.20%" },
+        { id: "m030", value: 0.003, label: "0.30%" }
+      ];
     }
   };
 
-  // Удобный метод для загрузки данных за месяц
-  const loadDataForMonth = async (year: number, month: number) => {
+  // ========== ЗАГРУЗКА KPI СТАВОК ==========
+  const loadKpiRates = async () => {
+    try {
+      const response = await fetch('/data/managers.json');
+      const data = await response.json();
+      
+      if (data.kpiRates && Array.isArray(data.kpiRates)) {
+        kpiRates.value = data.kpiRates;
+      } else {
+        kpiRates.value = [
+          { id: "kpi_1", value: 0.015, label: "1.50%" },
+          { id: "kpi_2", value: 0.02, label: "2.00%" },
+          { id: "kpi_3", value: 0.03, label: "3.00%" }
+        ];
+      }
+      console.log(`✅ KPI ставки загружены: ${kpiRates.value.length}`);
+    } catch (error) {
+      console.error('❌ Ошибка загрузки KPI ставок:', error);
+      kpiRates.value = [
+        { id: "kpi_1", value: 0.015, label: "1.50%" },
+        { id: "kpi_2", value: 0.02, label: "2.00%" },
+        { id: "kpi_3", value: 0.03, label: "3.00%" }
+      ];
+    }
+  };
+
+  // ========== ЗАГРУЗКА ОПЕРАЦИЙ (API /managers/replenishments/) ==========
+  const loadBufferData = async (year?: number, month?: number) => {
     loading.value = true;
     error.value = null;
     
     try {
-      if (useCrmSource.value) {
-        const dateStart = `01-${month.toString().padStart(2, '0')}-${year}`;
+      // Формируем даты в формате DD-MM-YYYY
+      let dateStart: string | null = null;
+      let dateEnd: string | null = null;
+      
+      if (year && month) {
+        dateStart = `01-${String(month).padStart(2, '0')}-${year}`;
         const lastDay = new Date(year, month, 0).getDate();
-        const dateEnd = `${lastDay}-${month.toString().padStart(2, '0')}-${year}`;
+        dateEnd = `${String(lastDay).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
+      }
+      
+      const body: { dateStart: string | null; dateEnd?: string | null } = { dateStart };
+      if (dateEnd) {
+        body.dateEnd = dateEnd;
+      }
+      
+      console.log('📡 Запрос к API /managers/replenishments/:', body);
+      
+      const response = await fetch('https://api.benzigo.ru/managers/replenishments/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accessToken': ADR_TOKEN
+        },
+        body: JSON.stringify(body)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
+        // Преобразуем в формат, который ожидает bufferService
+        bufferData.value = data.replenishments.map((item: ApiReplenishment) => ({
+          date: item.date,
+          amount: parseFloat(item.amount),
+          client: item.client,
+          clientType: item.clientType,
+          legalEntity: item.legalEntity,
+          managerId: String(item.managerId),
+          manager: managers.value.find(m => m.id === String(item.managerId))?.displayName || `Менеджер ${item.managerId}`,
+          operationId: item.id
+        }));
         
-        await loadCrmData({ dateStart, dateEnd });
+        console.log(`✅ Загружено операций: ${bufferData.value.length}`);
       } else {
-        await loadBufferData(year, month);
+        console.warn('⚠️ Неожиданный формат ответа:', data);
+        bufferData.value = [];
       }
       
       return bufferData.value;
+      
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Ошибка загрузки данных';
-      console.error('❌ Ошибка загрузки данных:', error.value);
+      console.error('❌ Ошибка загрузки операций:', err);
+      error.value = 'Не удалось загрузить данные';
+      bufferData.value = [];
       return [];
     } finally {
       loading.value = false;
     }
   };
 
-  // Переключатель источника данных
-  const setDataSource = (useCrm: boolean) => {
-    useCrmSource.value = useCrm;
-    console.log(`📊 Источник данных: ${useCrm ? 'CRM API' : 'Локальный buffer.json'}`);
+  // ========== ЗАГРУЗКА ИСТОРИИ БОНУСОВ ==========
+  const loadBonusHistory = async () => {
+    try {
+      const response = await fetch('/data/bonushistory.json');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.bonuses) {
+        bonusHistory.value = data.bonuses;
+      } else if (Array.isArray(data)) {
+        bonusHistory.value = data;
+      } else {
+        bonusHistory.value = [];
+      }
+      
+      console.log(`✅ Bonus history загружен: ${bonusHistory.value.length} записей`);
+      return bonusHistory.value;
+    } catch (error) {
+      console.error('❌ Ошибка загрузки bonusHistory:', error);
+      bonusHistory.value = [];
+      return [];
+    }
   };
 
   // ========== ХЕЛПЕРЫ ==========
-
   const getManagerById = (id: string) => {
     return managers.value.find(m => m.id === id);
   };
@@ -304,8 +334,8 @@ export const useKpiStore = defineStore('kpi', () => {
   const getBufferOperationsByManager = (managerName: string) => {
     return bufferData.value.filter(op => 
       op.manager === managerName || 
-      op.managerName === managerName ||
-      op.responsible === managerName
+      (op as any).managerName === managerName ||
+      (op as any).responsible === managerName
     );
   };
 
@@ -346,30 +376,24 @@ export const useKpiStore = defineStore('kpi', () => {
     loading,
     error,
     
-    // CRM состояние
-    crmData,
-    crmLoading,
-    crmError,
-    useCrmSource,
-    
     // Методы загрузки
     loadManagers,
+    loadPlans,
     loadMaintenanceRates,
     loadKpiRates,
     loadBufferData,
     loadBonusHistory,
     
-    // CRM методы
-    loadCrmData,
-    loadDataForMonth,
-    setDataSource,
-    
     // Хелперы
     getManagerById,
     getManagerByName,
+    
+    // Методы для работы с буфером
     getAllBufferOperations,
     getBufferOperationsByManager,
     getBufferOperationsByPeriod,
+    
+    // Методы для работы с бонусной историей
     getBonusHistoryForManager,
     getBonusStatusForClient
   };

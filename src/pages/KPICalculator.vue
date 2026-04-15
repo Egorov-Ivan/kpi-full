@@ -1231,7 +1231,7 @@ const getClientBonusStatus = (
     maxMonth: null,
     hasActiveBonus: false,
     allMonthsCompleted: false,
-    fileStatus: null
+    fileStatus: undefined
   };
 };
 
@@ -1763,41 +1763,28 @@ const refreshData = async () => {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
     
-    await store.loadDataForMonth(year, month);  // ← ЗАМЕНИТЕ ЭТУ СТРОКУ
+    // Загружаем менеджеров (один раз)
+    if (store.managers.length === 0) {
+      await store.loadManagers();
+    }
     
-    await store.loadManagers();
+    // Загружаем планы за текущий месяц
+    await store.loadPlans(year, month);
+    
+    // Загружаем операции за текущий месяц
+    await store.loadBufferData(year, month);
+    
+    // Загружаем ставки и историю
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
     
   } catch (error) {
-    console.error('Ошибка загрузки:', error);
+    console.error('Ошибка:', error);
   } finally {
     loading.value = false;
   }
 };
-
-// Загрузка данных
-onMounted(async () => {
-  loading.value = true;
-  try {
-    // Загружаем менеджеров, ставки и историю бонусов
-    await store.loadManagers();
-    await store.loadMaintenanceRates();
-    await store.loadKpiRates();
-    await store.loadBonusHistory();
-    
-    // Загружаем данные за текущий месяц (теперь через loadDataForMonth)
-    const year = parseInt(selectedYear.value);
-    const month = parseInt(selectedMonth.value);
-    await store.loadDataForMonth(year, month);  // ← ЗАМЕНИТЕ ЭТУ СТРОКУ
-    
-  } catch (error) {
-    console.error('Ошибка загрузки:', error);
-  } finally {
-    loading.value = false;
-  }
-});
 
 // Сохраняем активный таб при его изменении
 watch(activeTab, (newTab) => {
