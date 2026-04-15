@@ -1,18 +1,13 @@
 {
   "version": 2,
   "outputDirectory": "dist",
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 10
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/api/$1"
     },
     {
-      "src": "/(.*\\.(js|css|map|ico|png|jpg|jpeg|svg|woff2?|ttf|eot|json))$",
+      "src": "/(.*\\.(css|js|map|ico|png|jpg|jpeg|svg|woff2?|ttf|eot|json))$",
       "dest": "/$1"
     },
     {
