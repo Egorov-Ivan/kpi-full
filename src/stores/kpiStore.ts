@@ -1,6 +1,7 @@
 // src/stores/kpiStore.ts
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { bufferService } from '@/services/bufferService';
 
 // Получаем токен из переменных окружения
 const ADR_TOKEN = import.meta.env.VITE_CRM_API_TOKEN;
@@ -84,9 +85,9 @@ export const useKpiStore = defineStore('kpi', () => {
     error.value = null;
     
     try {
-      console.log('📡 Запрос к прокси /api/proxy/managers/list/');
+      console.log('📡 Запрос к прокси /api/proxy/managers-list');
       
-      const response = await fetch('/api/proxy/managers/list/', {
+      const response = await fetch('/api/proxy/managers-list', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,9 +135,9 @@ export const useKpiStore = defineStore('kpi', () => {
   // ========== ЗАГРУЗКА ПЛАНОВ (через прокси) ==========
   const loadPlans = async (year: number, month: number) => {
     try {
-      console.log(`📡 Запрос к прокси /api/proxy/managers/plans/: year=${year}, month=${month}`);
+      console.log(`📡 Запрос к прокси /api/proxy/managers-plans: year=${year}, month=${month}`);
       
-      const response = await fetch('/api/proxy/managers/plans/', {
+      const response = await fetch('/api/proxy/managers-plans', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,70 +220,78 @@ export const useKpiStore = defineStore('kpi', () => {
 
   // ========== ЗАГРУЗКА ОПЕРАЦИЙ (через прокси) ==========
   const loadBufferData = async (year?: number, month?: number) => {
-    loading.value = true;
-    error.value = null;
+  loading.value = true;
+  error.value = null;
+  
+  try {
+    let dateStart: string | null = null;
+    let dateEnd: string | null = null;
     
-    try {
-      let dateStart: string | null = null;
-      let dateEnd: string | null = null;
-      
-      if (year && month) {
-        dateStart = `01-${String(month).padStart(2, '0')}-${year}`;
-        const lastDay = new Date(year, month, 0).getDate();
-        dateEnd = `${String(lastDay).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
-      }
-      
-      const body: { dateStart: string | null; dateEnd?: string | null } = { dateStart };
-      if (dateEnd) {
-        body.dateEnd = dateEnd;
-      }
-      
-      console.log('📡 Запрос к прокси /api/proxy/managers/replenishments/:', body);
-      
-      const response = await fetch('/api/proxy/managers/replenishments/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'accessToken': ADR_TOKEN
-        },
-        body: JSON.stringify(body)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
-        bufferData.value = data.replenishments.map((item: ApiReplenishment) => ({
-          date: item.date,
-          amount: parseFloat(item.amount),
-          client: item.client,
-          clientType: item.clientType,
-          legalEntity: item.legalEntity,
-          managerId: String(item.managerId),
-          manager: managers.value.find(m => m.id === String(item.managerId))?.displayName || `Менеджер ${item.managerId}`,
-          operationId: item.id
-        }));
-        
-        console.log(`✅ Загружено операций: ${bufferData.value.length}`);
-      } else {
-        console.warn('⚠️ Неожиданный формат ответа:', data);
-        bufferData.value = [];
-      }
-      
-      return bufferData.value;
-      
-    } catch (err) {
-      console.error('❌ Ошибка загрузки операций:', err);
-      error.value = 'Не удалось загрузить данные';
-      bufferData.value = [];
-      return [];
-    } finally {
-      loading.value = false;
+    if (year && month) {
+      dateStart = `01-${String(month).padStart(2, '0')}-${year}`;
+      const lastDay = new Date(year, month, 0).getDate();
+      dateEnd = `${String(lastDay).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
     }
-  };
+    
+    const body: { dateStart: string | null; dateEnd?: string | null } = { dateStart };
+    if (dateEnd) {
+      body.dateEnd = dateEnd;
+    }
+    
+    console.log('📡 Запрос к прокси /api/proxy/managers-replenishments:', body);
+    
+    const response = await fetch('/api/proxy/managers-replenishments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'accessToken': ADR_TOKEN
+      },
+      body: JSON.stringify(body)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
+      bufferData.value = data.replenishments.map((item: ApiReplenishment) => ({
+        date: item.date,
+        amount: parseFloat(item.amount),
+        client: item.client,
+        clientType: item.clientType,
+        legalEntity: item.legalEntity,
+        managerId: String(item.managerId),
+        manager: managers.value.find(m => m.id === String(item.managerId))?.displayName || `Менеджер ${item.managerId}`,
+        operationId: item.id
+      }));
+      
+      // 🔥 КЛЮЧЕВОЕ ДОБАВЛЕНИЕ: обновляем bufferService
+      if (bufferService && typeof bufferService.updateOperations === 'function') {
+        bufferService.updateOperations(bufferData.value);
+        console.log(`✅ BufferService обновлен: ${bufferData.value.length} операций`);
+      } else {
+        console.warn('⚠️ bufferService.setOperations не найден, нужно добавить метод в bufferService.ts');
+      }
+      
+      console.log(`✅ Загружено операций: ${bufferData.value.length}`);
+    } else {
+      console.warn('⚠️ Неожиданный формат ответа:', data);
+      bufferData.value = [];
+    }
+    
+    return bufferData.value;
+    
+  } catch (err) {
+    console.error('❌ Ошибка загрузки операций:', err);
+    error.value = 'Не удалось загрузить данные';
+    bufferData.value = [];
+    return [];
+  } finally {
+    loading.value = false;
+  }
+};
 
   // ========== ЗАГРУЗКА ИСТОРИИ БОНУСОВ ==========
   const loadBonusHistory = async () => {
