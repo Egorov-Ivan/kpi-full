@@ -1033,9 +1033,28 @@ const filteredManagers = computed(() => {
   );
 });
 
-// Статистика буфера
+// Статистика буфера (из данных API)
 const bufferStats = computed(() => {
-  return bufferService.getBufferStats();
+  const operations = store.bufferData;
+  if (!operations.length) {
+    return {
+      totalOperations: 0,
+      totalClients: 0,
+      dateRange: { first: null, last: null }
+    };
+  }
+  
+  const uniqueClients = new Set(operations.map(op => op.client));
+  const dates = operations.map(op => op.date).filter(Boolean);
+  
+  return {
+    totalOperations: operations.length,
+    totalClients: uniqueClients.size,
+    dateRange: {
+      first: dates.length ? dates.reduce((a, b) => a < b ? a : b) : null,
+      last: dates.length ? dates.reduce((a, b) => a > b ? a : b) : null
+    }
+  };
 });
 
 // Получить статистику менеджеров из буфера за выбранный период
@@ -1807,7 +1826,9 @@ watch(activeTab, (newTab) => {
 watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
-
+onMounted(() => {
+  refreshData();
+});
 </script>
 
 <style scoped>
