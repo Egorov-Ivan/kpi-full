@@ -1126,7 +1126,6 @@ const getAllowedRates = (manager: Manager): string[] => {
   if (manager.allowedMaintenanceRates?.includes('m015')) rates.push('0.15%');
   if (manager.allowedMaintenanceRates?.includes('m020')) rates.push('0.20%');
   if (manager.allowedMaintenanceRates?.includes('m030')) rates.push('0.30%');
-  if (manager.allowedMaintenanceRates?.includes('m150')) rates.push('1.50%');
   return rates;
 };
 
@@ -1137,11 +1136,10 @@ const getSelectedRate = (item: any): number => {
   }
   
   const manager = item.originalManager;
-  if (manager.allowedMaintenanceRates?.includes('m150')) return 0.015;  // 1.5%
   if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015; // 0.15%
   if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;  // 0.2%
   if (manager.allowedMaintenanceRates?.includes('m030')) return 0.003;  // 0.3%
-  return 0.015; // По умолчанию 1.5%
+  return 0.0015; // По умолчанию 0.15%
 };
 
 // Получить выбранную ставку KPI
@@ -1827,6 +1825,7 @@ watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
 onMounted(() => {
+  loadStateFromStorage();
   refreshData();
 });
 </script>
