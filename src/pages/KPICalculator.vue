@@ -68,6 +68,28 @@
                 <span class="text-grey">Прогноз на конец месяца:</span>
                 <span class="font-weight-medium ml-2">{{ formatMoney(forecast) }}</span>
               </div>
+              
+              
+              <!-- Общий прогресс выполнения плана -->
+          <v-divider></v-divider>
+          <div class="pa-4">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-subtitle-2">Общий прогресс плана</span>
+              <span class="font-weight-medium">{{ averagePlanPercent.toFixed(1) }}%</span>
+            </div>
+            <v-progress-linear
+              v-model="averagePlanPercent"
+              :color="getPercentColor(averagePlanPercent)"
+              height="12"
+              rounded
+            ></v-progress-linear>
+            <div class="d-flex justify-space-between mt-1 text-caption text-grey">
+              <span>{{ formatMoney(totalFact) }}</span>
+              <span>{{ formatMoney(totalPlan) }}</span>
+            </div>
+          </div>
+
+
             <div class="text-caption text-grey">
               <v-icon size="small" color="grey" class="mr-1">ri-calendar-line</v-icon>
               Период данных: {{ bufferStats.dateRange.first }} — {{ bufferStats.dateRange.last }}
@@ -1819,6 +1841,11 @@ const selectedMonthName = computed(() => {
   const month = months.find(m => m.value === selectedMonth.value);
   return month ? month.title : '';
 });
+
+const totalPlan = computed(() => {
+  return filteredManagers.value.reduce((sum, m) => sum + (m.plan || 80000), 0);
+});
+
 
 // Функции для иконок и цветов
 const getRoleIcon = (role?: string): string => {
