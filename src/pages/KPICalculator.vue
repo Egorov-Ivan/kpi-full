@@ -715,17 +715,32 @@
                           </template>
 
                           <!-- Действия -->
-                          <template v-slot:item.actions="{ item }">
-                            <v-btn
-                              size="x-small"
-                              color="success"
-                              variant="tonal"
-                              @click="setBonusStatus(item.client, 'ДА')"
-                            >
-                              <v-icon size="small">ri-check-line</v-icon>
-                              Сделать ДА
-                            </v-btn>
-                          </template>
+<template v-slot:item.actions="{ item }">
+  <div class="d-flex gap-1">
+    <v-btn
+      size="x-small"
+      color="success"
+      variant="tonal"
+      @click="setBonusStatus(item.client, 'ДА')"
+    >
+      <v-icon size="small">ri-check-line</v-icon>
+      ДА
+    </v-btn>
+    
+    <!-- ВРЕМЕННАЯ КНОПКА (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) -->
+    <v-btn
+      v-if="showKpiButton"
+      size="x-small"
+      color="warning"
+      variant="tonal"
+      @click="markSingleClientKpi(item)"
+    >
+      <v-icon size="small">ri-check-double-line</v-icon>
+      KPI
+    </v-btn>
+    <!-- КОНЕЦ ВРЕМЕННОЙ КНОПКИ -->
+  </div>
+</template>
                         </v-data-table>
                       </v-expansion-panel-text>
                     </v-expansion-panel>
@@ -800,7 +815,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useKpiStore } from '../stores/kpiStore';
 import { bufferService } from '@/services/bufferService';
 import type { Manager } from '@/types/kpi.types';
@@ -1238,6 +1253,18 @@ const getClientBonusStatus = (
   allMonthsCompleted: boolean;
   fileStatus?: string;
 } => {
+// 🔥 Проверяем, не получал ли клиент KPI ранее (любой менеджер)
+  if (store.isKpiReceivedForClient(clientName)) {
+    return {
+      status: 'БЫЛ',
+      firstFillDate: null,
+      maxAmount: 0,
+      maxMonth: null,
+      hasActiveBonus: false,
+      allMonthsCompleted: true,
+      fileStatus: 'KPI уже получен'
+    };
+  }
   const customKey = `${clientName}_${managerName}`;
   if (customBonusStatus.value[customKey]) {
     const custom = customBonusStatus.value[customKey];
@@ -1844,10 +1871,46 @@ watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
 
+// ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
+const showKpiButton = ref(false);
+
+const handleKpiKeyDown = (e: KeyboardEvent) => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'K') {
+    showKpiButton.value = !showKpiButton.value;
+    console.log('🔧 Кнопки KPI:', showKpiButton.value ? 'показаны' : 'скрыты');
+  }
+};
+
+const markSingleClientKpi = async (item: any) => {
+  if (!selectedManagerDetails.value) return;
+  
+  const managerName = selectedManagerDetails.value.originalManager.displayName;
+  const month = `${selectedYear.value}-${selectedMonth.value}`;
+  
+  if (!confirm(`Зафиксировать KPI навсегда?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}\nМесяц: ${month}`)) return;
+  
+  try {
+    await store.markKpiReceived(item.client, managerName, month);
+    alert(`✅ KPI зафиксирован: ${item.client}`);
+    forceUpdate.value = Date.now();
+  } catch (error) {
+    alert('❌ Ошибка фиксации KPI');
+  }
+};
+// ========== КОНЕЦ ВРЕМЕННОГО КОДА ==========
+
+
+
+
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
+
+
+
 onMounted(async () => {
   await loadStateFromServer();
   await refreshData();
+  await store.loadKpiReceivedClients();
+window.addEventListener('keydown', handleKpiKeyDown);
 });
 </script>
 

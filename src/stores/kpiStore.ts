@@ -404,6 +404,45 @@ const saveAllKpiSettings = async (settings: Record<string, any>) => {
   }
 };
 
+// ========== РАБОТА С KPI КЛИЕНТАМИ ==========
+const kpiReceivedClients = ref<any[]>([]);
+
+const loadKpiReceivedClients = async () => {
+  try {
+    const response = await fetch('/api/get-kpi-received');
+    const data = await response.json();
+    if (data.success) {
+      kpiReceivedClients.value = data.clients || [];
+      console.log(`✅ Загружено ${kpiReceivedClients.value.length} клиентов с KPI`);
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки KPI клиентов:', error);
+  }
+};
+
+const markKpiReceived = async (client: string, managerName: string, month: string) => {
+  try {
+    const response = await fetch('/api/mark-kpi-received', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client, managerName, month })
+    });
+    const data = await response.json();
+    if (data.success) {
+      await loadKpiReceivedClients();
+      return data;
+    }
+    throw new Error(data.error || 'Unknown error');
+  } catch (error) {
+    console.error('Ошибка отметки KPI:', error);
+    throw error;
+  }
+};
+
+const isKpiReceivedForClient = (client: string): boolean => {
+  return kpiReceivedClients.value.some(c => c.client === client);
+};
+
   // ========== ХЕЛПЕРЫ ==========
   const getManagerById = (id: string) => {
     return managers.value.find(m => m.id === id);
@@ -462,7 +501,9 @@ const saveAllKpiSettings = async (settings: Record<string, any>) => {
     bonusHistory,
     loading,
     error,
-    
+    isKpiReceivedForClient,
+    kpiReceivedClients,
+
     loadManagers,
     loadPlans,
     loadMaintenanceRates,
@@ -480,6 +521,9 @@ const saveAllKpiSettings = async (settings: Record<string, any>) => {
     getBufferOperationsByManager,
     getBufferOperationsByPeriod,
     getBonusHistoryForManager,
-    getBonusStatusForClient
+    getBonusStatusForClient,
+    loadKpiReceivedClients,
+    markKpiReceived,
+    
   };
 });
