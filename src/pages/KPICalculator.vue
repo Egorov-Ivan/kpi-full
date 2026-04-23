@@ -1571,8 +1571,6 @@ const kpiClientDetails = computed(() => {
   const month = parseInt(selectedMonth.value);
   const manager = selectedManagerDetails.value.originalManager;
   const managerName = manager.displayName;
-  const managerAliases = manager.aliases || [];
-  const allManagerNames = [managerName, ...managerAliases];
   
   console.log('🔄 Пересчет kpiClientDetails, forceUpdate:', update);
   
@@ -1589,14 +1587,13 @@ const kpiClientDetails = computed(() => {
   
 monthsToCheck.forEach(({ year: y, month: m }) => {
     const monthKey = `${y}-${m.toString().padStart(2, '0')}`;
-    let monthOps: any[] = [];
+    const ops = bufferService.getOperationsByManager(managerName, y, m);
+    const uniqueOps = Array.from(
+      new Map(ops.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
+    );
+monthlyOpsMap.set(monthKey, uniqueOps);
     
-    allManagerNames.forEach(name => {
-      const ops = bufferService.getOperationsByManager(name, y, m); // ← y, m вместо year, month
-      monthOps = [...monthOps, ...ops];
-    });
-    
-    monthlyOpsMap.set(monthKey, monthOps);
+    monthlyOpsMap.set(monthKey, uniqueOps);
   });
   
   const clientMonthlyMap = new Map();
@@ -1616,8 +1613,8 @@ monthsToCheck.forEach(({ year: y, month: m }) => {
   const clientCurrentMap = new Map();
   
   const managerBonuses = bonushistory.value.filter(b => 
-    allManagerNames.some(name => b.currentManager === name)
-  );
+  b.currentManager === managerName
+);
   
   managerBonuses.forEach(bonus => {
     if (!clientCurrentMap.has(bonus.client)) {
@@ -1639,7 +1636,10 @@ monthsToCheck.forEach(({ year: y, month: m }) => {
   });
   
   const currentMonthKey = `${year}-${month.toString().padStart(2, '0')}`;
-  const currentMonthOps = monthlyOpsMap.get(currentMonthKey) || [];
+  const ops = bufferService.getOperationsByManager(managerName, year, month);
+const currentMonthOps = Array.from(
+  new Map(ops.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
+);
   
   currentMonthOps.forEach(op => {
     if (!clientCurrentMap.has(op.client)) {
