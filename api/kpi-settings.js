@@ -1,18 +1,44 @@
 // api/kpi-settings.js
 import { sql } from '@vercel/postgres';
 
-// GET /api/kpi-settings — получить ВСЕ настройки
+let dbInitialized = false;
+
+async function initDatabase() {
+  if (dbInitialized) return;
+  
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS kpi_settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(255) NOT NULL UNIQUE,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `;
+    
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_kpi_settings_key 
+      ON kpi_settings(key);
+    `;
+    
+    dbInitialized = true;
+    console.log('✅ KPI settings table ready');
+  } catch (error) {
+    console.error('DB init error:', error);
+  }
+}
+
 export default async function handler(req, res) {
+  await initDatabase();
+
   try {
     if (req.method === 'GET') {
-      // Получаем все настройки
       const { rows } = await sql`
         SELECT key, value, updated_at 
         FROM kpi_settings 
         ORDER BY key
       `;
 
-      // Преобразуем в объект { key: value }
       const settings = {};
       rows.forEach(row => {
         settings[row.key] = row.value;
@@ -25,7 +51,6 @@ export default async function handler(req, res) {
       });
 
     } else if (req.method === 'POST') {
-      // POST /api/kpi-settings — сохранить одну или несколько настроек
       const { key, value } = req.body;
 
       if (!key || value === undefined) {
@@ -34,7 +59,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // UPSERT: вставляем или обновляем
       await sql`
         INSERT INTO kpi_settings (key, value, updated_at)
         VALUES (${key}, ${JSON.stringify(value)}, NOW())
@@ -44,13 +68,12 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true,
-        message: `Setting '${key}' saved successfully`,
+        message: `Setting '${key}' saved`,
         key,
         value
       });
 
     } else if (req.method === 'PUT') {
-      // PUT /api/kpi-settings — пакетное обновление ВСЕХ настроек
       const { settings } = req.body;
 
       if (!settings || typeof settings !== 'object') {
@@ -59,7 +82,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Обновляем каждую настройку в транзакции
       for (const [key, value] of Object.entries(settings)) {
         await sql`
           INSERT INTO kpi_settings (key, value, updated_at)
@@ -71,7 +93,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true,
-        message: `${Object.keys(settings).length} settings saved successfully`
+        message: `${Object.keys(settings).length} settings saved`
       });
 
     } else {
