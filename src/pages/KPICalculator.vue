@@ -1891,12 +1891,7 @@ watch([selectedYear, selectedMonth], () => {
 // ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
 const showKpiButton = ref(true);
 
-const handleKpiKeyDown = (e: KeyboardEvent) => {
-  if (e.getModifierState('CapsLock')) {
-    showKpiButton.value = !showKpiButton.value;
-    console.log('🔧 Кнопки KPI:', showKpiButton.value ? 'показаны' : 'скрыты');
-  }
-};
+
 
 const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
