@@ -1588,11 +1588,10 @@ const kpiClientDetails = computed(() => {
 monthsToCheck.forEach(({ year: y, month: m }) => {
     const monthKey = `${y}-${m.toString().padStart(2, '0')}`;
     const ops = bufferService.getOperationsByManager(managerName, y, m);
+    console.log(`📅 ${monthKey}: ${ops.length} оп.`); // ← одна строка
     const uniqueOps = Array.from(
       new Map(ops.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
     );
-monthlyOpsMap.set(monthKey, uniqueOps);
-    
     monthlyOpsMap.set(monthKey, uniqueOps);
   });
   
