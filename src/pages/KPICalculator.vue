@@ -1747,34 +1747,7 @@ const was = clientsWithStatus
 
 const non = clientsWithStatus
   .filter(data => data.status === 'НЕТ' && data.noVatAmount > 0)
-  .map(data => {
-    // Ищем максимальную сумму за последние 3 месяца
-    const clientMonths = clientMonthlyMap.get(data.client) || new Map();
-    let maxAmount = 0;
-    let maxMonth = null;
-    
-    // Проверяем текущий и 2 предыдущих месяца
-    for (let i = 0; i < 3; i++) {
-      const checkDate = new Date(year, month - 1 - i, 1);
-      const checkKey = `${checkDate.getFullYear()}-${(checkDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      const amount = clientMonths.get(checkKey) || 0;
-      if (amount > maxAmount) {
-        maxAmount = amount;
-        maxMonth = checkKey;
-      }
-    }
-    
-    const displayAmount = maxAmount > 0 ? maxAmount : data.noVatAmount;
-    
-    return {
-      ...data,
-      maxAmount,
-      maxAmountMonth: maxMonth,
-      displayAmount,
-      monthInfo: maxMonth ? `Месяц: ${maxMonth}` : null,
-      baseInfo: maxAmount > 0 ? `Макс. сумма: ${formatMoney(maxAmount)}` : null
-    };
-  });
+  .map(data => ({ ...data }));
 
 return { active, was, non };
 });
