@@ -1902,18 +1902,16 @@ const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
   
   const managerName = selectedManagerDetails.value.originalManager.displayName;
-  const kpiMonth = '1970-01';
   
-  if (!confirm(`Зафиксировать KPI навсегда?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}\nМесяц: ${kpiMonth}`)) return;
+  if (!confirm(`Разрешить получение KPI?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}`)) return;
   
   try {
-    await store.markKpiReceived(item.client, managerName, kpiMonth);
-    // Принудительно перезагружаем список из БД
+    await store.removeKpiReceived(item.client);
     await store.loadKpiReceivedClients();
-    alert(`✅ KPI зафиксирован: ${item.client}`);
+    alert(`✅ KPI разрешён: ${item.client}`);
     forceUpdate.value = Date.now();
   } catch (error) {
-    alert('❌ Ошибка фиксации KPI');
+    alert('❌ Ошибка');
   }
 };
 // ========== КОНЕЦ ВРЕМЕННОГО КОДА ==========
@@ -1926,9 +1924,9 @@ const markSingleClientKpi = async (item: any) => {
 
 
 onMounted(async () => {
-  await store.loadKpiReceivedClients(); // Сначала загружаем KPI клиентов
+ await refreshData();
+  await store.importAllClientsAsKpiReceived(); // ВРЕМЕННО: импорт всех как "KPI получен"
   await loadStateFromServer();
-  await refreshData();
   window.addEventListener('keydown', handleKpiKeyDown);
 });
 </script>
