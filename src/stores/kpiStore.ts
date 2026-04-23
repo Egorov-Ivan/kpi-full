@@ -321,6 +321,89 @@ export const useKpiStore = defineStore('kpi', () => {
     }
   };
 
+// ========== ЗАГРУЗКА НАСТРОЕК KPI С СЕРВЕРА ==========
+const loadKpiSettings = async () => {
+  try {
+    console.log('📡 Загрузка KPI настроек с сервера...');
+    
+    const response = await fetch('/api/kpi-settings', {
+      method: 'GET'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.success && data.settings) {
+      console.log('✅ KPI настройки загружены:', data.settings);
+      return data.settings;
+    } else {
+      console.warn('⚠️ Сервер вернул пустые настройки');
+      return {};
+    }
+    
+  } catch (error) {
+    console.error('❌ Ошибка загрузки KPI настроек:', error);
+    return {};
+  }
+};
+
+// ========== СОХРАНЕНИЕ НАСТРОЙКИ KPI НА СЕРВЕР ==========
+const saveKpiSetting = async (key: string, value: any) => {
+  try {
+    console.log(`📤 Сохранение настройки '${key}' на сервер...`);
+    
+    const response = await fetch('/api/kpi-settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ key, value })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`✅ Настройка '${key}' сохранена:`, data);
+    return data;
+    
+  } catch (error) {
+    console.error(`❌ Ошибка сохранения настройки '${key}':`, error);
+    throw error;
+  }
+};
+
+// ========== ПАКЕТНОЕ СОХРАНЕНИЕ НАСТРОЕК ==========
+const saveAllKpiSettings = async (settings: Record<string, any>) => {
+  try {
+    console.log('📤 Пакетное сохранение настроек на сервер...');
+    
+    const response = await fetch('/api/kpi-settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ settings })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('✅ Настройки сохранены:', data);
+    return data;
+    
+  } catch (error) {
+    console.error('❌ Ошибка пакетного сохранения настроек:', error);
+    throw error;
+  }
+};
+
   // ========== ХЕЛПЕРЫ ==========
   const getManagerById = (id: string) => {
     return managers.value.find(m => m.id === id);
@@ -386,7 +469,11 @@ export const useKpiStore = defineStore('kpi', () => {
     loadKpiRates,
     loadBufferData,
     loadBonusHistory,
-    
+    loadKpiSettings,
+
+    saveKpiSetting,
+    saveAllKpiSettings,
+
     getManagerById,
     getManagerByName,
     getAllBufferOperations,

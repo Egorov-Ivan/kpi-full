@@ -801,11 +801,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { useKpiStore } from '../stores/kpiStore';  // ← с большой 'K'!
+import { useKpiStore } from '../stores/kpiStore';
 import { bufferService } from '@/services/bufferService';
 import type { Manager } from '@/types/kpi.types';
 
-const store = useKpiStore();  // ← с большой 'K'!
+const store = useKpiStore();
 const loading = ref(false);
 const activeTab = ref('maintenance');
 
@@ -848,50 +848,41 @@ const managerKpiValues = ref<Record<string, number>>({});
 // Триггер для принудительного обновления computed свойств
 const forceUpdate = ref(0);
 
-// Функция для загрузки состояния из localStorage
+// ========== ЗАГРУЗКА ИЗ LOCALSTORAGE (FALLBACK) ==========
 const loadStateFromStorage = () => {
   try {
-    console.log('📂 Загрузка состояния из localStorage...');
+    console.log('📂 Загрузка состояния из localStorage (fallback)...');
     
-    // Загружаем кастомные статусы
     const savedCustomStatus = localStorage.getItem('kpi_custom_bonus_status');
     if (savedCustomStatus) {
       customBonusStatus.value = JSON.parse(savedCustomStatus);
-      console.log('✅ Загружены кастомные статусы:', Object.keys(customBonusStatus.value).length);
     }
     
-    // Загружаем KPI менеджеров
     const savedManagerKpi = localStorage.getItem('kpi_manager_values');
     if (savedManagerKpi) {
       managerKpiValues.value = JSON.parse(savedManagerKpi);
-      console.log('✅ Загружены KPI менеджеров:', managerKpiValues.value);
     }
     
-    // Загружаем ставки ведения
     const savedRates = localStorage.getItem('kpi_selected_rates');
     if (savedRates) {
       selectedRate.value = JSON.parse(savedRates);
     }
     
-    // Загружаем ставки KPI
     const savedKpiRates = localStorage.getItem('kpi_selected_kpi_rates');
     if (savedKpiRates) {
       selectedKpiRate.value = JSON.parse(savedKpiRates);
     }
     
-    // Загружаем ручной ввод KPI VAT
     const savedManualKpiVat = localStorage.getItem('kpi_manual_vat');
     if (savedManualKpiVat) {
       manualKpiVat.value = JSON.parse(savedManualKpiVat);
     }
     
-    // Загружаем активный таб
     const savedTab = localStorage.getItem('kpi_active_tab');
     if (savedTab) {
       activeTab.value = savedTab;
     }
     
-    // Загружаем выбранный год/месяц
     const savedYear = localStorage.getItem('kpi_selected_year');
     if (savedYear) {
       selectedYear.value = savedYear;
@@ -902,17 +893,15 @@ const loadStateFromStorage = () => {
       selectedMonth.value = savedMonth;
     }
     
-    // ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ: создаем триггер для перерисовки
     forceUpdate.value = Date.now();
-    
-    console.log('✅ Состояние загружено, forceUpdate:', forceUpdate.value);
+    console.log('✅ Состояние загружено из localStorage');
     
   } catch (e) {
-    console.error('Ошибка загрузки состояния:', e);
+    console.error('Ошибка загрузки из localStorage:', e);
   }
 };
 
-// Функция для сохранения состояния в localStorage
+// ========== СОХРАНЕНИЕ В LOCALSTORAGE (FALLBACK) ==========
 const saveStateToStorage = () => {
   try {
     localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
@@ -924,7 +913,82 @@ const saveStateToStorage = () => {
     localStorage.setItem('kpi_selected_year', selectedYear.value);
     localStorage.setItem('kpi_selected_month', selectedMonth.value);
   } catch (e) {
-    console.error('Ошибка сохранения состояния:', e);
+    console.error('Ошибка сохранения в localStorage:', e);
+  }
+};
+
+// ========== ЗАГРУЗКА С СЕРВЕРА ==========
+const loadStateFromServer = async () => {
+  try {
+    console.log('📂 Загрузка состояния с сервера...');
+    
+    const settings = await store.loadKpiSettings();
+    
+    if (settings.customBonusStatus) {
+      customBonusStatus.value = settings.customBonusStatus;
+      console.log('✅ Загружены кастомные статусы:', Object.keys(customBonusStatus.value).length);
+    }
+    
+    if (settings.managerKpiValues) {
+      managerKpiValues.value = settings.managerKpiValues;
+      console.log('✅ Загружены KPI менеджеров:', managerKpiValues.value);
+    }
+    
+    if (settings.selectedRate) {
+      selectedRate.value = settings.selectedRate;
+    }
+    
+    if (settings.selectedKpiRate) {
+      selectedKpiRate.value = settings.selectedKpiRate;
+    }
+    
+    if (settings.manualKpiVat) {
+      manualKpiVat.value = settings.manualKpiVat;
+    }
+    
+    const savedTab = localStorage.getItem('kpi_active_tab');
+    if (savedTab) {
+      activeTab.value = savedTab;
+    }
+    
+    if (settings.selectedYear) {
+      selectedYear.value = settings.selectedYear;
+    }
+    
+    if (settings.selectedMonth) {
+      selectedMonth.value = settings.selectedMonth;
+    }
+    
+    forceUpdate.value = Date.now();
+    console.log('✅ Состояние загружено с сервера');
+    
+  } catch (e) {
+    console.error('Ошибка загрузки с сервера:', e);
+    loadStateFromStorage();
+  }
+};
+
+// ========== СОХРАНЕНИЕ НА СЕРВЕР ==========
+const saveStateToServer = async () => {
+  try {
+    const settings = {
+      customBonusStatus: customBonusStatus.value,
+      managerKpiValues: managerKpiValues.value,
+      selectedRate: selectedRate.value,
+      selectedKpiRate: selectedKpiRate.value,
+      manualKpiVat: manualKpiVat.value,
+      selectedYear: selectedYear.value,
+      selectedMonth: selectedMonth.value
+    };
+    
+    await store.saveAllKpiSettings(settings);
+    console.log('✅ Состояние сохранено на сервер');
+    
+    localStorage.setItem('kpi_active_tab', activeTab.value);
+    
+  } catch (e) {
+    console.error('Ошибка сохранения на сервер:', e);
+    saveStateToStorage();
   }
 };
 
@@ -933,14 +997,13 @@ const refreshAllData = () => {
   forceUpdate.value = Date.now();
 };
 
-// Следим за изменениями и сохраняем
-watch([customBonusStatus, managerKpiValues, selectedRate, selectedKpiRate, manualKpiVat, activeTab, selectedYear, selectedMonth], () => {
-  saveStateToStorage();
+// Следим за изменениями и сохраняем на сервер
+watch([customBonusStatus, managerKpiValues, selectedRate, selectedKpiRate, manualKpiVat, selectedYear, selectedMonth], () => {
+  saveStateToServer();
 }, { deep: true });
 
 // Функция для форматирования ввода числа
 const parseNumberInput = (value: string): number => {
-  // Убираем все кроме цифр и точки
   const cleaned = value.replace(/[^\d.]/g, '');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
@@ -950,7 +1013,7 @@ const parseNumberInput = (value: string): number => {
 const updateManualKpiVat = (managerId: string, value: any) => {
   const numValue = typeof value === 'string' ? parseNumberInput(value) : value;
   manualKpiVat.value[managerId] = numValue;
-  saveStateToStorage();
+  saveStateToServer();
 };
 
 // Функция для форматирования отображения
@@ -1028,7 +1091,7 @@ const nonKpiClientHeaders = [
 ];
 
 // Разрешенные роли
-const allowedRoles = ['Менеджер', 'Старший Менеджер',];
+const allowedRoles = ['Менеджер', 'Старший Менеджер'];
 
 // Фильтрованные менеджеры из системы
 const filteredManagers = computed(() => {
@@ -1067,7 +1130,6 @@ const managersStats = computed(() => {
   const month = parseInt(selectedMonth.value);
   const monthStr = month.toString().padStart(2, '0');
   
-  // Фильтруем операции из store за выбранный месяц
   const filteredOps = store.bufferData.filter(op => {
     if (!op.date) return false;
     const [day, opMonth, opYear] = op.date.split('-');
@@ -1076,7 +1138,6 @@ const managersStats = computed(() => {
   
   console.log(`📊 Фильтрация за ${year}-${monthStr}: ${filteredOps.length} операций из ${store.bufferData.length}`);
   
-  // Группируем по managerId
   const stats = new Map();
   
   filteredOps.forEach(op => {
@@ -1107,14 +1168,12 @@ const managersStats = computed(() => {
     }
   });
   
-  // Преобразуем Set в число
   for (const [, stat] of stats.entries()) {
     stat.uniqueClients = stat.uniqueClients.size;
   }
   
   return stats;
 });
-
 
 // Проверка разрешена ли ставка для менеджера
 const isRateAllowed = (manager: Manager, rateId: string): boolean => {
@@ -1140,15 +1199,15 @@ const getSelectedRate = (item: any): number => {
   }
   
   const manager = item.originalManager;
-  if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015; // 0.15%
-  if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;  // 0.2%
-  if (manager.allowedMaintenanceRates?.includes('m030')) return 0.003;  // 0.3%
-  return 0.0015; // По умолчанию 0.15%
+  if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015;
+  if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;
+  if (manager.allowedMaintenanceRates?.includes('m030')) return 0.003;
+  return 0.0015;
 };
 
 // Получить выбранную ставку KPI
 const getSelectedKpiRate = (item: any): number => {
-  return selectedKpiRate.value[item.id] || 0.015; // По умолчанию 1.5%
+  return selectedKpiRate.value[item.id] || 0.015;
 };
 
 // Рассчитать выплату с учетом выбранной ставки (ведение)
@@ -1163,7 +1222,7 @@ const calculateKpiAmount = (item: any): number => {
   return kpiClientBaseTotal.value * rate;
 };
 
-// Получить статус бонуса для клиента с учетом данных из файла
+// Получить статус бонуса для клиента
 const getClientBonusStatus = (
   clientName: string,
   managerName: string,
@@ -1179,8 +1238,6 @@ const getClientBonusStatus = (
   allMonthsCompleted: boolean;
   fileStatus?: string;
 } => {
-  
-  // Сначала проверяем кастомный статус (установленный вручную)
   const customKey = `${clientName}_${managerName}`;
   if (customBonusStatus.value[customKey]) {
     const custom = customBonusStatus.value[customKey];
@@ -1195,14 +1252,11 @@ const getClientBonusStatus = (
     };
   }
   
-  // Ищем запись в bonusHistory
   const bonus = store.bonusHistory.find(b => 
-  b.client === clientName && b.currentManager === managerName
-);
+    b.client === clientName && b.currentManager === managerName
+  );
   
-  // Если есть запись в файле - используем её статус
   if (bonus) {
-    // Для статуса "БЫЛ" из файла - сразу возвращаем
     if (bonus.status === 'БЫЛ') {
       return {
         status: 'БЫЛ',
@@ -1215,13 +1269,10 @@ const getClientBonusStatus = (
       };
     }
     
-    // Для статуса "ДА" из файла - проверяем период
     if (bonus.status === 'ДА' && bonus.firstFillDate) {
-      // Парсим дату первой заправки
       const [day, month, year] = bonus.firstFillDate.split('-').map(Number);
       const firstFill = new Date(year, month - 1, day);
       
-      // Получаем первые 3 месяца
       const bonusMonths: string[] = [];
       for (let i = 0; i < 3; i++) {
         const bonusDate = new Date(firstFill);
@@ -1231,10 +1282,8 @@ const getClientBonusStatus = (
         bonusMonths.push(`${bonusYear}-${bonusMonth.toString().padStart(2, '0')}`);
       }
       
-      // Текущий месяц
       const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
       
-      // Находим максимальную сумму
       let maxAmount = 0;
       let maxMonth = null;
       
@@ -1246,7 +1295,6 @@ const getClientBonusStatus = (
         }
       });
       
-      // Если текущий месяц - месяц с максимальной суммой, то ДА, иначе БЫЛ
       const isActive = currentMonthKey === maxMonth;
       
       return {
@@ -1260,7 +1308,6 @@ const getClientBonusStatus = (
       };
     }
     
-    // Для статуса "НЕТ" - возвращаем НЕТ
     if (bonus.status === 'НЕТ') {
       return {
         status: 'НЕТ',
@@ -1274,7 +1321,6 @@ const getClientBonusStatus = (
     }
   }
   
-  // Если нет записи в файле - возвращаем НЕТ
   return {
     status: 'НЕТ',
     firstFillDate: null,
@@ -1305,7 +1351,6 @@ const setBonusStatus = (clientName: string, status: string) => {
   
   console.log('📝 Сохраняем кастомный статус:', { customKey, status, currentMonthKey });
   
-  // Сохраняем статус
   customBonusStatus.value = {
     ...customBonusStatus.value,
     [customKey]: {
@@ -1314,36 +1359,22 @@ const setBonusStatus = (clientName: string, status: string) => {
     }
   };
   
-  // Сохраняем в localStorage
-  localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
+  // Запускаем сохранение на сервер
+  saveStateToServer();
   
-  // Пересчитываем KPI для этого менеджера
   setTimeout(() => {
-    // Находим менеджера в списке
     const managerItem = managerRatings.value.find(m => m.id === managerId);
     if (managerItem) {
-      // Сохраняем его KPI
       managerKpiValues.value[managerId] = managerItem.managerKpi || 0;
-      saveStateToStorage();
+      saveStateToServer();
       console.log(`💾 Сохранен KPI для ${managerName}:`, managerItem.managerKpi);
     }
     
-    // Принудительное обновление
     forceUpdate.value = Date.now();
   }, 100);
   
   console.log(`✅ Статус для клиента ${clientName} установлен как ${status}`);
   alert(`✅ Статус для клиента "${clientName}" изменен на "${status}"`);
-};
-
-// Цвет для статуса бонуса
-const getBonusStatusColor = (status: string): string => {
-  switch(status) {
-    case 'ДА': return 'success';
-    case 'НЕТ': return 'grey';
-    case 'БЫЛ': return 'warning';
-    default: return 'grey';
-  }
 };
 
 // Рейтинги менеджеров
@@ -1357,7 +1388,6 @@ const managerRatings = computed(() => {
     let vatAmount = 0;
     let uniqueClients = 0;
     
-    // 🔥 ИСПРАВЛЕНО: ищем по managerId, а не по имени
     const statData = bufferStats.get(manager.id);
     if (statData) {
       totalAmount = statData.totalAmount;
@@ -1371,18 +1401,16 @@ const managerRatings = computed(() => {
     const fact = totalAmount;
     const planPercent = plan > 0 ? (fact / plan) * 100 : 0;
     
-    // Ведение
     const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
     const maintenancePayment = noVatAmount * rate;
     
-    // KPI менеджера
     let managerKpi = 0;
     if (managerKpiValues.value[manager.id] !== undefined) {
       managerKpi = managerKpiValues.value[manager.id];
     } else if (selectedManagerDetails.value?.id === manager.id) {
       managerKpi = kpiClientDetails.value.active.reduce((sum, client) => sum + client.kpiAmount, 0);
       managerKpiValues.value[manager.id] = managerKpi;
-      saveStateToStorage();
+      saveStateToServer();
     }
     
     const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
@@ -1429,7 +1457,6 @@ const maintenanceClientDetails = computed(() => {
     allOps = [...allOps, ...ops];
   });
   
-  // Убираем дубликаты
   const uniqueOps = Array.from(
     new Map(allOps.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
   );
@@ -1477,7 +1504,6 @@ const maintenanceClientDetails = computed(() => {
 
 // Детализация по клиентам для KPI
 const kpiClientDetails = computed(() => {
-  // Принудительное обновление при изменении forceUpdate
   const update = forceUpdate.value;
   
   if (!selectedManagerDetails.value) return { active: [], was: [], non: [] };
@@ -1491,7 +1517,6 @@ const kpiClientDetails = computed(() => {
   
   console.log('🔄 Пересчет kpiClientDetails, forceUpdate:', update);
   
-  // Собираем все операции менеджера по месяцам
   const monthsToCheck = [];
   for (let i = -3; i <= 3; i++) {
     const checkDate = new Date(year, month - 1 + i, 1);
@@ -1515,8 +1540,7 @@ const kpiClientDetails = computed(() => {
     monthlyOpsMap.set(monthKey, monthOps);
   });
   
-  // Группируем операции по клиентам и месяцам
-  const clientMonthlyMap = new Map(); // client -> Map<month, amount>
+  const clientMonthlyMap = new Map();
   
   monthlyOpsMap.forEach((ops, monthKey) => {
     ops.forEach(op => {
@@ -1530,10 +1554,8 @@ const kpiClientDetails = computed(() => {
     });
   });
   
-  // Создаем карту клиентов
   const clientCurrentMap = new Map();
   
-  // 1. Сначала добавляем всех клиентов из bonusHistory для этого менеджера
   const managerBonuses = bonushistory.value.filter(b => 
     allManagerNames.some(name => b.currentManager === name)
   );
@@ -1557,13 +1579,11 @@ const kpiClientDetails = computed(() => {
     }
   });
   
-  // 2. Добавляем клиентов из операций (или обновляем существующих)
   const currentMonthKey = `${year}-${month.toString().padStart(2, '0')}`;
   const currentMonthOps = monthlyOpsMap.get(currentMonthKey) || [];
   
   currentMonthOps.forEach(op => {
     if (!clientCurrentMap.has(op.client)) {
-      // Новый клиент, которого нет в bonusHistory
       clientCurrentMap.set(op.client, {
         client: op.client,
         totalAmount: 0,
@@ -1592,14 +1612,12 @@ const kpiClientDetails = computed(() => {
     }
   });
   
-  // 3. Для всех клиентов с firstFillDate вычисляем максимальную сумму за период
   for (const [client, data] of clientCurrentMap.entries()) {
     if (data.firstFillDate) {
       try {
         const [day, m, y] = data.firstFillDate.split('-').map(Number);
         const firstFill = new Date(y, m - 1, day);
         
-        // Получаем первые 3 месяца бонусного периода
         const bonusMonths: string[] = [];
         for (let i = 0; i < 3; i++) {
           const bonusDate = new Date(firstFill);
@@ -1609,7 +1627,6 @@ const kpiClientDetails = computed(() => {
           bonusMonths.push(`${bonusYear}-${bonusMonthNum.toString().padStart(2, '0')}`);
         }
         
-        // Находим максимальную сумму за эти месяцы
         const clientMonths = clientMonthlyMap.get(client) || new Map();
         let maxAmount = 0;
         let maxMonth = null;
@@ -1625,7 +1642,6 @@ const kpiClientDetails = computed(() => {
         data.maxAmount = maxAmount;
         data.maxAmountMonth = maxMonth;
         
-        // Для клиентов со статусом "ДА" из файла, показываем максимальную сумму за период
         if (data.clientStatus === 'ДА') {
           data.kpiBaseAmount = maxAmount;
         }
@@ -1636,12 +1652,10 @@ const kpiClientDetails = computed(() => {
     }
   }
   
-  // Преобразуем Map в массив
   const allClients = Array.from(clientCurrentMap.values());
   
   const rate = getSelectedKpiRate(selectedManagerDetails.value);
   
-  // Разделяем на три категории на основе clientStatus и типа клиента
   const active = allClients
     .filter(data => data.clientStatus === 'ДА' && data.noVatAmount > 0)
     .map(data => {
@@ -1763,8 +1777,7 @@ const formatMoney = (amount: number): string => {
 // Сохранить состояние диалога
 const saveDialogState = (isOpen: boolean) => {
   if (!isOpen && selectedManagerDetails.value) {
-    // При закрытии диалога сохраняем состояние
-    saveStateToStorage();
+    saveStateToServer();
   }
 };
 
@@ -1777,15 +1790,13 @@ const openManagerDetails = (item: any) => {
   }
   
   if (!selectedKpiRate.value[item.id]) {
-    selectedKpiRate.value[item.id] = 0.015; // По умолчанию 1.5%
+    selectedKpiRate.value[item.id] = 0.015;
   }
   
-  // Инициализируем KPI VAT, если ещё нет
   if (manualKpiVat.value[item.id] === undefined) {
     manualKpiVat.value[item.id] = 0;
   }
   
-  // Восстанавливаем последний активный таб для этого менеджера
   const savedTabKey = `kpi_tab_${item.id}`;
   const savedTab = localStorage.getItem(savedTabKey);
   if (savedTab) {
@@ -1804,18 +1815,12 @@ const refreshData = async () => {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
     
-    // Загружаем менеджеров (один раз)
     if (store.managers.length === 0) {
       await store.loadManagers();
     }
     
-    // Загружаем планы за текущий месяц
     await store.loadPlans(year, month);
-    
-    // Загружаем операции за текущий месяц
     await store.loadBufferData(year, month);
-    
-    // Загружаем ставки и историю
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
@@ -1838,9 +1843,11 @@ watch(activeTab, (newTab) => {
 watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
-onMounted(() => {
-  loadStateFromStorage();
-  refreshData();
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+onMounted(async () => {
+  await loadStateFromServer();
+  await refreshData();
 });
 </script>
 
