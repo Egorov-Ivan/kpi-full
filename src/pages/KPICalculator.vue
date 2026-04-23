@@ -1951,7 +1951,6 @@ watch(activeTab, (newTab) => {
 watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
-
 // ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
 const showKpiButton = ref(true);
 
