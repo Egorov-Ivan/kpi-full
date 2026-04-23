@@ -1255,7 +1255,7 @@ const getClientBonusStatus = (
 } => {
 // 🔥 Проверяем, не получал ли клиент KPI ранее (любой менеджер)
 const alreadyReceived = store.isKpiReceivedForClient(clientName);
-console.log(`🔍 Проверка KPI для ${clientName}:`, alreadyReceived, store.kpiReceivedClients);
+console.log(`🔍 ${clientName}: alreadyReceived=${alreadyReceived}, total clients=${store.kpiReceivedClients.length}`);
 if (alreadyReceived) {
   return {
     status: 'БЫЛ',
@@ -1887,12 +1887,14 @@ const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
   
   const managerName = selectedManagerDetails.value.originalManager.displayName;
-  const kpiMonth = '1970-01'; // Отладка — фиксируем как "давно получен"
+  const kpiMonth = '1970-01';
   
   if (!confirm(`Зафиксировать KPI навсегда?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}\nМесяц: ${kpiMonth}`)) return;
   
   try {
     await store.markKpiReceived(item.client, managerName, kpiMonth);
+    // Принудительно перезагружаем список из БД
+    await store.loadKpiReceivedClients();
     alert(`✅ KPI зафиксирован: ${item.client}`);
     forceUpdate.value = Date.now();
   } catch (error) {
