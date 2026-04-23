@@ -1798,13 +1798,23 @@ const nonKpiClientNoVatTotal = computed(() => {
 
 // Итоги
 const forecast = computed(() => {
-  const fact = totalFact.value; 
+  const fact = totalFact.value;
   
   const now = new Date();
+  const selectedYearNum = parseInt(selectedYear.value);
+  const selectedMonthNum = parseInt(selectedMonth.value);
+  
+  // Если выбранный месяц уже прошёл — прогноз = факт
+  if (selectedYearNum < now.getFullYear() || 
+      (selectedYearNum === now.getFullYear() && selectedMonthNum < now.getMonth() + 1)) {
+    return fact;
+  }
+  
+  // Если текущий месяц — считаем прогноз
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const passedDays = now.getDate();
   
-  return (fact / passedDays) * daysInMonth;
+  return (fact / Math.max(passedDays, 1)) * daysInMonth;
 });
 
 const totalFact = computed(() => {
