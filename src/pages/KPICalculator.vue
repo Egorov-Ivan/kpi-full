@@ -150,18 +150,20 @@
             </template>
 
             <!-- Действия -->
-            <template v-slot:item.actions="{ item }">
-              <v-btn
-                icon
-                variant="text"
-                size="small"
-                color="primary"
-                @click="openManagerDetails(item)"
-              >
-                <v-icon>ri-eye-line</v-icon>
-                <v-tooltip activator="parent" location="top">Детали</v-tooltip>
-              </v-btn>
-            </template>
+                          <template v-slot:item.actions="{ item }">
+                            <div class="d-flex gap-1">
+                              <v-btn
+                                v-if="showKpiButton"
+                                size="x-small"
+                                color="warning"
+                                variant="tonal"
+                                @click="markSingleClientKpi(item)"
+                              >
+                                <v-icon size="small">ri-check-double-line</v-icon>
+                                KPI
+                              </v-btn>
+                            </div>
+                          </template>
 
             <!-- Пустое состояние -->
             <template v-slot:no-data>
@@ -1092,7 +1094,8 @@ const wasKpiClientHeaders = [
   { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
   { title: 'Месяц бонуса', key: 'bonusMonth', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
-  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
+  { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
 // Заголовки для таблицы клиентов без бонуса (НЕТ)
@@ -1891,7 +1894,12 @@ watch([selectedYear, selectedMonth], () => {
 // ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
 const showKpiButton = ref(true);
 
-
+const handleKpiKeyDown = (e: KeyboardEvent) => {
+  if (e.getModifierState('CapsLock')) {
+    showKpiButton.value = !showKpiButton.value;
+    console.log('🔧 Кнопки KPI:', showKpiButton.value ? 'показаны' : 'скрыты');
+  }
+};
 
 const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
