@@ -1587,12 +1587,12 @@ const kpiClientDetails = computed(() => {
   
   const monthlyOpsMap = new Map<string, any[]>();
   
-  monthsToCheck.forEach(({ year: y, month: m }) => {
+monthsToCheck.forEach(({ year: y, month: m }) => {
     const monthKey = `${y}-${m.toString().padStart(2, '0')}`;
     let monthOps: any[] = [];
     
     allManagerNames.forEach(name => {
-      const ops = bufferService.getOperationsByManager(name, year, month);
+      const ops = bufferService.getOperationsByManager(name, y, m); // ← y, m вместо year, month
       monthOps = [...monthOps, ...ops];
     });
     
