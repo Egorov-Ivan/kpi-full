@@ -1853,6 +1853,8 @@ const refreshData = async () => {
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
+    await store.loadKpiReceivedClients(); // Перезагружаем KPI клиентов
+forceUpdate.value = Date.now(); // Принудительный пересчёт
     
   } catch (error) {
     console.error('Ошибка:', error);
@@ -1911,10 +1913,10 @@ const markSingleClientKpi = async (item: any) => {
 
 
 onMounted(async () => {
+  await store.loadKpiReceivedClients(); // Сначала загружаем KPI клиентов
   await loadStateFromServer();
   await refreshData();
-  await store.loadKpiReceivedClients();
-window.addEventListener('keydown', handleKpiKeyDown);
+  window.addEventListener('keydown', handleKpiKeyDown);
 });
 </script>
 
