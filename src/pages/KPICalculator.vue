@@ -1587,21 +1587,14 @@ const kpiClientDetails = computed(() => {
   
 monthsToCheck.forEach(({ year: y, month: m }) => {
     const monthKey = `${y}-${m.toString().padStart(2, '0')}`;
-    const monthStr = m.toString().padStart(2, '0');
     
     const ops = store.bufferData.filter(op => {
       if (!op.date) return false;
       const [day, opMonth, opYear] = op.date.split('-');
-      return parseInt(opYear) === y && parseInt(opMonth) === m;
+      return parseInt(opYear) === y && parseInt(opMonth) === m && op.manager === managerName;
     });
     
-    const managerOps = ops.filter(op => op.manager === managerName);
-    
-    console.log(`📅 ${monthKey}: ${managerOps.length} оп.`);
-    const uniqueOps = Array.from(
-      new Map(managerOps.map(op => [op.operationId || `${op.date}-${op.client}-${op.amount}`, op])).values()
-    );
-    monthlyOpsMap.set(monthKey, uniqueOps);
+    monthlyOpsMap.set(monthKey, ops);
   });
   
   const clientMonthlyMap = new Map();
