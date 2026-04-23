@@ -1253,19 +1253,21 @@ const getClientBonusStatus = (
   allMonthsCompleted: boolean;
   fileStatus?: string;
 } => {
-// 🔥 Проверяем, не получал ли клиент KPI ранее (любой менеджер)
-const alreadyReceived = store.isKpiReceivedForClient(clientName);
-console.log(`🔍 ${clientName}: alreadyReceived=${alreadyReceived}, total clients=${store.kpiReceivedClients.length}`);
-if (alreadyReceived) {
-  return {
-    status: 'БЫЛ',
-    firstFillDate: null,
-    maxAmount: 0,
-    maxMonth: null,
-    hasActiveBonus: false,
-    allMonthsCompleted: true,
-    fileStatus: 'KPI уже получен'
-  };
+  // 🔥 Проверяем, не получал ли клиент KPI ранее
+  const alreadyReceived = store.isKpiReceivedForClient(clientName);
+  console.log(`🔍 getClientBonusStatus для "${clientName}": alreadyReceived=${alreadyReceived}`);
+  
+  if (alreadyReceived) {
+    console.log(`✅ ${clientName} → БЫЛ (KPI уже получен)`);
+    return {
+      status: 'БЫЛ',
+      firstFillDate: null,
+      maxAmount: 0,
+      maxMonth: null,
+      hasActiveBonus: false,
+      allMonthsCompleted: true,
+      fileStatus: 'KPI уже получен'
+    };
 }
   const customKey = `${clientName}_${managerName}`;
   if (customBonusStatus.value[customKey]) {
