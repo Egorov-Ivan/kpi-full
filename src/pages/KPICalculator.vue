@@ -1672,45 +1672,30 @@ const currentMonthOps = Array.from(
   });
   
   for (const [client, data] of clientCurrentMap.entries()) {
-    if (data.firstFillDate) {
-      try {
-        const [day, m, y] = data.firstFillDate.split('-').map(Number);
-        const firstFill = new Date(y, m - 1, day);
-        
-        const bonusMonths: string[] = [];
-        for (let i = 0; i < 3; i++) {
-          const bonusDate = new Date(firstFill);
-          bonusDate.setMonth(firstFill.getMonth() + i);
-          const bonusYear = bonusDate.getFullYear();
-          const bonusMonthNum = bonusDate.getMonth() + 1;
-          bonusMonths.push(`${bonusYear}-${bonusMonthNum.toString().padStart(2, '0')}`);
-        }
-        
-        const clientMonths = clientMonthlyMap.get(client) || new Map();
-        let maxAmount = 0;
-        let maxMonth = null;
-        
-        bonusMonths.forEach(monthKey => {
-          const amount = clientMonths.get(monthKey) || 0;
-          if (amount > maxAmount) {
-            maxAmount = amount;
-            maxMonth = monthKey;
-          }
-        });
-        
-        data.maxAmount = maxAmount;
-        data.maxAmountMonth = maxMonth;
-        
-        if (data.clientStatus === 'ДА') {
-          data.kpiBaseAmount = maxAmount;
-        }
-        
-      } catch (e) {
-        console.error('Ошибка парсинга даты для клиента:', client, data.firstFillDate);
+    // Вычисляем maxAmount для всех клиентов (не только с firstFillDate)
+    const months = clientMonthlyMap.get(client) || new Map();
+    let maxAmount = 0;
+    let maxMonth = null;
+    
+    // Проверяем текущий и 2 предыдущих месяца
+    for (let i = 0; i < 3; i++) {
+      const checkDate = new Date(year, month - 1 - i, 1);
+      const checkKey = `${checkDate.getFullYear()}-${(checkDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      const amount = months.get(checkKey) || 0;
+      if (amount > maxAmount) {
+        maxAmount = amount;
+        maxMonth = checkKey;
       }
     }
+    
+    data.maxAmount = maxAmount;
+    data.maxAmountMonth = maxMonth;
+    
+    if (data.firstFillDate && data.clientStatus === 'ДА') {
+      data.kpiBaseAmount = maxAmount;
+    }
   }
-  
+
  const allClients = Array.from(clientCurrentMap.values());
 
 const rate = getSelectedKpiRate(selectedManagerDetails.value);
@@ -1747,7 +1732,34 @@ const was = clientsWithStatus
 
 const non = clientsWithStatus
   .filter(data => data.status === 'НЕТ' && data.noVatAmount > 0)
-  .map(data => ({ ...data }));
+  .map(data => {
+    // Ищем максимальную сумму за последние 3 месяца
+    const clientMonths = clientMonthlyMap.get(data.client) || new Map();
+    let maxAmount = 0;
+    let maxMonth = null;
+    
+    // Проверяем текущий и 2 предыдущих месяца
+    for (let i = 0; i < 3; i++) {
+      const checkDate = new Date(year, month - 1 - i, 1);
+      const checkKey = `${checkDate.getFullYear()}-${(checkDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      const amount = clientMonths.get(checkKey) || 0;
+      if (amount > maxAmount) {
+        maxAmount = amount;
+        maxMonth = checkKey;
+      }
+    }
+    
+    const displayAmount = maxAmount > 0 ? maxAmount : data.noVatAmount;
+    
+    return {
+      ...data,
+      maxAmount,
+      maxAmountMonth: maxMonth,
+      displayAmount,
+      monthInfo: maxMonth ? `Месяц: ${maxMonth}` : null,
+      baseInfo: maxAmount > 0 ? `Макс. сумма: ${formatMoney(maxAmount)}` : null
+    };
+  });
 
 return { active, was, non };
 });
