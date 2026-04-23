@@ -150,20 +150,18 @@
             </template>
 
             <!-- Действия -->
-                          <template v-slot:item.actions="{ item }">
-                            <div class="d-flex gap-1">
-                              <v-btn
-                                v-if="showKpiButton"
-                                size="x-small"
-                                color="warning"
-                                variant="tonal"
-                                @click="markSingleClientKpi(item)"
-                              >
-                                <v-icon size="small">ri-check-double-line</v-icon>
-                                KPI
-                              </v-btn>
-                            </div>
-                          </template>
+            <template v-slot:item.actions="{ item }">
+              <v-btn
+                icon
+                variant="text"
+                size="small"
+                color="primary"
+                @click="openManagerDetails(item)"
+              >
+                <v-icon>ri-eye-line</v-icon>
+                <v-tooltip activator="parent" location="top">Детали</v-tooltip>
+              </v-btn>
+            </template>
 
             <!-- Пустое состояние -->
             <template v-slot:no-data>
@@ -647,6 +645,22 @@
                               </v-chip>
                             </div>
                           </template>
+                          
+                          <!-- Действия -->
+                          <template v-slot:item.actions="{ item }">
+                            <div class="d-flex gap-1">
+                              <v-btn
+                                v-if="showKpiButton"
+                                size="x-small"
+                                color="warning"
+                                variant="tonal"
+                                @click="markSingleClientKpi(item)"
+                              >
+                                <v-icon size="small">ri-check-double-line</v-icon>
+                                KPI
+                              </v-btn>
+                            </div>
+                          </template>
                         </v-data-table>
                       </v-expansion-panel-text>
                     </v-expansion-panel>
@@ -1094,8 +1108,7 @@ const wasKpiClientHeaders = [
   { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
   { title: 'Месяц бонуса', key: 'bonusMonth', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
-  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
-  { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
 ];
 
 // Заголовки для таблицы клиентов без бонуса (НЕТ)
@@ -1895,7 +1908,7 @@ watch([selectedYear, selectedMonth], () => {
 const showKpiButton = ref(true);
 
 const handleKpiKeyDown = (e: KeyboardEvent) => {
-  if (e.getModifierState('CapsLock')) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'K') {
     showKpiButton.value = !showKpiButton.value;
     console.log('🔧 Кнопки KPI:', showKpiButton.value ? 'показаны' : 'скрыты');
   }
@@ -1905,16 +1918,18 @@ const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
   
   const managerName = selectedManagerDetails.value.originalManager.displayName;
+  const kpiMonth = '1970-01';
   
-  if (!confirm(`Разрешить получение KPI?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}`)) return;
+  if (!confirm(`Зафиксировать KPI навсегда?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}\nМесяц: ${kpiMonth}`)) return;
   
   try {
-    await store.removeKpiReceived(item.client);
+    await store.markKpiReceived(item.client, managerName, kpiMonth);
+    // Принудительно перезагружаем список из БД
     await store.loadKpiReceivedClients();
-    alert(`✅ KPI разрешён: ${item.client}`);
+    alert(`✅ KPI зафиксирован: ${item.client}`);
     forceUpdate.value = Date.now();
   } catch (error) {
-    alert('❌ Ошибка');
+    alert('❌ Ошибка фиксации KPI');
   }
 };
 // ========== КОНЕЦ ВРЕМЕННОГО КОДА ==========
@@ -1927,9 +1942,9 @@ const markSingleClientKpi = async (item: any) => {
 
 
 onMounted(async () => {
- await refreshData();
-  await store.importAllClientsAsKpiReceived(); // ВРЕМЕННО: импорт всех как "KPI получен"
+  await store.loadKpiReceivedClients(); // Сначала загружаем KPI клиентов
   await loadStateFromServer();
+  await refreshData();
   window.addEventListener('keydown', handleKpiKeyDown);
 });
 </script>
