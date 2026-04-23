@@ -1254,17 +1254,19 @@ const getClientBonusStatus = (
   fileStatus?: string;
 } => {
 // 🔥 Проверяем, не получал ли клиент KPI ранее (любой менеджер)
-  if (store.isKpiReceivedForClient(clientName)) {
-    return {
-      status: 'БЫЛ',
-      firstFillDate: null,
-      maxAmount: 0,
-      maxMonth: null,
-      hasActiveBonus: false,
-      allMonthsCompleted: true,
-      fileStatus: 'KPI уже получен'
-    };
-  }
+const alreadyReceived = store.isKpiReceivedForClient(clientName);
+console.log(`🔍 Проверка KPI для ${clientName}:`, alreadyReceived, store.kpiReceivedClients);
+if (alreadyReceived) {
+  return {
+    status: 'БЫЛ',
+    firstFillDate: null,
+    maxAmount: 0,
+    maxMonth: null,
+    hasActiveBonus: false,
+    allMonthsCompleted: true,
+    fileStatus: 'KPI уже получен'
+  };
+}
   const customKey = `${clientName}_${managerName}`;
   if (customBonusStatus.value[customKey]) {
     const custom = customBonusStatus.value[customKey];
