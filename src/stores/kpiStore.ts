@@ -439,6 +439,56 @@ const markKpiReceived = async (client: string, managerName: string, month: strin
   }
 };
 
+
+// Удаление клиента из списка получивших KPI
+const removeKpiReceived = async (client: string) => {
+  try {
+    const response = await fetch('/api/remove-kpi-received', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client })
+    });
+    const data = await response.json();
+    if (data.success) {
+      await loadKpiReceivedClients();
+      return data;
+    }
+    throw new Error(data.error || 'Unknown error');
+  } catch (error) {
+    console.error('Ошибка удаления KPI:', error);
+    throw error;
+  }
+};
+
+// ВРЕМЕННО: импорт всех клиентов как "KPI получен"
+const importAllClientsAsKpiReceived = async () => {
+  if (bufferData.value.length === 0) {
+    console.log('⚠️ Нет данных для импорта');
+    return;
+  }
+  
+  const allClients = [...new Set(bufferData.value.map(op => op.client))];
+  console.log(`📤 Импорт ${allClients.length} клиентов как "KPI получен"...`);
+  
+  for (const client of allClients) {
+    try {
+      await fetch('/api/mark-kpi-received', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client, managerName: 'system', month: '1970-01' })
+      });
+    } catch (e) {
+      // игнорируем дубликаты
+    }
+  }
+  
+  await loadKpiReceivedClients();
+  console.log('✅ Импорт завершён');
+};
+
+
+
+
 const isKpiReceivedForClient = (client: string): boolean => {
   return kpiReceivedClients.value.some(c => c.client === client);
 };
@@ -511,6 +561,8 @@ const isKpiReceivedForClient = (client: string): boolean => {
     loadBufferData,
     loadBonusHistory,
     loadKpiSettings,
+    removeKpiReceived,
+    importAllClientsAsKpiReceived,
 
     saveKpiSetting,
     saveAllKpiSettings,
@@ -524,6 +576,8 @@ const isKpiReceivedForClient = (client: string): boolean => {
     getBonusStatusForClient,
     loadKpiReceivedClients,
     markKpiReceived,
+    
+    
     
   };
 });
