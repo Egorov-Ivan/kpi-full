@@ -41,7 +41,7 @@
                 hide-details
               ></v-select>
             </div>
-
+            
             <v-spacer></v-spacer>
 
             <v-btn
@@ -64,7 +64,10 @@
               <strong>{{ bufferStats.totalOperations }}</strong> операций, 
               <strong>{{ bufferStats.totalClients }}</strong> клиентов
             </div>
-            
+            <div class="text-caption">
+                <span class="text-grey">Прогноз на конец месяца:</span>
+                <span class="font-weight-medium ml-2">{{ formatMoney(forecast) }}</span>
+              </div>
             <div class="text-caption text-grey">
               <v-icon size="small" color="grey" class="mr-1">ri-calendar-line</v-icon>
               Период данных: {{ bufferStats.dateRange.first }} — {{ bufferStats.dateRange.last }}
@@ -180,6 +183,7 @@
             </div>
             
             <div class="d-flex gap-4">
+              
               <div class="text-caption">
                 <span class="text-grey">Общий факт:</span>
                 <span class="font-weight-medium ml-2">{{ formatMoney(totalFact) }}</span>
@@ -1682,6 +1686,16 @@ const nonKpiClientNoVatTotal = computed(() => {
 });
 
 // Итоги
+const forecast = computed(() => {
+  const fact = totalFact.value; 
+  
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const passedDays = now.getDate();
+  
+  return (fact / passedDays) * daysInMonth;
+});
+
 const totalFact = computed(() => {
   return managerRatings.value.reduce((sum, m) => sum + m.fact, 0);
 });
