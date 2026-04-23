@@ -1892,7 +1892,7 @@ watch([selectedYear, selectedMonth], () => {
 const showKpiButton = ref(true);
 
 const handleKpiKeyDown = (e: KeyboardEvent) => {
-  if (e.ctrlKey && e.shiftKey && e.key === 'K') {
+  if (e.getModifierState('CapsLock')) {
     showKpiButton.value = !showKpiButton.value;
     console.log('🔧 Кнопки KPI:', showKpiButton.value ? 'показаны' : 'скрыты');
   }
