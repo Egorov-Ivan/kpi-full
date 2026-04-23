@@ -1872,7 +1872,7 @@ watch([selectedYear, selectedMonth], () => {
 });
 
 // ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
-const showKpiButton = ref(false);
+const showKpiButton = ref(true);
 
 const handleKpiKeyDown = (e: KeyboardEvent) => {
   if (e.ctrlKey && e.shiftKey && e.key === 'K') {
@@ -1885,12 +1885,12 @@ const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
   
   const managerName = selectedManagerDetails.value.originalManager.displayName;
-  const month = `${selectedYear.value}-${selectedMonth.value}`;
+  const kpiMonth = '1970-01'; // Отладка — фиксируем как "давно получен"
   
-  if (!confirm(`Зафиксировать KPI навсегда?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}\nМесяц: ${month}`)) return;
+  if (!confirm(`Зафиксировать KPI навсегда?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}\nМесяц: ${kpiMonth}`)) return;
   
   try {
-    await store.markKpiReceived(item.client, managerName, month);
+    await store.markKpiReceived(item.client, managerName, kpiMonth);
     alert(`✅ KPI зафиксирован: ${item.client}`);
     forceUpdate.value = Date.now();
   } catch (error) {
