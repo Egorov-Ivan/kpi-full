@@ -1683,34 +1683,45 @@ const kpiClientDetails = computed(() => {
     }
   }
   
-  const allClients = Array.from(clientCurrentMap.values());
-  
-  const rate = getSelectedKpiRate(selectedManagerDetails.value);
-  
-  const active = allClients
-    .filter(data => data.clientStatus === 'ДА' && data.noVatAmount > 0)
-    .map(data => {
-      const baseAmount = data.kpiBaseAmount || data.noVatAmount;
-      
-      return {
-        ...data,
-        displayAmount: baseAmount,
-        kpiAmount: baseAmount * rate,
-        baseInfo: data.kpiBaseAmount ? `Макс. за период: ${formatMoney(data.kpiBaseAmount)}` : null,
-        monthInfo: data.maxAmountMonth ? `Бонусный месяц: ${data.maxAmountMonth}` : null,
-        warning: !data.hasOperations && !data.kpiBaseAmount ? 'Нет операций' : null
-      };
-    });
-  
-  const was = allClients
-    .filter(data => data.clientStatus === 'БЫЛ' && data.noVatAmount > 0)
-    .map(data => ({ ...data }));
-  
-  const non = allClients
-    .filter(data => data.clientStatus === 'НЕТ' && data.noVatAmount > 0)
-    .map(data => ({ ...data }));
-  
-  return { active, was, non };
+ const allClients = Array.from(clientCurrentMap.values());
+
+const rate = getSelectedKpiRate(selectedManagerDetails.value);
+
+// Принудительно проверяем KPI через getClientBonusStatus для каждого клиента
+const clientsWithStatus = allClients.map(data => {
+  const bonusStatus = getClientBonusStatus(
+    data.client,
+    managerName,
+    year,
+    month,
+    clientMonthlyMap.get(data.client) || new Map()
+  );
+  return { ...data, ...bonusStatus };
+});
+
+const active = clientsWithStatus
+  .filter(data => data.status === 'ДА' && data.noVatAmount > 0)
+  .map(data => {
+    const baseAmount = data.kpiBaseAmount || data.noVatAmount;
+    return {
+      ...data,
+      displayAmount: baseAmount,
+      kpiAmount: baseAmount * rate,
+      baseInfo: data.kpiBaseAmount ? `Макс. за период: ${formatMoney(data.kpiBaseAmount)}` : null,
+      monthInfo: data.maxAmountMonth ? `Бонусный месяц: ${data.maxAmountMonth}` : null,
+      warning: !data.hasOperations && !data.kpiBaseAmount ? 'Нет операций' : null
+    };
+  });
+
+const was = clientsWithStatus
+  .filter(data => data.status === 'БЫЛ' && data.noVatAmount > 0)
+  .map(data => ({ ...data }));
+
+const non = clientsWithStatus
+  .filter(data => data.status === 'НЕТ' && data.noVatAmount > 0)
+  .map(data => ({ ...data }));
+
+return { active, was, non };
 });
 
 // Общая сумма базы KPI по клиентам с бонусом
