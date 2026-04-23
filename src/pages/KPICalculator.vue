@@ -1125,9 +1125,8 @@ const wasKpiClientHeaders = [
 // Заголовки для таблицы клиентов без бонуса (НЕТ)
 const nonKpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
-  { title: 'Макс. за 3 мес.', key: 'displayAmount', sortable: true, align: 'end' as const },
   { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
-  { title: 'Месяц макс.', key: 'maxAmountMonth', sortable: true, align: 'center' as const },
+  { title: 'Макс. за 3 мес.', key: 'displayAmount', sortable: true, align: 'end' as const },
   { title: 'Статус', key: 'fileStatus', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
   { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
