@@ -1920,12 +1920,18 @@ const refreshData = async () => {
     }
     
     await store.loadPlans(year, month);
-    await store.loadBufferData(year, month);
+    
+    // Загружаем данные за текущий и 2 предыдущих месяца
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(year, month - 1 - i, 1);
+      await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
+    }
+    
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
-    await store.loadKpiReceivedClients(); // Перезагружаем KPI клиентов
-forceUpdate.value = Date.now(); // Принудительный пересчёт
+    await store.loadKpiReceivedClients();
+    forceUpdate.value = Date.now();
     
   } catch (error) {
     console.error('Ошибка:', error);

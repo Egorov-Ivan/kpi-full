@@ -256,7 +256,7 @@ export const useKpiStore = defineStore('kpi', () => {
     const data = await response.json();
     
     if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
-      bufferData.value = data.replenishments.map((item: ApiReplenishment) => ({
+      const newOps = data.replenishments.map((item: ApiReplenishment) => ({
         date: item.date,
         amount: parseFloat(item.amount),
         client: item.client,
@@ -267,18 +267,20 @@ export const useKpiStore = defineStore('kpi', () => {
         operationId: item.id
       }));
       
-      // 🔥 КЛЮЧЕВОЕ ДОБАВЛЕНИЕ: обновляем bufferService
+      // Добавляем новые операции, исключая дубликаты по operationId
+      const existingIds = new Set(bufferData.value.map(op => op.operationId).filter(Boolean));
+      const uniqueNewOps = newOps.filter(op => !op.operationId || !existingIds.has(op.operationId));
+      bufferData.value = [...bufferData.value, ...uniqueNewOps];
+      
+      // 🔥 Обновляем bufferService
       if (bufferService && typeof bufferService.updateOperations === 'function') {
         bufferService.updateOperations(bufferData.value);
         console.log(`✅ BufferService обновлен: ${bufferData.value.length} операций`);
-      } else {
-        console.warn('⚠️ bufferService.setOperations не найден, нужно добавить метод в bufferService.ts');
       }
       
-      console.log(`✅ Загружено операций: ${bufferData.value.length}`);
+      console.log(`✅ Загружено операций: ${bufferData.value.length} (новых: ${uniqueNewOps.length})`);
     } else {
       console.warn('⚠️ Неожиданный формат ответа:', data);
-      bufferData.value = [];
     }
     
     return bufferData.value;
