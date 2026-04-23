@@ -692,6 +692,16 @@
                             <div class="font-weight-medium">{{ item.client }}</div>
                           </template>
 
+                          <!-- Максимальная сумма за 3 месяца -->
+                          <template v-slot:item.displayAmount="{ item }">
+                            <div class="text-right">
+                              <span class="font-weight-medium text-warning">{{ formatMoney(item.displayAmount) }}</span>
+                              <div v-if="item.monthInfo" class="text-caption text-grey">
+                                {{ item.monthInfo }}
+                              </div>
+                            </div>
+                          </template>
+
                           <!-- Сумма NO_VAT -->
                           <template v-slot:item.noVatAmount="{ item }">
                             <div class="text-right text-grey">
@@ -1115,8 +1125,10 @@ const wasKpiClientHeaders = [
 // Заголовки для таблицы клиентов без бонуса (НЕТ)
 const nonKpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'Макс. за 3 мес.', key: 'displayAmount', sortable: true, align: 'end' as const },
   { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
-  { title: 'Статус в файле', key: 'fileStatus', sortable: true, align: 'center' as const },
+  { title: 'Месяц макс.', key: 'maxAmountMonth', sortable: true, align: 'center' as const },
+  { title: 'Статус', key: 'fileStatus', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
   { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
@@ -1736,7 +1748,34 @@ const was = clientsWithStatus
 
 const non = clientsWithStatus
   .filter(data => data.status === 'НЕТ' && data.noVatAmount > 0)
-  .map(data => ({ ...data }));
+  .map(data => {
+    // Ищем максимальную сумму за последние 3 месяца
+    const clientMonths = clientMonthlyMap.get(data.client) || new Map();
+    let maxAmount = 0;
+    let maxMonth = null;
+    
+    // Проверяем текущий и 2 предыдущих месяца
+    for (let i = 0; i < 3; i++) {
+      const checkDate = new Date(year, month - 1 - i, 1);
+      const checkKey = `${checkDate.getFullYear()}-${(checkDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      const amount = clientMonths.get(checkKey) || 0;
+      if (amount > maxAmount) {
+        maxAmount = amount;
+        maxMonth = checkKey;
+      }
+    }
+    
+    const displayAmount = maxAmount > 0 ? maxAmount : data.noVatAmount;
+    
+    return {
+      ...data,
+      maxAmount,
+      maxAmountMonth: maxMonth,
+      displayAmount,
+      monthInfo: maxMonth ? `Месяц: ${maxMonth}` : null,
+      baseInfo: maxAmount > 0 ? `Макс. сумма: ${formatMoney(maxAmount)}` : null
+    };
+  });
 
 return { active, was, non };
 });
