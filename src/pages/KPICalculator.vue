@@ -575,11 +575,16 @@
               ></v-file-input>
               
               <v-progress-linear
-                v-if="kpiVatUploading"
-                indeterminate
-                color="info"
-                class="mt-2"
-              ></v-progress-linear>
+  v-if="kpiVatUploading"
+  v-model="kpiVatProgress"
+  color="info"
+  height="6"
+  rounded
+  class="mt-3"
+></v-progress-linear>
+<div v-if="kpiVatUploading" class="text-caption text-center mt-1 text-grey">
+  {{ kpiVatProgressMessage }}
+</div>
               
               <v-alert
                 v-if="kpiVatError"
@@ -605,6 +610,17 @@
             </v-card-text>
             
             <v-card-actions class="pa-4 pt-0">
+              <v-btn 
+                v-if="allKpiVatData.length > 0"
+                color="error" 
+                variant="text" 
+                size="small"
+                :disabled="kpiVatUploading"
+                @click="deleteKpiVatData"
+              >
+                <v-icon start size="small">ri-delete-bin-line</v-icon>
+                Удалить данные
+              </v-btn>
               <v-spacer></v-spacer>
               <v-btn variant="text" @click="showKpiVatUploadDialog = false" :disabled="kpiVatUploading">
                 Отмена
@@ -621,11 +637,6 @@
             </v-card-actions>
           </v-card>
         </v-dialog>
-
-
-
-
-
       </v-col>
     </v-row>
   </v-container>
@@ -692,6 +703,44 @@ const loadAllKpiVatData = async () => {
 
 const kpiVatDetails = ref<KpiVatDetail[]>([]);
 
+
+// Удаление данных KPI VAT за текущий период
+const deleteKpiVatData = async () => {
+  if (!confirm(`Удалить все данные KPI НДС за ${selectedMonthName.value} ${selectedYear.value}?`)) return;
+  
+  kpiVatUploading.value = true;
+  kpiVatError.value = '';
+  kpiVatSuccess.value = '';
+  
+  try {
+    const params = new URLSearchParams({
+      year: selectedYear.value,
+      month: selectedMonth.value
+    });
+    
+    const response = await fetch(`/api/kpi-vat?${params}`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) throw new Error(result.error || 'Ошибка');
+    
+    if (result.success) {
+      allKpiVatData.value = [];
+      kpiVatDetails.value = [];
+      kpiVatSuccess.value = '✅ Данные удалены';
+      kpiVatFile.value = null;
+    }
+  } catch (error: any) {
+    kpiVatError.value = error.message;
+  } finally {
+    kpiVatUploading.value = false;
+  }
+};
+
+
+
 // Данные для текущего менеджера
 const currentManagerKpiVatDetails = computed(() => {
   if (!selectedManagerDetails.value) return [];
@@ -718,13 +767,35 @@ const handleKpiVatFileSelect = (file: File | File[]) => {
   kpiVatSuccess.value = '';
 };
 
-// Загрузка файла
+/// Загрузка файла с прогрессом
 const uploadKpiVatFile = async () => {
   if (!kpiVatFile.value) return;
   
   kpiVatUploading.value = true;
   kpiVatError.value = '';
   kpiVatSuccess.value = '';
+  kpiVatProgress.value = 0;
+  kpiVatProgressMessage.value = 'Отправка файла...';
+  
+  // Этапы с примерным прогрессом
+  const steps = [
+    { progress: 10, message: 'Отправка файла на сервер...' },
+    { progress: 30, message: 'Чтение Excel...' },
+    { progress: 50, message: 'Парсинг транзакций...' },
+    { progress: 70, message: 'Расчёт KPI...' },
+    { progress: 90, message: 'Сохранение в базу данных...' },
+    { progress: 100, message: 'Готово!' }
+  ];
+  
+  // Запускаем анимацию прогресса
+  let stepIndex = 0;
+  const progressInterval = setInterval(() => {
+    if (stepIndex < steps.length) {
+      kpiVatProgress.value = steps[stepIndex].progress;
+      kpiVatProgressMessage.value = steps[stepIndex].message;
+      stepIndex++;
+    }
+  }, 800);
   
   try {
     const formData = new FormData();
@@ -737,8 +808,12 @@ const uploadKpiVatFile = async () => {
       body: formData
     });
     
+    clearInterval(progressInterval);
+    kpiVatProgress.value = 95;
+    kpiVatProgressMessage.value = 'Обработка ответа...';
+    
     const result = await response.json();
-    console.log('📥 Ответ API:', JSON.stringify(result, null, 2)); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+    
     if (!response.ok) throw new Error(result.error || 'Ошибка сервера');
     
     if (result.success) {
@@ -747,6 +822,8 @@ const uploadKpiVatFile = async () => {
       const totalKpi = result.summary?.reduce((s: number, m: any) => s + m.totalKpiVat, 0) || 0;
       const managersCount = result.summary?.length || 0;
       
+      kpiVatProgress.value = 100;
+      kpiVatProgressMessage.value = '✅ Готово';
       kpiVatSuccess.value = `Рассчитано для ${managersCount} менеджеров, общий KPI: ${formatMoney(totalKpi)}`;
       
       if (result.summary) {
@@ -764,6 +841,8 @@ const uploadKpiVatFile = async () => {
       }, 1500);
     }
   } catch (error: any) {
+    clearInterval(progressInterval);
+    kpiVatProgress.value = 0;
     kpiVatError.value = error.message;
   } finally {
     kpiVatUploading.value = false;
@@ -1916,6 +1995,8 @@ const handleKpiKeyDown = (e: KeyboardEvent) => {
   }
 };
 
+const kpiVatProgress = ref(0);
+const kpiVatProgressMessage = ref('');
 
 
 

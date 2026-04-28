@@ -89,7 +89,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'year и month обязательны' });
       }
       
-      // Читаем Excel с raw: false для корректного чтения дат
+      // Читаем Excel
       console.log('📊 Читаю Excel...');
       const workbook = XLSX.read(file.data, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
@@ -169,6 +169,30 @@ export default async function handler(req, res) {
     }
   }
 
+// ========== DELETE — удалить данные за период ==========
+if (req.method === 'DELETE') {
+  try {
+    const { year, month } = req.query;
+    
+    if (!year || !month) {
+      return res.status(400).json({ error: 'year и month обязательны' });
+    }
+    
+    console.log('🗑️ Удаляю данные за', year, month);
+    await sql.query('DELETE FROM kpi_vat_details WHERE year = $1 AND month = $2', [year, month]);
+    console.log('✅ Удалено');
+    
+    return res.status(200).json({ success: true, message: 'Данные удалены' });
+    
+  } catch (error) {
+    console.error('❌ DELETE error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+
+
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
@@ -217,7 +241,8 @@ function findColumnIndexes(headers) {
     sumForClient: -1,
     operation: -1,
     client: -1,
-    date: -1
+    date: -1,
+    ourEntity: -1
   };
   
   headers.forEach((header, index) => {
@@ -230,6 +255,7 @@ function findColumnIndexes(headers) {
     if (h.includes('операция')) indexes.operation = index;
     if (h.includes('юр.лицо клиента') || h.includes('юридическое лицо клиента')) indexes.client = index;
     if (h.includes('дата и время записи')) indexes.date = index;
+    if (h.includes('наше юр.лицо')) indexes.ourEntity = index;
   });
   
   const notFound = Object.entries(indexes)
@@ -250,6 +276,10 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
   rows.forEach((row, rowIndex) => {
     if (!row[indexes.manager]) return;
     
+    // ФИЛЬТР: только ФАЭТОН
+    const ourEntity = row[indexes.ourEntity]?.toString().trim() || '';
+    if (!ourEntity.toLowerCase().includes('фаэтон')) return;
+    
     const manager = row[indexes.manager].toString().trim();
     if (filterManager && manager !== filterManager) return;
     
@@ -259,7 +289,6 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     const sumForClient = parseFloat(row[indexes.sumForClient]) || 0;
     const dateStr = row[indexes.date]?.toString().trim() || '';
     
-    // Парсим дату
     let date = parseDate(dateStr);
     
     if (!date) {
@@ -273,7 +302,6 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     if (rowYear != targetYear) return;
     if (rowMonth !== targetMonth) return;
     
-    // Инициализация
     if (!managerClients[manager]) managerClients[manager] = {};
     if (!managerClients[manager][client]) {
       managerClients[manager][client] = {
@@ -295,7 +323,6 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     clientData.transactionsCount++;
   });
   
-  // Рассчитываем KPI
   for (const mgr of Object.keys(managerClients)) {
     for (const cl of Object.keys(managerClients[mgr])) {
       const d = managerClients[mgr][cl];
@@ -315,17 +342,13 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
 function parseDate(dateStr) {
   if (!dateStr) return null;
   
-  // Если это число (Excel serial date)
   const num = parseFloat(dateStr);
   if (!isNaN(num) && num > 40000 && num < 100000) {
-    // Excel serial date: дни от 01.01.1900
-    const jsDate = new Date((num - 25569) * 86400 * 1000);
-    return jsDate;
+    return new Date((num - 25569) * 86400 * 1000);
   }
   
   const clean = String(dateStr).trim();
   
-  // Формат DD.MM.YYYY HH:MM:SS или DD.MM.YYYY
   const dotMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
   if (dotMatch) {
     const day = parseInt(dotMatch[1]);
@@ -334,7 +357,6 @@ function parseDate(dateStr) {
     return new Date(year, month, day);
   }
   
-  // Стандартный формат
   const d = new Date(clean);
   if (!isNaN(d.getTime())) return d;
   
