@@ -738,7 +738,7 @@ const uploadKpiVatFile = async () => {
     });
     
     const result = await response.json();
-    
+    console.log('📥 Ответ API:', JSON.stringify(result, null, 2)); // ← ДОБАВЬТЕ ЭТУ СТРОКУ
     if (!response.ok) throw new Error(result.error || 'Ошибка сервера');
     
     if (result.success) {
