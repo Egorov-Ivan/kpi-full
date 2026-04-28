@@ -571,16 +571,16 @@
                             </div>
                           </template>
                           
-                          <!-- Действия (Убрать) -->
+                          <!-- Действия (Отменить) -->
                           <template v-slot:item.actions="{ item }">
                             <v-btn
                               size="x-small"
                               color="error"
                               variant="tonal"
-                              @click="setBonusStatus(item.client, 'БЫЛ')"
+                              @click="setBonusStatus(item.client, 'НЕТ')"
                             >
                               <v-icon size="small">ri-close-line</v-icon>
-                              Убрать
+                              Отменить
                             </v-btn>
                           </template>
                         </v-data-table>
@@ -1319,8 +1319,11 @@ const getClientBonusStatus = (
     };
   }
   const customKey = `${clientName}_${managerName}`;
-  if (customBonusStatus.value[customKey]) {
-    const custom = customBonusStatus.value[customKey];
+const custom = customBonusStatus.value[customKey];
+
+if (custom) {
+  // Проверяем, что статус установлен для текущего месяца
+  if (custom.bonusMonth === `${currentYear}-${currentMonth}`) {
     return {
       status: custom.status,
       firstFillDate: null,
@@ -1331,6 +1334,8 @@ const getClientBonusStatus = (
       fileStatus: custom.status
     };
   }
+  // Если статус для другого месяца — игнорируем и продолжаем проверку дальше
+}
   
   const bonus = store.bonusHistory.find(b => 
     b.client === clientName && b.currentManager === managerName
