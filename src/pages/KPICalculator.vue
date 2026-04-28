@@ -1433,27 +1433,42 @@ const setBonusStatus = async (clientName: string, status: string) => {
 
   console.log(`🔄 setBonusStatus: клиент="${clientName}", статус="${status}", менеджер="${managerName}"`);
 
+  // Обработка статуса НЕТ
   if (status === 'НЕТ') {
-    // Полная очистка статуса клиента
+    // Удаляем кастомный статус
     delete customBonusStatus.value[customKey];
+    // Удаляем клиента из списка получивших KPI (если он там был)
     await store.removeKpiReceivedClient(clientName);
-    console.log(`🔄 Клиент "${clientName}" удалён из всех исключений`);
+    console.log(`🔄 Клиент "${clientName}" удалён из кастомных статусов и списка KPI`);
   } 
-  else {
-    // Сохраняем кастомный статус (ДА или БЫЛ)
+  // 🔥 Обработка статуса ДА — сохраняем кастомный статус
+  else if (status === 'ДА') {
     customBonusStatus.value = {
       ...customBonusStatus.value,
       [customKey]: {
-        status: status,
+        status: 'ДА',
         bonusMonth: currentMonthKey
       }
     };
-    console.log(`💾 Сохранён кастомный статус для ${clientName}: ${status}`);
+    console.log(`💾 Сохранён кастомный статус для ${clientName}: ДА (${currentMonthKey})`);
+  }
+  // Обработка статуса БЫЛ (если нужно)
+  else if (status === 'БЫЛ') {
+    customBonusStatus.value = {
+      ...customBonusStatus.value,
+      [customKey]: {
+        status: 'БЫЛ',
+        bonusMonth: currentMonthKey
+      }
+    };
+    console.log(`💾 Сохранён кастомный статус для ${clientName}: БЫЛ (${currentMonthKey})`);
   }
 
-  // Сохраняем и обновляем
+  // Сохраняем изменения на сервер
   await saveStateToServer();
   await store.loadKpiReceivedClients();
+  
+  // Принудительно обновляем интерфейс
   forceUpdate.value = Date.now();
   
   setTimeout(() => {
@@ -1461,7 +1476,6 @@ const setBonusStatus = async (clientName: string, status: string) => {
     if (managerItem) {
       managerKpiValues.value[managerId] = managerItem.managerKpi || 0;
       saveStateToServer();
-      console.log(`💾 Сохранён KPI для ${managerName}:`, managerItem.managerKpi);
     }
     forceUpdate.value = Date.now();
   }, 100);
