@@ -1741,16 +1741,15 @@ const clientsWithStatus = allClients.map(data => {
 });
 
 const active = clientsWithStatus
- .filter(data => data.status === 'ДА' && data.noVatAmount > 0)
+  .filter(data => data.status === 'ДА' && data.noVatAmount > 0)
   .map(data => {
-    const baseAmount = data.maxAmount > 0 ? data.maxAmount : data.noVatAmount;
+    const baseAmount = data.maxAmount;  // ← ИСПОЛЬЗУЕМ maxAmount
     return {
       ...data,
       displayAmount: baseAmount,
       kpiAmount: baseAmount * rate,
-      baseInfo: data.maxAmount > 0 ? `Макс. за период: ${formatMoney(data.maxAmount)}` : null,
+      baseInfo: `Макс. за период: ${formatMoney(data.maxAmount)}`,
       monthInfo: data.maxAmountMonth ? `Макс. месяц: ${data.maxAmountMonth}` : null,
-      warning: !data.hasOperations && !data.maxAmount ? 'Нет операций' : null
     };
   });
 
