@@ -259,7 +259,7 @@ function findColumnIndexes(headers) {
 function processTransactions(rows, indexes, targetYear, targetMonth, filterManager = null) {
   const managerClients = {};
   
-  rows.forEach(row => {
+  rows.forEach((row, rowIndex) => {
     if (!row[indexes.manager]) return;
     
     const manager = row[indexes.manager].toString().trim();
@@ -271,30 +271,26 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     const sumForClient = parseFloat(row[indexes.sumForClient]) || 0;
     const dateStr = row[indexes.date]?.toString().trim() || '';
     
-        // Парсим дату (формат DD.MM.YYYY HH:MM:SS)
-    let date = null;
-    const dateStrClean = dateStr.trim();
+    // Парсим дату
+    let date = parseDate(dateStr);
     
-    // Пробуем DD.MM.YYYY HH:MM:SS или DD.MM.YYYY
-    const dotParts = dateStrClean.split('.');
-    if (dotParts.length === 3) {
-      const day = parseInt(dotParts[0]);
-      const month = parseInt(dotParts[1]) - 1;
-      const yearPart = dotParts[2].split(' ')[0]; // отсекаем время
-      const year = parseInt(yearPart);
-      date = new Date(year, month, day);
-    } else {
-      // Пробуем стандартный формат
-      date = new Date(dateStrClean);
+    if (!date) {
+      console.log(`⚠️ Строка ${rowIndex}: не удалось распарсить дату "${dateStr}"`);
+      return;
     }
     
-    console.log('📅 Дата из Excel:', dateStrClean, '→', date?.toISOString());
-    
-    if (isNaN(date.getTime())) return;
+    const rowYear = date.getFullYear();
+    const rowMonth = (date.getMonth() + 1).toString().padStart(2, '0');
     
     // Проверяем год и месяц
-    if (date.getFullYear() != targetYear) return;
-    if ((date.getMonth() + 1).toString().padStart(2, '0') !== targetMonth) return;
+    if (rowYear != targetYear) {
+      console.log(`⚠️ Строка ${rowIndex}: год ${rowYear} != ${targetYear}`);
+      return;
+    }
+    if (rowMonth !== targetMonth) {
+      console.log(`⚠️ Строка ${rowIndex}: месяц ${rowMonth} !== ${targetMonth}`);
+      return;
+    }
     
     // Инициализация
     if (!managerClients[manager]) managerClients[manager] = {};
@@ -334,6 +330,28 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
   }
   
   return managerClients;
+}
+
+// ========== ПАРСИНГ ДАТЫ ==========
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  
+  const clean = dateStr.trim();
+  
+  // Формат DD.MM.YYYY HH:MM:SS или DD.MM.YYYY
+  const dotMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (dotMatch) {
+    const day = parseInt(dotMatch[1]);
+    const month = parseInt(dotMatch[2]) - 1; // месяцы с 0
+    const year = parseInt(dotMatch[3]);
+    return new Date(year, month, day);
+  }
+  
+  // Стандартный формат
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) return d;
+  
+  return null;
 }
 
 // ========== ВОЗРАСТ КЛИЕНТА В МЕСЯЦАХ ==========
