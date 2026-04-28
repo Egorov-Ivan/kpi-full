@@ -900,19 +900,13 @@ const getClientBonusStatus = (
   currentYear: number,
   currentMonth: number,
   monthlyAmounts: Map<string, number>
-): { 
-  status: string; 
-  firstFillDate: string | null;
-  maxAmount: number;
-  maxMonth: string | null;
-  hasActiveBonus: boolean;
-  allMonthsCompleted: boolean;
-  fileStatus?: string;
-} => {
-  // Проверяем кастомный статус
+) => {
+  // 1. Проверяем кастомный статус (ДА/НЕТ/БЫЛ)
   const customKey = `${clientName}_${managerName}`;
   const custom = customBonusStatus.value[customKey];
-  if (custom && custom.bonusMonth === `${currentYear}-${currentMonth}`) {
+  
+  if (custom) {
+    // Если есть кастомный статус — возвращаем его
     return {
       status: custom.status,
       firstFillDate: null,
@@ -924,7 +918,7 @@ const getClientBonusStatus = (
     };
   }
   
-  // Проверяем, не получал ли клиент KPI ранее
+  // 2. Проверяем глобальный список получивших KPI
   const alreadyReceived = store.isKpiReceivedForClient(clientName);
   if (alreadyReceived) {
     return {
@@ -938,75 +932,7 @@ const getClientBonusStatus = (
     };
   }
   
-  const bonus = store.bonusHistory.find(b => 
-    b.client === clientName && b.currentManager === managerName
-  );
-  
-  if (bonus) {
-    if (bonus.status === 'БЫЛ') {
-      return {
-        status: 'БЫЛ',
-        firstFillDate: bonus.firstFillDate || null,
-        maxAmount: 0,
-        maxMonth: null,
-        hasActiveBonus: false,
-        allMonthsCompleted: true,
-        fileStatus: bonus.status
-      };
-    }
-    
-    if (bonus.status === 'ДА' && bonus.firstFillDate) {
-      const [day, month, year] = bonus.firstFillDate.split('-').map(Number);
-      const firstFill = new Date(year, month - 1, day);
-      
-      const bonusMonths: string[] = [];
-      for (let i = 0; i < 3; i++) {
-        const bonusDate = new Date(firstFill);
-        bonusDate.setMonth(firstFill.getMonth() + i);
-        const bonusYear = bonusDate.getFullYear();
-        const bonusMonth = bonusDate.getMonth() + 1;
-        bonusMonths.push(`${bonusYear}-${bonusMonth.toString().padStart(2, '0')}`);
-      }
-      
-      const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
-      
-      let maxAmount = 0;
-      let maxMonth = null;
-      
-      bonusMonths.forEach(monthKey => {
-        const amount = monthlyAmounts.get(monthKey) || 0;
-        if (amount > maxAmount) {
-          maxAmount = amount;
-          maxMonth = monthKey;
-        }
-      });
-      
-      const isActive = currentMonthKey === maxMonth;
-      
-      return {
-        status: isActive ? 'ДА' : 'БЫЛ',
-        firstFillDate: bonus.firstFillDate,
-        maxAmount,
-        maxMonth,
-        hasActiveBonus: isActive,
-        allMonthsCompleted: true,
-        fileStatus: bonus.status
-      };
-    }
-    
-    if (bonus.status === 'НЕТ') {
-      return {
-        status: 'НЕТ',
-        firstFillDate: bonus.firstFillDate || null,
-        maxAmount: 0,
-        maxMonth: null,
-        hasActiveBonus: false,
-        allMonthsCompleted: false,
-        fileStatus: bonus.status
-      };
-    }
-  }
-  
+  // 3. По умолчанию — НЕТ
   return {
     status: 'НЕТ',
     firstFillDate: null,
