@@ -1737,7 +1737,12 @@ const clientsWithStatus = allClients.map(data => {
     month,
     clientMonthlyMap.get(data.client) || new Map()
   );
-  return { ...data, ...bonusStatus };
+  return { 
+    ...data, 
+    ...bonusStatus,
+    maxAmount: data.maxAmount,        
+    maxAmountMonth: data.maxAmountMonth  
+  };
 });
 
 const active = clientsWithStatus
