@@ -1741,16 +1741,16 @@ const clientsWithStatus = allClients.map(data => {
 });
 
 const active = clientsWithStatus
-  .filter(data => data.status === 'ДА' && data.noVatAmount > 0)
+ .filter(data => data.status === 'ДА' && data.noVatAmount > 0)
   .map(data => {
-    const baseAmount = data.kpiBaseAmount || data.noVatAmount;
+    const baseAmount = data.maxAmount > 0 ? data.maxAmount : data.noVatAmount;
     return {
       ...data,
       displayAmount: baseAmount,
       kpiAmount: baseAmount * rate,
-      baseInfo: data.kpiBaseAmount ? `Макс. за период: ${formatMoney(data.kpiBaseAmount)}` : null,
-      monthInfo: data.maxAmountMonth ? `Бонусный месяц: ${data.maxAmountMonth}` : null,
-      warning: !data.hasOperations && !data.kpiBaseAmount ? 'Нет операций' : null
+      baseInfo: data.maxAmount > 0 ? `Макс. за период: ${formatMoney(data.maxAmount)}` : null,
+      monthInfo: data.maxAmountMonth ? `Макс. месяц: ${data.maxAmountMonth}` : null,
+      warning: !data.hasOperations && !data.maxAmount ? 'Нет операций' : null
     };
   });
 
