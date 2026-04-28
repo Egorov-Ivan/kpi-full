@@ -92,6 +92,10 @@ export default async function handler(req, res) {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      console.log('📊 Всего строк в Excel:', rows.length);
+      console.log('📊 Заголовки (строка 0):', rows[0]);
+      console.log('📊 Первая строка данных:', rows[1]);
       
       console.log('📥 Строк в Excel:', rows.length);
       
