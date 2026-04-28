@@ -271,15 +271,24 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     const sumForClient = parseFloat(row[indexes.sumForClient]) || 0;
     const dateStr = row[indexes.date]?.toString().trim() || '';
     
-    // Парсим дату
-    let date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      // Пробуем формат DD.MM.YYYY HH:MM:SS
-      const parts = dateStr.split('.');
-      if (parts.length >= 3) {
-        date = new Date(parts[2], parts[1] - 1, parts[0]);
-      }
+        // Парсим дату (формат DD.MM.YYYY HH:MM:SS)
+    let date = null;
+    const dateStrClean = dateStr.trim();
+    
+    // Пробуем DD.MM.YYYY HH:MM:SS или DD.MM.YYYY
+    const dotParts = dateStrClean.split('.');
+    if (dotParts.length === 3) {
+      const day = parseInt(dotParts[0]);
+      const month = parseInt(dotParts[1]) - 1;
+      const yearPart = dotParts[2].split(' ')[0]; // отсекаем время
+      const year = parseInt(yearPart);
+      date = new Date(year, month, day);
+    } else {
+      // Пробуем стандартный формат
+      date = new Date(dateStrClean);
     }
+    
+    console.log('📅 Дата из Excel:', dateStrClean, '→', date?.toISOString());
     
     if (isNaN(date.getTime())) return;
     
