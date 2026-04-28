@@ -570,6 +570,15 @@
                               </v-chip>
                             </div>
                           </template>
+                          <!-- 🔥 ДОБАВИТЬ: Действия -->
+                          <template v-slot:item.actions="{ item }">
+                            <v-btn
+                            size="x-small"
+                            color="error"
+                            variant="tonal"
+                            @click="removeFromKpi(item.client)"
+                            ><v-icon size="small">ri-close-line</v-icon>Убрать</v-btn>
+                          </template>
                         </v-data-table>
                       </v-expansion-panel-text>
                     </v-expansion-panel>
@@ -1108,7 +1117,8 @@ const kpiClientHeaders = [
   { title: 'Сумма KPI', key: 'kpiAmount', sortable: true, align: 'end' as const },
   { title: 'Бонусный месяц', key: 'bonusMonth', sortable: true, align: 'center' as const },
   { title: 'Первая заправка', key: 'firstFillDate', sortable: true, align: 'center' as const },
-  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
+  { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const },
+  { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
 // Заголовки для таблицы клиентов с историей бонуса (БЫЛ)
@@ -1947,6 +1957,22 @@ watch(activeTab, (newTab) => {
 watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
+
+const removeFromKpi = (clientName: string) => {
+  if (!selectedManagerDetails.value) return;
+  
+  const manager = selectedManagerDetails.value.originalManager;
+  const managerName = manager.displayName;
+  
+  if (!confirm(`Убрать клиента "${clientName}" из выплаты KPI?`)) return;
+  
+  // Перемещаем в статус "БЫЛ" (или "НЕТ" - на ваше усмотрение)
+  setBonusStatus(clientName, 'БЫЛ');
+  
+  console.log(`❌ Клиент "${clientName}" убран из выплаты KPI`);
+};
+
+
 // ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
 const showKpiButton = ref(true);
 
