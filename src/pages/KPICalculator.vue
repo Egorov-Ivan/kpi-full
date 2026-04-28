@@ -1432,10 +1432,18 @@ const setBonusStatus = async (clientName: string, status: string) => {
   const customKey = `${clientName}_${managerName}`;
   const currentMonthKey = `${selectedYear.value}-${selectedMonth.value}`;
 
+  // 🔍 ДИАГНОСТИКА: проверяем, что приходит в status
+  console.log(`🔍 Проверка статуса: "${status}" (тип: ${typeof status}, длина: ${status.length})`);
+  console.log(`status === 'ДА'? ${status === 'ДА'}`);
+  console.log(`status === 'ДА' после trim? ${status.trim() === 'ДА'}`);
+
   console.log(`🔄 setBonusStatus: клиент="${clientName}", статус="${status}", менеджер="${managerName}"`);
 
+  // Нормализуем статус (убираем пробелы)
+  const normalizedStatus = status.trim();
+
   // Обработка статуса НЕТ
-  if (status === 'НЕТ') {
+  if (normalizedStatus === 'НЕТ') {
     // Удаляем кастомный статус
     delete customBonusStatus.value[customKey];
     // Удаляем клиента из списка получивших KPI (если он там был)
@@ -1443,7 +1451,7 @@ const setBonusStatus = async (clientName: string, status: string) => {
     console.log(`🔄 Клиент "${clientName}" удалён из кастомных статусов и списка KPI`);
   } 
   // 🔥 Обработка статуса ДА — сохраняем кастомный статус
-  else if (status === 'ДА') {
+  else if (normalizedStatus === 'ДА') {
     customBonusStatus.value = {
       ...customBonusStatus.value,
       [customKey]: {
@@ -1454,7 +1462,7 @@ const setBonusStatus = async (clientName: string, status: string) => {
     console.log(`💾 Сохранён кастомный статус для ${clientName}: ДА (${currentMonthKey})`);
   }
   // Обработка статуса БЫЛ (если нужно)
-  else if (status === 'БЫЛ') {
+  else if (normalizedStatus === 'БЫЛ') {
     customBonusStatus.value = {
       ...customBonusStatus.value,
       [customKey]: {
@@ -1481,8 +1489,8 @@ const setBonusStatus = async (clientName: string, status: string) => {
     forceUpdate.value = Date.now();
   }, 100);
 
-  console.log(`✅ Статус для клиента "${clientName}" установлен как "${status}"`);
-  alert(`✅ Статус для клиента "${clientName}" изменён на "${status}"`);
+  console.log(`✅ Статус для клиента "${clientName}" установлен как "${normalizedStatus}"`);
+  alert(`✅ Статус для клиента "${clientName}" изменён на "${normalizedStatus}"`);
 };
 
 // Рейтинги менеджеров
