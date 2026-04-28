@@ -1419,7 +1419,7 @@ if (custom) {
 
 // ========== ОСНОВНАЯ ФУНКЦИЯ УСТАНОВКИ СТАТУСА ==========
 const setBonusStatus = async (clientName: string, status: string) => {
-  console.log(`🔧 setBonusStatus вызвана: client=${clientName}, status=${status}`);
+  
   if (!selectedManagerDetails.value) {
     console.error('❌ Ошибка: выберите менеджера');
     alert('Ошибка: выберите менеджера');

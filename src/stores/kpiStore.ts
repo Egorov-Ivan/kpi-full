@@ -544,6 +544,21 @@ const isKpiReceivedForClient = (client: string): boolean => {
     );
   };
 
+const removeKpiReceivedClient = async (clientName: string) => {
+  try {
+    await fetch('/api/kpi-received/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientName })
+    });
+    await loadKpiReceivedClients(); // перезагружаем список
+  } catch (error) {
+    console.error('Ошибка удаления клиента из kpiReceivedClients:', error);
+  }
+};
+
+
+
   // ========== RETURN ==========
   return {
     managers,
@@ -578,7 +593,7 @@ const isKpiReceivedForClient = (client: string): boolean => {
     getBonusStatusForClient,
     loadKpiReceivedClients,
     markKpiReceived,
-    
+    removeKpiReceivedClient 
     
     
   };
