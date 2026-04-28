@@ -1,4 +1,4 @@
-<!-- src/pages/KpiCalculator.vue -->
+<!-- src/pages/KPICalculator.vue -->
 <template>
   <v-container fluid class="page-content">
     <v-row>
@@ -570,14 +570,18 @@
                               </v-chip>
                             </div>
                           </template>
-                          <!-- 🔥 ДОБАВИТЬ: Действия -->
+                          
+                          <!-- Действия (Убрать) -->
                           <template v-slot:item.actions="{ item }">
                             <v-btn
-                            size="x-small"
-                            color="error"
-                            variant="tonal"
-                            @click="removeFromKpi(item.client)"
-                            ><v-icon size="small">ri-close-line</v-icon>Убрать</v-btn>
+                              size="x-small"
+                              color="error"
+                              variant="tonal"
+                              @click="setBonusStatus(item.client, 'БЫЛ')"
+                            >
+                              <v-icon size="small">ri-close-line</v-icon>
+                              Убрать
+                            </v-btn>
                           </template>
                         </v-data-table>
                       </v-expansion-panel-text>
@@ -655,9 +659,18 @@
                             </div>
                           </template>
                           
-                          <!-- Действия -->
+                          <!-- Действия (Сброс в НЕТ) -->
                           <template v-slot:item.actions="{ item }">
                             <div class="d-flex gap-1">
+                              <v-btn
+                                size="x-small"
+                                color="warning"
+                                variant="tonal"
+                                @click="setBonusStatus(item.client, 'НЕТ')"
+                              >
+                                <v-icon size="small">ri-refresh-line</v-icon>
+                                Сброс
+                              </v-btn>
                               <v-btn
                                 v-if="showKpiButton"
                                 size="x-small"
@@ -749,33 +762,31 @@
                             </div>
                           </template>
 
-                          <!-- Действия -->
-<template v-slot:item.actions="{ item }">
-  <div class="d-flex gap-1">
-    <v-btn
-      size="x-small"
-      color="success"
-      variant="tonal"
-      @click="setBonusStatus(item.client, 'ДА')"
-    >
-      <v-icon size="small">ri-check-line</v-icon>
-      ДА
-    </v-btn>
-    
-    <!-- ВРЕМЕННАЯ КНОПКА (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) -->
-    <v-btn
-      v-if="showKpiButton"
-      size="x-small"
-      color="warning"
-      variant="tonal"
-      @click="markSingleClientKpi(item)"
-    >
-      <v-icon size="small">ri-check-double-line</v-icon>
-      KPI
-    </v-btn>
-    <!-- КОНЕЦ ВРЕМЕННОЙ КНОПКИ -->
-  </div>
-</template>
+                          <!-- Действия (ДА и KPI) -->
+                          <template v-slot:item.actions="{ item }">
+                            <div class="d-flex gap-1">
+                              <v-btn
+                                size="x-small"
+                                color="success"
+                                variant="tonal"
+                                @click="setBonusStatus(item.client, 'ДА')"
+                              >
+                                <v-icon size="small">ri-check-line</v-icon>
+                                ДА
+                              </v-btn>
+                              
+                              <v-btn
+                                v-if="showKpiButton"
+                                size="x-small"
+                                color="warning"
+                                variant="tonal"
+                                @click="markSingleClientKpi(item)"
+                              >
+                                <v-icon size="small">ri-check-double-line</v-icon>
+                                KPI
+                              </v-btn>
+                            </div>
+                          </template>
                         </v-data-table>
                       </v-expansion-panel-text>
                     </v-expansion-panel>
@@ -850,7 +861,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useKpiStore } from '../stores/kpiStore';
 import { bufferService } from '@/services/bufferService';
 import type { Manager } from '@/types/kpi.types';
@@ -1306,7 +1317,7 @@ const getClientBonusStatus = (
       allMonthsCompleted: true,
       fileStatus: 'KPI уже получен'
     };
-}
+  }
   const customKey = `${clientName}_${managerName}`;
   if (customBonusStatus.value[customKey]) {
     const custom = customBonusStatus.value[customKey];
@@ -1401,49 +1412,57 @@ const getClientBonusStatus = (
   };
 };
 
-// Установить статус бонуса для клиента
-const setBonusStatus = (clientName: string, status: string) => {
-  console.log('%c========== НАЖАТА КНОПКА "СДЕЛАТЬ ДА" ==========', 'background: #4CAF50; color: white; font-size: 14px');
-  
+// ========== ОСНОВНАЯ ФУНКЦИЯ УСТАНОВКИ СТАТУСА ==========
+const setBonusStatus = async (clientName: string, status: string) => {
   if (!selectedManagerDetails.value) {
-    console.error('❌ Ошибка: selectedManagerDetails отсутствует');
+    console.error('❌ Ошибка: выберите менеджера');
     alert('Ошибка: выберите менеджера');
     return;
   }
-  
+
   const manager = selectedManagerDetails.value.originalManager;
   const managerName = manager.displayName;
   const managerId = selectedManagerDetails.value.id;
-  
   const customKey = `${clientName}_${managerName}`;
   const currentMonthKey = `${selectedYear.value}-${selectedMonth.value}`;
-  
-  console.log('📝 Сохраняем кастомный статус:', { customKey, status, currentMonthKey });
-  
-  customBonusStatus.value = {
-    ...customBonusStatus.value,
-    [customKey]: {
-      status,
-      bonusMonth: currentMonthKey
-    }
-  };
-  
-  // Запускаем сохранение на сервер
-  saveStateToServer();
+
+  console.log(`🔄 setBonusStatus: клиент="${clientName}", статус="${status}", менеджер="${managerName}"`);
+
+  if (status === 'НЕТ') {
+    // Полная очистка статуса клиента
+    delete customBonusStatus.value[customKey];
+    await store.removeKpiReceivedClient(clientName);
+    console.log(`🔄 Клиент "${clientName}" удалён из всех исключений`);
+  } 
+  else {
+    // Сохраняем кастомный статус (ДА или БЫЛ)
+    customBonusStatus.value = {
+      ...customBonusStatus.value,
+      [customKey]: {
+        status: status,
+        bonusMonth: currentMonthKey
+      }
+    };
+    console.log(`💾 Сохранён кастомный статус для ${clientName}: ${status}`);
+  }
+
+  // Сохраняем и обновляем
+  await saveStateToServer();
+  await store.loadKpiReceivedClients();
+  forceUpdate.value = Date.now();
   
   setTimeout(() => {
     const managerItem = managerRatings.value.find(m => m.id === managerId);
     if (managerItem) {
       managerKpiValues.value[managerId] = managerItem.managerKpi || 0;
       saveStateToServer();
-      console.log(`💾 Сохранен KPI для ${managerName}:`, managerItem.managerKpi);
+      console.log(`💾 Сохранён KPI для ${managerName}:`, managerItem.managerKpi);
     }
-    
     forceUpdate.value = Date.now();
   }, 100);
-  
-  console.log(`✅ Статус для клиента ${clientName} установлен как ${status}`);
-  alert(`✅ Статус для клиента "${clientName}" изменен на "${status}"`);
+
+  console.log(`✅ Статус для клиента "${clientName}" установлен как "${status}"`);
+  alert(`✅ Статус для клиента "${clientName}" изменён на "${status}"`);
 };
 
 // Рейтинги менеджеров
@@ -1960,21 +1979,6 @@ watch([selectedYear, selectedMonth], () => {
   refreshData();
 });
 
-const removeFromKpi = (clientName: string) => {
-  if (!selectedManagerDetails.value) return;
-  
-  const manager = selectedManagerDetails.value.originalManager;
-  const managerName = manager.displayName;
-  
-  if (!confirm(`Убрать клиента "${clientName}" из выплаты KPI?`)) return;
-  
-  // Перемещаем в статус "БЫЛ" (или "НЕТ" - на ваше усмотрение)
-  setBonusStatus(clientName, 'БЫЛ');
-  
-  console.log(`❌ Клиент "${clientName}" убран из выплаты KPI`);
-};
-
-
 // ========== ВРЕМЕННЫЙ КОД ФИКСАЦИИ KPI (УДАЛИТЬ ПОСЛЕ НАПОЛНЕНИЯ БД) ==========
 const showKpiButton = ref(true);
 
@@ -2003,15 +2007,9 @@ const markSingleClientKpi = async (item: any) => {
 };
 // ========== КОНЕЦ ВРЕМЕННОГО КОДА ==========
 
-
-
-
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
-
-
-
 onMounted(async () => {
-  await store.loadKpiReceivedClients(); // Сначала загружаем KPI клиентов
+  await store.loadKpiReceivedClients();
   await loadStateFromServer();
   await refreshData();
   window.addEventListener('keydown', handleKpiKeyDown);
