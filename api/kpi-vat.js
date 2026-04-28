@@ -107,7 +107,10 @@ export default async function handler(req, res) {
       const data = rows.slice(1);
       
       const indexes = findColumnIndexes(headers);
+      console.log('📊 Индексы колонок:', indexes);
       const managerClients = processTransactions(data, indexes, year, month, manager);
+      console.log('📊 Менеджеров найдено:', Object.keys(managerClients).length);
+      console.log('📊 Менеджеры:', Object.keys(managerClients));
       
       await saveToDatabase(managerClients, year, month);
       
