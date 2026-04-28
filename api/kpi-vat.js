@@ -1,4 +1,4 @@
-// api/kpi-vat.js — ПОЛНАЯ ЗАМЕНА
+// api/kpi-vat.js
 import XLSX from 'xlsx';
 import { sql } from '@vercel/postgres';
 
@@ -10,39 +10,47 @@ export const config = {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // GET
+  // ========== GET — получить сохранённые данные ==========
   if (req.method === 'GET') {
     try {
       const { year, month, manager } = req.query;
+      
       if (!year || !month) {
         return res.status(400).json({ error: 'year и month обязательны' });
       }
       
       let query = 'SELECT * FROM kpi_vat_details WHERE year = $1 AND month = $2';
       const params = [year, month];
+      
       if (manager) {
         query += ' AND manager_name = $3';
         params.push(manager);
       }
+      
       query += ' ORDER BY manager_name, kpi_vat DESC';
       
       const result = await sql.query(query, params);
-      return res.status(200).json({ success: true, data: result.rows });
+      
+      return res.status(200).json({
+        success: true,
+        data: result.rows
+      });
+      
     } catch (error) {
+      console.error('❌ GET error:', error);
       return res.status(500).json({ error: error.message });
     }
   }
 
-  // POST — парсим FormData ВРУЧНУЮ без multer
+  // ========== POST — загрузить Excel и рассчитать KPI ==========
   if (req.method === 'POST') {
     try {
+      console.log('📥 POST получен');
       console.log('📥 Content-Type:', req.headers['content-type']);
       
       // Парсим сырые данные
@@ -52,78 +60,118 @@ export default async function handler(req, res) {
       }
       const buffer = Buffer.concat(chunks);
       
-      console.log('📥 Размер буфера:', buffer.length, 'байт');
+      console.log('📥 Буфер:', buffer.length, 'байт');
       
       // Ищем границу multipart
       const contentType = req.headers['content-type'] || '';
       const boundaryMatch = contentType.match(/boundary=(.+)$/);
       
       if (!boundaryMatch) {
+        console.error('❌ Boundary не найден');
         return res.status(400).json({ error: 'Неверный Content-Type, ожидается multipart/form-data' });
       }
       
       const boundary = boundaryMatch[1];
-      console.log('📥 Boundary:', boundary);
+      console.log('📥 Boundary:', boundary.substring(0, 30) + '...');
       
-      // Парсим multipart/form-data вручную
+      // Парсим multipart/form-data
       const parts = parseMultipart(buffer, boundary);
       
-      console.log('📥 Части запроса:', Object.keys(parts));
+      console.log('📥 Ключи:', Object.keys(parts));
+      console.log('📥 file:', !!parts['file']);
+      console.log('📥 year:', parts['year']);
+      console.log('📥 month:', parts['month']);
       
       const file = parts['file'];
       const year = parts['year'] || '';
       const month = parts['month'] || '';
       const manager = parts['manager'] || '';
       
-      console.log('📥 file есть:', !!file);
-      console.log('📥 year:', year);
-      console.log('📥 month:', month);
-      
-      if (!file) {
-        return res.status(400).json({ error: 'Файл не найден в запросе. Ключ должен быть "file"' });
+      if (!file || !file.data) {
+        console.error('❌ Файл не найден');
+        return res.status(400).json({ error: 'Файл не найден в запросе' });
       }
       
       if (!year || !month) {
+        console.error('❌ year или month отсутствуют');
         return res.status(400).json({ error: 'year и month обязательны' });
       }
       
       // Читаем Excel
+      console.log('📊 Читаю Excel...');
       const workbook = XLSX.read(file.data, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
+      console.log('📊 Лист:', sheetName);
+      
       const worksheet = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-      console.log('📊 Всего строк в Excel:', rows.length);
-      console.log('📊 Заголовки (строка 0):', rows[0]);
-      console.log('📊 Первая строка данных:', rows[1]);
       
-      console.log('📥 Строк в Excel:', rows.length);
+      console.log('📊 Строк:', rows.length);
+      console.log('📊 Заголовки:', JSON.stringify(rows[0]));
+      console.log('📊 Первая строка:', JSON.stringify(rows[1]));
       
       if (rows.length < 2) {
+        console.error('❌ Файл пустой');
         return res.status(400).json({ error: 'Файл пустой или нет данных' });
       }
       
       const headers = rows[0].map(h => h?.toString()?.toLowerCase()?.trim() || '');
+      console.log('📊 Заголовки (чистые):', headers);
+      
       const data = rows.slice(1);
       
+      // Находим индексы колонок
       const indexes = findColumnIndexes(headers);
-      console.log('📊 Индексы колонок:', indexes);
+      console.log('📊 Индексы:', JSON.stringify(indexes));
+      
+      // Обрабатываем транзакции
       const managerClients = processTransactions(data, indexes, year, month, manager);
-      console.log('📊 Менеджеров найдено:', Object.keys(managerClients).length);
-      console.log('📊 Менеджеры:', Object.keys(managerClients));
       
+      const managerNames = Object.keys(managerClients);
+      console.log('📊 Менеджеров:', managerNames.length);
+      console.log('📊 Имена:', managerNames);
+      
+      // Детали по менеджерам
+      for (const mgr of managerNames) {
+        const clients = Object.keys(managerClients[mgr]);
+        console.log(`📊 ${mgr}: ${clients.length} клиентов`);
+        for (const cl of clients) {
+          const d = managerClients[mgr][cl];
+          console.log(`   ${cl}: прибыль=${d.totalProfit.toFixed(2)}, KPI=${d.kpiVat.toFixed(2)}, ставка=${(d.rate * 100).toFixed(1)}%, возраст=${d.clientAgeMonths}мес`);
+        }
+      }
+      
+      if (managerNames.length === 0) {
+        console.warn('⚠️ Нет менеджеров после обработки');
+        return res.status(200).json({
+          success: true,
+          data: [],
+          summary: [],
+          warning: 'Нет транзакций за выбранный период'
+        });
+      }
+      
+      // Сохраняем в БД
+      console.log('💾 Сохраняю в БД...');
       await saveToDatabase(managerClients, year, month);
+      console.log('✅ Сохранено');
       
+      // Получаем сохранённые данные
       const savedData = await getSavedDataFromDb(year, month, manager);
+      console.log('📊 Сохранено записей:', savedData.length);
+      
+      const summary = getSummary(managerClients);
+      console.log('📊 Сводка:', JSON.stringify(summary));
       
       return res.status(200).json({
         success: true,
         data: savedData,
-        summary: getSummary(managerClients)
+        summary: summary
       });
       
     } catch (error) {
       console.error('❌ POST error:', error);
+      console.error('❌ Stack:', error.stack);
       return res.status(500).json({ error: error.message });
     }
   }
@@ -131,10 +179,9 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
-// ========== ПАРСИНГ MULTIPART ==========
+// ========== ПАРСИНГ MULTIPART/FORMDATA ==========
 function parseMultipart(buffer, boundary) {
   const parts = {};
-  const boundaryBuffer = Buffer.from('--' + boundary);
   const str = buffer.toString('binary');
   const sections = str.split('--' + boundary);
   
@@ -149,7 +196,7 @@ function parseMultipart(buffer, boundary) {
     let bodyEnd = section.lastIndexOf('\r\n');
     if (bodyEnd === -1) bodyEnd = section.length;
     
-    // Ищем name в заголовке
+    // Ищем name
     const nameMatch = headerStr.match(/name="([^"]+)"/);
     if (!nameMatch) continue;
     
@@ -174,14 +221,21 @@ function parseMultipart(buffer, boundary) {
   return parts;
 }
 
-// ========== ОСТАЛЬНЫЕ ФУНКЦИИ (без изменений) ==========
-
+// ========== ПОИСК КОЛОНОК ==========
 function findColumnIndexes(headers) {
-  const indexes = { manager: -1, sumForUs: -1, sumForClient: -1, operation: -1, client: -1, date: -1 };
+  const indexes = {
+    manager: -1,
+    sumForUs: -1,
+    sumForClient: -1,
+    operation: -1,
+    client: -1,
+    date: -1
+  };
   
   headers.forEach((header, index) => {
     if (!header) return;
     const h = header.toLowerCase().trim();
+    
     if (h.includes('менеджер')) indexes.manager = index;
     if (h.includes('сумма для нас')) indexes.sumForUs = index;
     if (h.includes('сумма для клиента')) indexes.sumForClient = index;
@@ -190,12 +244,18 @@ function findColumnIndexes(headers) {
     if (h.includes('дата и время записи')) indexes.date = index;
   });
   
-  const notFound = Object.entries(indexes).filter(([, v]) => v === -1).map(([k]) => k);
-  if (notFound.length > 0) throw new Error(`Не найдены колонки: ${notFound.join(', ')}`);
+  const notFound = Object.entries(indexes)
+    .filter(([, value]) => value === -1)
+    .map(([key]) => key);
+    
+  if (notFound.length > 0) {
+    throw new Error(`Не найдены колонки: ${notFound.join(', ')}`);
+  }
   
   return indexes;
 }
 
+// ========== ОБРАБОТКА ТРАНЗАКЦИЙ ==========
 function processTransactions(rows, indexes, targetYear, targetMonth, filterManager = null) {
   const managerClients = {};
   
@@ -211,87 +271,144 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     const sumForClient = parseFloat(row[indexes.sumForClient]) || 0;
     const dateStr = row[indexes.date]?.toString().trim() || '';
     
+    // Парсим дату
     let date = new Date(dateStr);
     if (isNaN(date.getTime())) {
+      // Пробуем формат DD.MM.YYYY HH:MM:SS
       const parts = dateStr.split('.');
-      if (parts.length === 3) date = new Date(parts[2], parts[1] - 1, parts[0]);
+      if (parts.length >= 3) {
+        date = new Date(parts[2], parts[1] - 1, parts[0]);
+      }
     }
     
     if (isNaN(date.getTime())) return;
+    
+    // Проверяем год и месяц
     if (date.getFullYear() != targetYear) return;
     if ((date.getMonth() + 1).toString().padStart(2, '0') !== targetMonth) return;
     
+    // Инициализация
     if (!managerClients[manager]) managerClients[manager] = {};
     if (!managerClients[manager][client]) {
       managerClients[manager][client] = {
-        client, totalProfit: 0, transactionsCount: 0, firstTransactionDate: null
+        client,
+        totalProfit: 0,
+        transactionsCount: 0,
+        firstTransactionDate: null
       };
     }
     
-    const d = managerClients[manager][client];
-    if (!d.firstTransactionDate || date < d.firstTransactionDate) d.firstTransactionDate = date;
+    const clientData = managerClients[manager][client];
     
-    d.totalProfit += sumForUs - sumForClient;
-    d.transactionsCount++;
+    // Запоминаем первую дату
+    if (!clientData.firstTransactionDate || date < clientData.firstTransactionDate) {
+      clientData.firstTransactionDate = date;
+    }
+    
+    // Прибыль = Сумма для нас - Сумма для клиента
+    const profit = sumForUs - sumForClient;
+    clientData.totalProfit += profit;
+    clientData.transactionsCount++;
   });
   
-  for (const m of Object.keys(managerClients)) {
-    for (const c of Object.keys(managerClients[m])) {
-      const d = managerClients[m][c];
-      const age = getClientAgeMonths(d.firstTransactionDate, targetYear, targetMonth);
-      d.rate = age < 3 ? 0.25 : 0.025;
-      d.kpiVat = d.totalProfit * d.rate;
-      d.clientAgeMonths = age;
+  // Рассчитываем KPI
+  for (const mgr of Object.keys(managerClients)) {
+    for (const cl of Object.keys(managerClients[mgr])) {
+      const d = managerClients[mgr][cl];
+      const ageMonths = getClientAgeMonths(d.firstTransactionDate, targetYear, targetMonth);
+      const rate = ageMonths < 3 ? 0.25 : 0.025;
+      
+      d.kpiVat = d.totalProfit * rate;
+      d.rate = rate;
+      d.clientAgeMonths = ageMonths;
     }
   }
   
   return managerClients;
 }
 
+// ========== ВОЗРАСТ КЛИЕНТА В МЕСЯЦАХ ==========
 function getClientAgeMonths(firstDate, year, month) {
   if (!firstDate) return 0;
-  const calc = new Date(year, month - 1, 1);
-  let months = (calc.getFullYear() - firstDate.getFullYear()) * 12;
-  months += calc.getMonth() - firstDate.getMonth();
+  
+  const calculationDate = new Date(year, month - 1, 1);
+  let months = (calculationDate.getFullYear() - firstDate.getFullYear()) * 12;
+  months += calculationDate.getMonth() - firstDate.getMonth();
+  
   return Math.max(0, months);
 }
 
+// ========== СОХРАНЕНИЕ В БД ==========
 async function saveToDatabase(managerClients, year, month) {
+  // Очищаем старые данные
   await sql.query('DELETE FROM kpi_vat_details WHERE year = $1 AND month = $2', [year, month]);
   
-  for (const m of Object.keys(managerClients)) {
-    for (const c of Object.keys(managerClients[m])) {
-      const d = managerClients[m][c];
+  // Вставляем новые
+  for (const mgr of Object.keys(managerClients)) {
+    for (const cl of Object.keys(managerClients[mgr])) {
+      const d = managerClients[mgr][cl];
+      
       await sql.query(
         `INSERT INTO kpi_vat_details 
          (manager_name, client_name, total_profit, transactions_count, 
           kpi_vat, rate, client_age_months, first_transaction_date, year, month)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [m, c, d.totalProfit, d.transactionsCount, d.kpiVat, d.rate, d.clientAgeMonths,
-         d.firstTransactionDate?.toISOString().split('T')[0] || null, year, month]
+        [
+          mgr,
+          cl,
+          d.totalProfit,
+          d.transactionsCount,
+          d.kpiVat,
+          d.rate,
+          d.clientAgeMonths,
+          d.firstTransactionDate?.toISOString().split('T')[0] || null,
+          year,
+          month
+        ]
       );
     }
   }
 }
 
+// ========== ПОЛУЧИТЬ СОХРАНЁННЫЕ ДАННЫЕ ==========
 async function getSavedDataFromDb(year, month, manager = null) {
   let query = 'SELECT * FROM kpi_vat_details WHERE year = $1 AND month = $2';
   const params = [year, month];
-  if (manager) { query += ' AND manager_name = $3'; params.push(manager); }
+  
+  if (manager) {
+    query += ' AND manager_name = $3';
+    params.push(manager);
+  }
+  
   query += ' ORDER BY manager_name, kpi_vat DESC';
+  
   const result = await sql.query(query, params);
   return result.rows;
 }
 
+// ========== СВОДКА ==========
 function getSummary(managerClients) {
   const summary = [];
-  for (const m of Object.keys(managerClients)) {
-    let tk = 0, tp = 0, cc = 0;
-    for (const c of Object.keys(managerClients[m])) {
-      const d = managerClients[m][c];
-      tk += d.kpiVat; tp += d.totalProfit; cc++;
+  
+  for (const mgr of Object.keys(managerClients)) {
+    let totalKpi = 0;
+    let totalProfit = 0;
+    let clientsCount = 0;
+    
+    for (const cl of Object.keys(managerClients[mgr])) {
+      const d = managerClients[mgr][cl];
+      totalKpi += d.kpiVat;
+      totalProfit += d.totalProfit;
+      clientsCount++;
     }
-    summary.push({ manager: m, clientsCount: cc, totalProfit: Math.round(tp * 100) / 100, totalKpiVat: Math.round(tk * 100) / 100 });
+    
+    summary.push({
+      manager: mgr,
+      clientsCount,
+      totalProfit: Math.round(totalProfit * 100) / 100,
+      totalKpiVat: Math.round(totalKpi * 100) / 100
+    });
   }
+  
   return summary;
 }
