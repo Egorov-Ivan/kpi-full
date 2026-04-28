@@ -420,41 +420,179 @@
                 </v-window-item>
 
                 <!-- Таб: KPI VAT -->
-                <v-window-item value="kpiVat">
-                  <v-row>
-                    <v-col cols="12">
-                      <v-card variant="tonal" class="pa-4 mb-4">
-                        <v-card-text>
-                          <div class="text-subtitle-1 font-weight-medium mb-3">Ручной ввод KPI НДС</div>
-                          <v-text-field :model-value="manualKpiVat[selectedManagerDetails.id]" @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)" label="Сумма KPI НДС" prefix="₽" variant="outlined" density="compact" type="text" :placeholder="formatNumber(0)" hint="Введите сумму в рублях" persistent-hint>
-                            <template v-slot:append>
-                              <v-btn icon variant="text" size="small" @click="updateManualKpiVat(selectedManagerDetails.id, 0)" title="Очистить">
-                                <v-icon>ri-close-line</v-icon>
-                              </v-btn>
-                            </template>
-                          </v-text-field>
-                          <div class="d-flex align-center justify-space-between mt-2 text-caption text-grey">
-                            <span>Текущее значение:</span>
-                            <span class="font-weight-medium text-primary">{{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}</span>
-                          </div>
-                        </v-card-text>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                  
-                  <v-expansion-panels>
-                    <v-expansion-panel>
-                      <v-expansion-panel-title><v-icon start>ri-history-line</v-icon>История ввода KPI НДС</v-expansion-panel-title>
-                      <v-expansion-panel-text>
-                        <v-card variant="tonal" class="pa-4 text-center text-grey">
-                          <v-icon size="48" color="grey-lighten-1" class="mb-2">ri-timer-line</v-icon>
-                          <p>Здесь будет отображаться история изменений</p>
-                          <p class="text-caption">Функция в разработке</p>
-                        </v-card>
-                      </v-expansion-panel-text>
-                    </v-expansion-panel>
-                  </v-expansion-panels>
-                </v-window-item>
+<v-window-item value="kpiVat">
+  <v-row>
+    <v-col cols="12">
+      <!-- БЛОК 1: Автоматический расчёт из Excel -->
+      <v-card variant="tonal" class="pa-4 mb-4" color="info-light">
+        <v-card-text>
+          <div class="text-subtitle-1 font-weight-medium mb-3">
+            <v-icon start color="info">ri-file-excel-2-line</v-icon>
+            Автоматический расчёт KPI НДС из Excel
+          </div>
+          
+          <!-- Загрузка файла -->
+          <v-file-input
+            v-model="kpiVatFile"
+            label="Выберите Excel-файл с транзакциями"
+            accept=".xlsx,.xls"
+            prepend-icon="ri-upload-cloud-2-line"
+            variant="outlined"
+            density="compact"
+            :loading="kpiVatUploading"
+            :disabled="kpiVatUploading"
+            @change="handleKpiVatFileUpload"
+            persistent-hint
+            hint="Файл должен содержать колонки: Менеджер, Сумма для нас, Сумма для клиента, Операция, Юр.лицо клиента, Дата и время записи в CRM"
+          ></v-file-input>
+          
+          <!-- Прогресс загрузки -->
+          <v-progress-linear
+            v-if="kpiVatUploading"
+            indeterminate
+            color="info"
+            class="mt-2"
+          ></v-progress-linear>
+          
+          <!-- Ошибка -->
+          <v-alert
+            v-if="kpiVatError"
+            type="error"
+            variant="tonal"
+            closable
+            class="mt-2"
+            @click:close="kpiVatError = ''"
+          >
+            {{ kpiVatError }}
+          </v-alert>
+          
+          <!-- Успех -->
+          <v-alert
+            v-if="kpiVatSuccess"
+            type="success"
+            variant="tonal"
+            closable
+            class="mt-2"
+            @click:close="kpiVatSuccess = ''"
+          >
+            {{ kpiVatSuccess }}
+          </v-alert>
+        </v-card-text>
+      </v-card>
+
+      <!-- БЛОК 2: Ручной ввод (существующий) -->
+      <v-card variant="tonal" class="pa-4 mb-4">
+        <v-card-text>
+          <div class="text-subtitle-1 font-weight-medium mb-3">Ручной ввод KPI НДС</div>
+          <v-text-field 
+            :model-value="manualKpiVat[selectedManagerDetails.id]" 
+            @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)" 
+            label="Сумма KPI НДС" 
+            prefix="₽" 
+            variant="outlined" 
+            density="compact" 
+            type="text" 
+            :placeholder="formatNumber(0)" 
+            hint="Введите сумму в рублях" 
+            persistent-hint
+          >
+            <template v-slot:append>
+              <v-btn icon variant="text" size="small" @click="updateManualKpiVat(selectedManagerDetails.id, 0)" title="Очистить">
+                <v-icon>ri-close-line</v-icon>
+              </v-btn>
+            </template>
+          </v-text-field>
+          <div class="d-flex align-center justify-space-between mt-2 text-caption text-grey">
+            <span>Текущее значение:</span>
+            <span class="font-weight-medium text-primary">{{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}</span>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <!-- БЛОК 3: Результаты автоматического расчёта -->
+      <v-card v-if="kpiVatDetails.length > 0" variant="tonal" class="pa-4 mb-4" color="success-light">
+        <v-card-text>
+          <div class="d-flex align-center justify-space-between mb-3">
+            <div class="text-subtitle-1 font-weight-medium">
+              <v-icon start color="success">ri-table-line</v-icon>
+              Детализация KPI НДС по клиентам
+            </div>
+            <v-chip color="success" variant="tonal" size="small">
+              Всего: {{ formatMoney(kpiVatTotal) }}
+            </v-chip>
+          </div>
+          
+          <v-data-table
+            :headers="kpiVatDetailHeaders"
+            :items="kpiVatDetails"
+            items-per-page="-1"
+            density="compact"
+            class="client-table"
+            hover
+          >
+            <template v-slot:item.client="{ item }">
+              <div class="font-weight-medium">{{ item.client_name }}</div>
+            </template>
+            
+            <template v-slot:item.total_profit="{ item }">
+              <div class="text-right">
+                <span :class="item.total_profit >= 0 ? 'text-success' : 'text-error'">
+                  {{ formatMoney(item.total_profit) }}
+                </span>
+              </div>
+            </template>
+            
+            <template v-slot:item.kpi_vat="{ item }">
+              <div class="text-right">
+                <div class="font-weight-bold text-primary">{{ formatMoney(item.kpi_vat) }}</div>
+                <div class="text-caption text-grey">
+                  {{ (item.rate * 100).toFixed(1) }}% ({{ item.client_age_months }} мес.)
+                </div>
+              </div>
+            </template>
+            
+            <template v-slot:item.transactions_count="{ item }">
+              <div class="text-center">
+                <v-chip size="x-small" variant="tonal">{{ item.transactions_count }}</v-chip>
+              </div>
+            </template>
+            
+            <template v-slot:item.share="{ item }">
+              <div class="text-right">{{ getKpiVatShare(item).toFixed(1) }}%</div>
+            </template>
+          </v-data-table>
+          
+          <!-- Кнопка применить к менеджеру -->
+          <div class="d-flex justify-end mt-3">
+            <v-btn
+              color="success"
+              variant="tonal"
+              prepend-icon="ri-check-line"
+              @click="applyKpiVatToManager"
+            >
+              Применить к менеджеру ({{ formatMoney(kpiVatTotal) }})
+            </v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
+  
+  <!-- История (как было) -->
+  <v-expansion-panels v-if="!kpiVatDetails.length">
+    <v-expansion-panel>
+      <v-expansion-panel-title><v-icon start>ri-history-line</v-icon>История ввода KPI НДС</v-expansion-panel-title>
+      <v-expansion-panel-text>
+        <v-card variant="tonal" class="pa-4 text-center text-grey">
+          <v-icon size="48" color="grey-lighten-1" class="mb-2">ri-timer-line</v-icon>
+          <p>История изменений KPI НДС</p>
+          <p class="text-caption">Загрузите Excel-файл для автоматического расчёта</p>
+        </v-card>
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+  </v-expansion-panels>
+</v-window-item>
+
               </v-window>
             </v-card-text>
           </v-card>
@@ -481,6 +619,158 @@ const selectedMonth = ref((currentDate.getMonth() + 1).toString().padStart(2, '0
 
 const showDetailsDialog = ref(false);
 const selectedManagerDetails = ref<any>(null);
+
+
+// ========== KPI VAT АВТОМАТИЧЕСКИЙ РАСЧЁТ ==========
+const kpiVatFile = ref<File | null>(null);
+const kpiVatUploading = ref(false);
+const kpiVatError = ref('');
+const kpiVatSuccess = ref('');
+
+// Данные для отображения
+interface KpiVatDetail {
+  client_name: string;
+  total_profit: number;
+  transactions_count: number;
+  kpi_vat: number;
+  rate: number;
+  client_age_months: number;
+}
+
+const kpiVatDetails = ref<KpiVatDetail[]>([]);
+const kpiVatTotal = computed(() => {
+  return kpiVatDetails.value.reduce((sum, item) => sum + (item.kpi_vat || 0), 0);
+});
+
+// Заголовки таблицы KPI VAT
+const kpiVatDetailHeaders = [
+  { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'Прибыль', key: 'total_profit', sortable: true, align: 'end' as const },
+  { title: 'KPI НДС', key: 'kpi_vat', sortable: true, align: 'end' as const },
+  { title: 'Пополнений', key: 'transactions_count', sortable: true, align: 'center' as const },
+  { title: 'Доля', key: 'share', sortable: true, align: 'end' as const }
+];
+
+// Получить долю KPI клиента
+const getKpiVatShare = (item: KpiVatDetail) => {
+  const total = kpiVatTotal.value;
+  if (total === 0) return 0;
+  return (item.kpi_vat / total) * 100;
+};
+
+// Загрузка файла
+const handleKpiVatFileUpload = async (file: File | File[]) => {
+  const fileToUpload = Array.isArray(file) ? file[0] : file;
+  
+  if (!fileToUpload) {
+    kpiVatFile.value = null;
+    return;
+  }
+  
+  kpiVatFile.value = fileToUpload;
+  kpiVatUploading.value = true;
+  kpiVatError.value = '';
+  kpiVatSuccess.value = '';
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', fileToUpload);
+    formData.append('year', selectedYear.value);
+    formData.append('month', selectedMonth.value);
+    
+    if (selectedManagerDetails.value) {
+      formData.append('manager', selectedManagerDetails.value.name);
+    }
+    
+    const response = await fetch('/api/kpi-vat', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Ошибка загрузки');
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      kpiVatDetails.value = result.data || [];
+      kpiVatSuccess.value = `✅ Рассчитано: ${kpiVatDetails.value.length} клиентов, общий KPI: ${formatMoney(kpiVatTotal.value)}`;
+      
+      // Если данные есть и открыт менеджер — предзаполняем ручной ввод
+      if (selectedManagerDetails.value && result.summary) {
+        const managerSummary = result.summary.find(
+          (s: any) => s.manager === selectedManagerDetails.value.name
+        );
+        if (managerSummary) {
+          updateManualKpiVat(selectedManagerDetails.value.id, managerSummary.totalKpiVat);
+        }
+      }
+    } else {
+      throw new Error(result.error || 'Неизвестная ошибка');
+    }
+  } catch (error: any) {
+    console.error('KPI VAT upload error:', error);
+    kpiVatError.value = error.message || 'Ошибка загрузки файла';
+    kpiVatDetails.value = [];
+  } finally {
+    kpiVatUploading.value = false;
+  }
+};
+
+// Загрузка сохранённых данных при открытии таба
+const loadKpiVatDetails = async () => {
+  if (!selectedManagerDetails.value) return;
+  
+  try {
+    const params = new URLSearchParams({
+      year: selectedYear.value,
+      month: selectedMonth.value,
+      manager: selectedManagerDetails.value.name
+    });
+    
+    const response = await fetch(`/api/kpi-vat?${params}`);
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data.length > 0) {
+        kpiVatDetails.value = result.data;
+      }
+    }
+  } catch (error) {
+    console.error('Load KPI VAT error:', error);
+  }
+};
+
+// Применить KPI к менеджеру
+const applyKpiVatToManager = () => {
+  if (!selectedManagerDetails.value) return;
+  
+  updateManualKpiVat(selectedManagerDetails.value.id, kpiVatTotal.value);
+  kpiVatSuccess.value = `✅ Применено: ${formatMoney(kpiVatTotal.value)}`;
+  
+  // Сохраняем сразу
+  saveStateToServer();
+};
+
+// Следим за открытием таба KPI VAT
+watch(activeTab, (newTab) => {
+  if (newTab === 'kpiVat' && selectedManagerDetails.value) {
+    loadKpiVatDetails();
+  }
+});
+
+// Следим за сменой менеджера в диалоге
+watch(selectedManagerDetails, (newManager) => {
+  if (newManager && activeTab.value === 'kpiVat') {
+    kpiVatDetails.value = [];
+    loadKpiVatDetails();
+  }
+});
+
+
+
 
 // Состояние для выбранных ставок по каждому менеджеру
 const selectedRate = ref<Record<string, number>>({});
@@ -900,13 +1190,19 @@ const getClientBonusStatus = (
   currentYear: number,
   currentMonth: number,
   monthlyAmounts: Map<string, number>
-) => {
-  // 1. Проверяем кастомный статус (ДА/НЕТ/БЫЛ)
+): { 
+  status: string; 
+  firstFillDate: string | null;
+  maxAmount: number;
+  maxMonth: string | null;
+  hasActiveBonus: boolean;
+  allMonthsCompleted: boolean;
+  fileStatus?: string;
+} => {
+  // Проверяем кастомный статус
   const customKey = `${clientName}_${managerName}`;
   const custom = customBonusStatus.value[customKey];
-  
-  if (custom) {
-    // Если есть кастомный статус — возвращаем его
+  if (custom && custom.bonusMonth === `${currentYear}-${currentMonth}`) {
     return {
       status: custom.status,
       firstFillDate: null,
@@ -918,7 +1214,7 @@ const getClientBonusStatus = (
     };
   }
   
-  // 2. Проверяем глобальный список получивших KPI
+  // Проверяем, не получал ли клиент KPI ранее
   const alreadyReceived = store.isKpiReceivedForClient(clientName);
   if (alreadyReceived) {
     return {
@@ -932,7 +1228,75 @@ const getClientBonusStatus = (
     };
   }
   
-  // 3. По умолчанию — НЕТ
+  const bonus = store.bonusHistory.find(b => 
+    b.client === clientName && b.currentManager === managerName
+  );
+  
+  if (bonus) {
+    if (bonus.status === 'БЫЛ') {
+      return {
+        status: 'БЫЛ',
+        firstFillDate: bonus.firstFillDate || null,
+        maxAmount: 0,
+        maxMonth: null,
+        hasActiveBonus: false,
+        allMonthsCompleted: true,
+        fileStatus: bonus.status
+      };
+    }
+    
+    if (bonus.status === 'ДА' && bonus.firstFillDate) {
+      const [day, month, year] = bonus.firstFillDate.split('-').map(Number);
+      const firstFill = new Date(year, month - 1, day);
+      
+      const bonusMonths: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const bonusDate = new Date(firstFill);
+        bonusDate.setMonth(firstFill.getMonth() + i);
+        const bonusYear = bonusDate.getFullYear();
+        const bonusMonth = bonusDate.getMonth() + 1;
+        bonusMonths.push(`${bonusYear}-${bonusMonth.toString().padStart(2, '0')}`);
+      }
+      
+      const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
+      
+      let maxAmount = 0;
+      let maxMonth = null;
+      
+      bonusMonths.forEach(monthKey => {
+        const amount = monthlyAmounts.get(monthKey) || 0;
+        if (amount > maxAmount) {
+          maxAmount = amount;
+          maxMonth = monthKey;
+        }
+      });
+      
+      const isActive = currentMonthKey === maxMonth;
+      
+      return {
+        status: isActive ? 'ДА' : 'БЫЛ',
+        firstFillDate: bonus.firstFillDate,
+        maxAmount,
+        maxMonth,
+        hasActiveBonus: isActive,
+        allMonthsCompleted: true,
+        fileStatus: bonus.status
+      };
+    }
+    
+    if (bonus.status === 'НЕТ') {
+      return {
+        status: 'НЕТ',
+        firstFillDate: bonus.firstFillDate || null,
+        maxAmount: 0,
+        maxMonth: null,
+        hasActiveBonus: false,
+        allMonthsCompleted: false,
+        fileStatus: bonus.status
+      };
+    }
+  }
+  
   return {
     status: 'НЕТ',
     firstFillDate: null,
@@ -1513,6 +1877,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+
+.info-light {
+  background-color: rgba(var(--v-theme-info), 0.05) !important;
+}
+
+.success-light {
+  background-color: rgba(var(--v-theme-success), 0.05) !important;
+}
+
 .page-content {
   padding: 24px;
   background-color: #F5F5F5;
