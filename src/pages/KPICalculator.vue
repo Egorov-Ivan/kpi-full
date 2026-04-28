@@ -1921,13 +1921,15 @@ const refreshData = async () => {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
     
+    // 🔥 ОЧИЩАЕМ БУФЕР ПЕРЕД ЗАГРУЗКОЙ
+    store.bufferData = [];
+    
     if (store.managers.length === 0) {
       await store.loadManagers();
     }
     
     await store.loadPlans(year, month);
     
-    // Загружаем данные за текущий и 2 предыдущих месяца
     for (let i = 0; i < 3; i++) {
       const d = new Date(year, month - 1 - i, 1);
       await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
