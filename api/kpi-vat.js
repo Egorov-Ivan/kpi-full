@@ -318,7 +318,7 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
       clientData.firstTransactionDate = date;
     }
     
-    const profit = sumForUs - sumForClient;
+    const profit = sumForClient - sumForUs;
     clientData.totalProfit += profit;
     clientData.transactionsCount++;
   });
