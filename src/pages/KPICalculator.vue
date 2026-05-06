@@ -856,7 +856,7 @@ const kpiVatTotal = computed(() => {
 
 // Заголовки таблицы KPI VAT
 const kpiVatDetailHeaders = [
-  { title: 'Клиент', key: 'client', sortable: true },
+  { title: 'Клиент', key: 'client_name', sortable: true },
   { title: 'Прибыль', key: 'total_profit', sortable: true, align: 'end' as const },
   { title: 'KPI НДС', key: 'kpi_vat', sortable: true, align: 'end' as const },
   { title: 'Пополнений', key: 'transactions_count', sortable: true, align: 'center' as const },
