@@ -637,64 +637,58 @@
             </v-card-actions>
           </v-card>
         </v-dialog>
-
- <!-- 🔥 ДИАЛОГ АВТОРИЗАЦИИ -->
-        <v-dialog v-model="showAuthDialog" max-width="400" persistent>
-          <v-card>
-            <v-card-title class="text-center pa-6">
-              <v-avatar color="primary" size="48" class="mb-3">
-                <v-icon size="28" color="white">ri-lock-line</v-icon>
-              </v-avatar>
-              <h3 class="text-h5 font-weight-medium">Авторизация</h3>
-              <p class="text-caption text-grey mt-1">Введите логин и пароль для доступа</p>
-            </v-card-title>
-            
-            <v-card-text class="pa-6 pt-0">
-              <v-text-field
-                v-model="authLogin"
-                label="Логин"
-                variant="outlined"
-                density="compact"
-                prepend-inner-icon="ri-user-line"
-                :disabled="authLoading"
-                @keyup.enter="doAuth"
-              ></v-text-field>
-              
-              <v-text-field
-                v-model="authPassword"
-                label="Пароль"
-                type="password"
-                variant="outlined"
-                density="compact"
-                prepend-inner-icon="ri-lock-line"
-                :disabled="authLoading"
-                @keyup.enter="doAuth"
-              ></v-text-field>
-              
-              <v-alert
-                v-if="authError"
-                type="error"
-                variant="tonal"
-                closable
-                class="mb-3"
-                @click:close="authError = ''"
-              >
-                {{ authError }}
-              </v-alert>
-              
-              <v-btn
-                color="primary"
-                block
-                size="large"
-                :loading="authLoading"
-                @click="doAuth"
-              >
-                Войти
-              </v-btn>
-            </v-card-text>
-          </v-card>
-        </v-dialog>
-
+<!-- ДИАЛОГ АВТОРИЗАЦИИ В СТИЛЕ HTTP BASIC AUTH -->
+<v-dialog v-model="showAuthDialog" max-width="360" persistent>
+  <v-card class="auth-basic-card">
+    <v-card-text class="pa-4 text-center">
+      <v-icon size="32" color="grey-darken-1" class="mb-2">ri-lock-line</v-icon>
+      <p class="text-h6 font-weight-medium mb-1">Войти</p>
+      
+      <v-text-field
+        v-model="authLogin"
+        label="Имя пользователя"
+        variant="outlined"
+        density="compact"
+        class="mb-3"
+        :disabled="authLoading"
+        autofocus
+        @keyup.enter="doAuth"
+      ></v-text-field>
+      
+      <v-text-field
+        v-model="authPassword"
+        label="Пароль"
+        type="password"
+        variant="outlined"
+        density="compact"
+        class="mb-3"
+        :disabled="authLoading"
+        @keyup.enter="doAuth"
+      ></v-text-field>
+      
+      <v-alert
+        v-if="authError"
+        type="error"
+        variant="tonal"
+        density="compact"
+        closable
+        class="mb-3 text-left"
+        @click:close="authError = ''"
+      >
+        {{ authError }}
+      </v-alert>
+      
+      <div class="d-flex justify-end gap-2">
+        <v-btn variant="text" size="small" :disabled="authLoading" @click="showAuthDialog = false">
+          Отмена
+        </v-btn>
+        <v-btn color="primary" size="small" :loading="authLoading" @click="doAuth">
+          Войти
+        </v-btn>
+      </div>
+    </v-card-text>
+  </v-card>
+</v-dialog>
       </v-col>
     </v-row>
   </v-container>
@@ -2178,11 +2172,6 @@ watch([selectedYear, selectedMonth], () => {
 
 // ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
-  // Проверка авторизации
-  if (!localStorage.getItem('kpi_auth')) {
-    showAuthDialog.value = true;
-  }
-  
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
   await refreshData();
@@ -2282,5 +2271,10 @@ onMounted(async () => {
 
 .dark-theme .v-data-table .v-data-table__thead {
   background-color: rgba(255,255,255,0.05);
+}
+
+.auth-basic-card {
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
 }
 </style>
