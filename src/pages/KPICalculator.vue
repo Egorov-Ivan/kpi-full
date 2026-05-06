@@ -77,10 +77,6 @@
                 <span class="text-grey">Прогноз на конец месяца:</span>
                 <span class="font-weight-medium ml-2">{{ formatMoney(forecast) }}</span>
             </div>
-            <div class="text-caption text-grey">
-              <v-icon size="small" color="grey" class="mr-1">ri-calendar-line</v-icon>
-              Период данных: {{ bufferStats.dateRange.first }} — {{ bufferStats.dateRange.last }}
-            </div>
           </div>
 
           <!-- Таблица рейтинга -->
