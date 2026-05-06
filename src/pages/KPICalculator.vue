@@ -2055,16 +2055,14 @@ const openManagerDetails = (item: any) => {
   showDetailsDialog.value = true;
 };
 
-// Обновление данных
+/// Обновление данных
 const refreshData = async () => {
   loading.value = true;
   try {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
     
-    // 🔥 ЯВНАЯ ОЧИСТКА перед загрузкой
     store.bufferData = [];
-    console.log('🧹 Буфер очищен');
     
     if (store.managers.length === 0) {
       await store.loadManagers();
@@ -2072,21 +2070,10 @@ const refreshData = async () => {
     
     await store.loadPlans(year, month);
     
-    // Загружаем 3 месяца с логированием
     for (let i = 0; i < 3; i++) {
       const d = new Date(year, month - 1 - i, 1);
-      console.log(`📥 Загружаю ${d.getFullYear()}-${d.getMonth() + 1}`);
       await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
-      console.log(`   После загрузки: ${store.bufferData.length} операций`);
     }
-    
-    // Убираем дубликаты
-    const before = store.bufferData.length;
-    const uniqueOps = Array.from(
-      new Map(store.bufferData.map(op => [`${op.date}|${op.client}|${op.amount}|${op.clientType}`, op])).values()
-    );
-    store.bufferData = uniqueOps;
-    console.log(`📊 Дубликатов удалено: ${before - uniqueOps.length}, осталось: ${uniqueOps.length}`);
     
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
@@ -2132,6 +2119,7 @@ watch([selectedYear, selectedMonth], () => {
 
 // ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
+  store.bufferData = []; // 🔥 Очистка перед загрузкой
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
   await refreshData();
