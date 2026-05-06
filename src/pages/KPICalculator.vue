@@ -637,11 +637,69 @@
             </v-card-actions>
           </v-card>
         </v-dialog>
+
+ <!-- 🔥 ДИАЛОГ АВТОРИЗАЦИИ -->
+        <v-dialog v-model="showAuthDialog" max-width="400" persistent>
+          <v-card>
+            <v-card-title class="text-center pa-6">
+              <v-avatar color="primary" size="48" class="mb-3">
+                <v-icon size="28" color="white">ri-lock-line</v-icon>
+              </v-avatar>
+              <h3 class="text-h5 font-weight-medium">Авторизация</h3>
+              <p class="text-caption text-grey mt-1">Введите логин и пароль для доступа</p>
+            </v-card-title>
+            
+            <v-card-text class="pa-6 pt-0">
+              <v-text-field
+                v-model="authLogin"
+                label="Логин"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="ri-user-line"
+                :disabled="authLoading"
+                @keyup.enter="doAuth"
+              ></v-text-field>
+              
+              <v-text-field
+                v-model="authPassword"
+                label="Пароль"
+                type="password"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="ri-lock-line"
+                :disabled="authLoading"
+                @keyup.enter="doAuth"
+              ></v-text-field>
+              
+              <v-alert
+                v-if="authError"
+                type="error"
+                variant="tonal"
+                closable
+                class="mb-3"
+                @click:close="authError = ''"
+              >
+                {{ authError }}
+              </v-alert>
+              
+              <v-btn
+                color="primary"
+                block
+                size="large"
+                :loading="authLoading"
+                @click="doAuth"
+              >
+                Войти
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </v-dialog>
+
       </v-col>
     </v-row>
   </v-container>
 </template>
-
+    
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useKpiStore } from '../stores/kpiStore';
@@ -651,6 +709,46 @@ import type { Manager } from '@/types/kpi.types';
 const store = useKpiStore();
 const loading = ref(false);
 const activeTab = ref('maintenance');
+
+
+
+// ========== АВТОРИЗАЦИЯ ==========
+const showAuthDialog = ref(false);
+const authLogin = ref('');
+const authPassword = ref('');
+const authLoading = ref(false);
+const authError = ref('');
+
+const doAuth = async () => {
+  if (!authLogin.value || !authPassword.value) {
+    authError.value = 'Заполните все поля';
+    return;
+  }
+  
+  authLoading.value = true;
+  authError.value = '';
+  
+  try {
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: authLogin.value, password: authPassword.value })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      localStorage.setItem('kpi_auth', 'true');
+      showAuthDialog.value = false;
+    } else {
+      authError.value = data.error || 'Неверный логин или пароль';
+    }
+  } catch (e) {
+    authError.value = 'Ошибка соединения';
+  } finally {
+    authLoading.value = false;
+  }
+};
 
 // Состояние фильтров - текущий месяц по умолчанию
 const currentDate = new Date();
@@ -2080,6 +2178,11 @@ watch([selectedYear, selectedMonth], () => {
 
 // ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
+  // Проверка авторизации
+  if (!localStorage.getItem('kpi_auth')) {
+    showAuthDialog.value = true;
+  }
+  
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
   await refreshData();
