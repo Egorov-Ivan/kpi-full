@@ -1984,13 +1984,22 @@ const kpiClientDetails = computed(() => {
     }
   });
   
-  // Добавляем клиентов из операций текущего месяца
-  const currentMonthOps = allOps.filter(op => {
+  // Добавляем клиентов из ВСЕХ 3 месяцев
+  const threeMonthOps = allOps.filter(op => {
     const [day, opMonth, opYear] = op.date.split('-');
-    return parseInt(opYear) === year && parseInt(opMonth) === month;
+    const opYearNum = parseInt(opYear);
+    const opMonthNum = parseInt(opMonth);
+    
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(year, month - 1 - i, 1);
+      if (opYearNum === d.getFullYear() && opMonthNum === (d.getMonth() + 1)) {
+        return true;
+      }
+    }
+    return false;
   });
   
-  currentMonthOps.forEach(op => {
+  threeMonthOps.forEach(op => {
     if (!clientCurrentMap.has(op.client)) {
       clientCurrentMap.set(op.client, {
         client: op.client,
@@ -2060,7 +2069,7 @@ const kpiClientDetails = computed(() => {
   });
   
   const active = clientsWithStatus
-    .filter(data => data.status === 'ДА' && data.noVatAmount > 0)
+    .filter(data => data.status === 'ДА' && data.maxAmount > 0)
     .map(data => ({
       ...data,
       displayAmount: data.maxAmount,
@@ -2070,35 +2079,19 @@ const kpiClientDetails = computed(() => {
     }));
   
   const was = clientsWithStatus
-    .filter(data => data.status === 'БЫЛ' && data.noVatAmount > 0)
+    .filter(data => data.status === 'БЫЛ' && data.maxAmount > 0)
     .map(data => ({ ...data }));
   
   const non = clientsWithStatus
-    .filter(data => data.status === 'НЕТ' && data.noVatAmount > 0)
+    .filter(data => data.status === 'НЕТ' && data.maxAmount > 0)
     .map(data => {
-      const clientMonths = clientMonthlyMap.get(data.client) || new Map();
-      let maxAmount = 0;
-      let maxMonth = null;
-      
-      for (let i = 0; i < 3; i++) {
-        const checkDate = new Date(year, month - 1 - i, 1);
-        const checkKey = `${checkDate.getFullYear()}-${(checkDate.getMonth() + 1).toString().padStart(2, '0')}`;
-        const amount = clientMonths.get(checkKey) || 0;
-        if (amount > maxAmount) {
-          maxAmount = amount;
-          maxMonth = checkKey;
-        }
-      }
-      
-      const displayAmount = maxAmount > 0 ? maxAmount : data.noVatAmount;
+      const displayAmount = data.maxAmount > 0 ? data.maxAmount : data.totalAmount;
       
       return {
         ...data,
-        maxAmount,
-        maxAmountMonth: maxMonth,
         displayAmount,
-        monthInfo: maxMonth ? `Месяц: ${maxMonth}` : null,
-        baseInfo: maxAmount > 0 ? `Макс. сумма: ${formatMoney(maxAmount)}` : null
+        monthInfo: data.maxAmountMonth ? `Месяц: ${data.maxAmountMonth}` : null,
+        baseInfo: data.maxAmount > 0 ? `Макс. сумма: ${formatMoney(data.maxAmount)}` : null
       };
     });
   
