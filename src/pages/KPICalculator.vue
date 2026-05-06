@@ -73,7 +73,7 @@
               <strong>{{ bufferStats.totalOperations }}</strong> операций, 
               <strong>{{ bufferStats.totalClients }}</strong> клиентов
             </div>
-            <div class="text-caption text-grey flex-grow-1 text-center">
+            <div class="text-caption text-black flex-grow-1 text-center">
                 <span class="text-grey">Прогноз на конец месяца:</span>
                 <span class="font-weight-medium ml-2">{{ formatMoney(forecast) }}</span>
             </div>
