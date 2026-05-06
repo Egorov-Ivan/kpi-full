@@ -2056,20 +2056,22 @@ const refreshData = async () => {
     
     await store.loadPlans(year, month);
     
-    // Загружаем только за текущий месяц
-    await store.loadBufferData(year, month);
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(year, month - 1 - i, 1);
+      await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
+    }
+    
+    // 🔥 Убираем дубликаты после всех загрузок
+    const uniqueOps = Array.from(
+      new Map(store.bufferData.map(op => [`${op.date}|${op.client}|${op.amount}|${op.clientType}`, op])).values()
+    );
+    store.bufferData = uniqueOps;
+    console.log(`📊 Уникальных: ${uniqueOps.length} из ${store.bufferData.length}`);
     
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
     await store.loadKpiReceivedClients();
-    
-    // 🔥 Убираем дубликаты
-    const uniqueOps = Array.from(
-      new Map(store.bufferData.map(op => [`${op.date}|${op.client}|${op.amount}|${op.clientType}`, op])).values()
-    );
-    store.bufferData = uniqueOps;
-    console.log(`📊 Уникальных операций: ${uniqueOps.length}`);
     
     await loadAllKpiVatData();
     recalculateAllKpiNoVat();
