@@ -75,6 +75,7 @@
       <v-divider :class="dividerClass"></v-divider>
       
       <v-list density="compact" nav class="mt-2">
+         <!--
         <v-list-item prepend-icon="ri-home-line" title="Главная" to="/" :active="$route.path === '/'" :class="navItemClass"></v-list-item>
         <v-list-item prepend-icon="ri-home-line" title="Главная Менеджера" to="/manager" :active="$route.path === '/manager'" :class="navItemClass"></v-list-item>
         <v-list-item prepend-icon="ri-team-line" title="Клиенты" :class="navItemClass" @click="showDevelopmentAlert('Клиенты')"></v-list-item>
@@ -86,12 +87,15 @@
       
       <v-list density="compact" nav>
         <v-list-subheader :class="subheaderClass">Управление</v-list-subheader>
+        -->
         <v-list-item prepend-icon="ri-calculator-line" title="KPI Калькулятор" to="/kpi-calculator" :active="$route.path === '/kpi-calculator'" :class="navItemClass"></v-list-item>
+        <!--
         <v-list-item prepend-icon="ri-user-star-line" title="Сотрудники" :class="navItemClass" @click="showDevelopmentAlert('Сотрудники')"></v-list-item>
         <v-list-item prepend-icon="ri-settings-4-line" title="Настройки" :class="navItemClass" @click="showDevelopmentAlert('Настройки')"></v-list-item>
         <v-list-item prepend-icon="ri-exchange-line" title="1C" :class="navItemClass" @click="showDevelopmentAlert('1C')"></v-list-item>
         <v-list-item prepend-icon="ri-exchange-line" title="Лукойл" :class="navItemClass" @click="showDevelopmentAlert('Лукойл')"></v-list-item>
         <v-list-item prepend-icon="ri-exchange-line" title="ЛК Клиент" to="/client-main-page" :active="$route.path === '/client-main-page'" :class="navItemClass"></v-list-item>
+        -->
       </v-list>
     </v-navigation-drawer>
 
