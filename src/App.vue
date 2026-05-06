@@ -2,57 +2,59 @@
 <template>
   <v-app>
     <!-- ДИАЛОГ АВТОРИЗАЦИИ -->
-    <v-dialog v-model="showAuthDialog" max-width="360" persistent>
-      <v-card class="auth-basic-card">
-        <v-card-text class="pa-4 text-center">
-          <v-icon size="32" color="grey-darken-1" class="mb-2">ri-lock-line</v-icon>
-          <p class="text-h6 font-weight-medium mb-1">Войти</p>
-          <p class="text-caption text-grey mb-4">KPI Калькулятор</p>
-          
-          <v-text-field
-            v-model="authLogin"
-            label="Имя пользователя"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-            autofocus
-            @keyup.enter="doAuth"
-          ></v-text-field>
-          
-          <v-text-field
-            v-model="authPassword"
-            label="Пароль"
-            type="password"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-            @keyup.enter="doAuth"
-          ></v-text-field>
-          
-          <v-alert
-            v-if="authError"
-            type="error"
-            variant="tonal"
-            density="compact"
-            closable
-            class="mb-3"
-            @click:close="authError = ''"
-          >
-            {{ authError }}
-          </v-alert>
-          
-          <div class="d-flex justify-end gap-2">
-            <v-btn variant="text" size="small" @click="showAuthDialog = false">
-              Отмена
-            </v-btn>
-            <v-btn color="primary" size="small" @click="doAuth">
-              Войти
-            </v-btn>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+<v-dialog v-model="showAuthDialog" max-width="360" persistent>
+  <v-card class="auth-basic-card">
+    <v-card-text class="pa-4 text-center">
+      <v-icon size="32" color="grey-darken-1" class="mb-2">ri-lock-line</v-icon>
+      <p class="text-h6 font-weight-medium mb-1">Войти</p>
+      <p class="text-caption text-grey mb-4">KPI Калькулятор</p>
+      
+      <v-text-field
+        v-model="authLogin"
+        label="Имя пользователя"
+        variant="outlined"
+        density="compact"
+        class="mb-3"
+        autofocus
+        @keyup.enter="doAuth"
+      ></v-text-field>
+      
+      <v-text-field
+        v-model="authPassword"
+        label="Пароль"
+        type="password"
+        variant="outlined"
+        density="compact"
+        class="mb-3"
+        @keyup.enter="doAuth"
+      ></v-text-field>
+      
+      <v-alert
+        v-if="authError"
+        type="error"
+        variant="tonal"
+        density="compact"
+        closable
+        class="mb-3"
+        @click:close="authError = ''"
+      >
+        {{ authError }}
+      </v-alert>
+      
+      <div class="d-flex justify-end gap-2">
+        <v-btn variant="text" size="small" @click="showAuthDialog = false">
+          Отмена
+        </v-btn>
+        <v-btn color="primary" size="small" @click="doAuth">
+          Войти
+        </v-btn>
+      </div>
+    </v-card-text>
+  </v-card>
+</v-dialog>
 
+<!-- ОСНОВНОЙ КОНТЕНТ С РАЗМЫТИЕМ -->
+<div :style="{ filter: showAuthDialog ? 'blur(5px)' : 'none', transition: 'filter 0.3s' }">
     <!-- Боковое меню -->
     <v-navigation-drawer 
       permanent 
@@ -121,6 +123,7 @@
       @update:theme="updateTheme"
       @update:semi-dark="updateSemiDark"
     />
+    </div>
   </v-app>
 </template>
 
@@ -148,7 +151,7 @@ const doAuth = () => {
     return
   }
   
-  if (authLogin.value === 'admin' && authPassword.value === 'admin123') {
+  if (authLogin.value === 'bnz' && authPassword.value === 'bnz') {
     localStorage.setItem('kpi_auth', 'true')
     showAuthDialog.value = false
   } else {
