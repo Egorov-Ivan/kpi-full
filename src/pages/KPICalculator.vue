@@ -447,6 +447,14 @@
       clearable
     ></v-select>
     
+    <!-- Показываем сохранённую дату сразу -->
+    <div v-if="selectedClientForFirstDate && manualFirstTransactionDate[selectedClientForFirstDate]" class="text-caption text-success mb-2">
+      ✅ Сохранено: {{ manualFirstTransactionDate[selectedClientForFirstDate] }}
+    </div>
+    <div v-if="selectedClientForFirstDate && !manualFirstTransactionDate[selectedClientForFirstDate]" class="text-caption text-grey mb-2">
+      Дата ещё не указана
+    </div>
+    
     <v-row v-if="selectedClientForFirstDate" class="mb-2">
       <v-col cols="8">
         <v-text-field
@@ -472,10 +480,6 @@
         </v-btn>
       </v-col>
     </v-row>
-    
-    <div v-if="selectedClientForFirstDate && manualFirstTransactionDate[selectedClientForFirstDate]" class="text-caption text-success mt-2">
-      ✅ Сохранено: {{ manualFirstTransactionDate[selectedClientForFirstDate] }}
-    </div>
   </v-card-text>
 </v-card>
 
