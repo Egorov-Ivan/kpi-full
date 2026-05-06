@@ -543,17 +543,7 @@
             </v-card-text>
           </v-card>
         </v-dialog>
-         <!-- 🔥 ДИАЛОГ ЗАГРУЗКИ KPI VAT -->
-        <v-dialog v-model="showKpiVatUploadDialog" max-width="500" persistent>
-          <v-card>
-            <v-card-title class="d-flex align-center pa-4">
-              <v-icon color="info" class="mr-2">ri-file-excel-2-line</v-icon>
-              Загрузка KPI НДС из Excel
-              <v-spacer></v-spacer>
-              <v-btn icon variant="text" @click="showKpiVatUploadDialog = false" :disabled="kpiVatUploading">
-                <v-icon>ri-close-line</v-icon>
-              </v-btn>
-            </v-card-title>
+
             
             <v-card-text class="pa-4">
               <p class="text-body-2 text-grey mb-4">
@@ -635,60 +625,6 @@
                 Загрузить и рассчитать
               </v-btn>
             </v-card-actions>
-          </v-card>
-        </v-dialog>
-<!-- ДИАЛОГ АВТОРИЗАЦИИ В СТИЛЕ HTTP BASIC AUTH -->
-<v-dialog v-model="showAuthDialog" max-width="360" persistent>
-  <v-card class="auth-basic-card">
-    <v-card-text class="pa-4 text-center">
-      <v-icon size="32" color="grey-darken-1" class="mb-2">ri-lock-line</v-icon>
-      <p class="text-h6 font-weight-medium mb-1">Войти</p>
-      
-      <v-text-field
-        v-model="authLogin"
-        label="Имя пользователя"
-        variant="outlined"
-        density="compact"
-        class="mb-3"
-        :disabled="authLoading"
-        autofocus
-        @keyup.enter="doAuth"
-      ></v-text-field>
-      
-      <v-text-field
-        v-model="authPassword"
-        label="Пароль"
-        type="password"
-        variant="outlined"
-        density="compact"
-        class="mb-3"
-        :disabled="authLoading"
-        @keyup.enter="doAuth"
-      ></v-text-field>
-      
-      <v-alert
-        v-if="authError"
-        type="error"
-        variant="tonal"
-        density="compact"
-        closable
-        class="mb-3 text-left"
-        @click:close="authError = ''"
-      >
-        {{ authError }}
-      </v-alert>
-      
-      <div class="d-flex justify-end gap-2">
-        <v-btn variant="text" size="small" :disabled="authLoading" @click="showAuthDialog = false">
-          Отмена
-        </v-btn>
-        <v-btn color="primary" size="small" :loading="authLoading" @click="doAuth">
-          Войти
-        </v-btn>
-      </div>
-    </v-card-text>
-  </v-card>
-</v-dialog>
       </v-col>
     </v-row>
   </v-container>
@@ -2120,21 +2056,23 @@ const refreshData = async () => {
     
     await store.loadPlans(year, month);
     
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(year, month - 1 - i, 1);
-      await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
-    }
+    // Загружаем только за текущий месяц
+    await store.loadBufferData(year, month);
     
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
     await store.loadKpiReceivedClients();
     
-    // 🔥 ЗАГРУЗКА СОХРАНЁННЫХ ДАННЫХ KPI VAT
+    // 🔥 Убираем дубликаты
+    const uniqueOps = Array.from(
+      new Map(store.bufferData.map(op => [`${op.date}|${op.client}|${op.amount}|${op.clientType}`, op])).values()
+    );
+    store.bufferData = uniqueOps;
+    console.log(`📊 Уникальных операций: ${uniqueOps.length}`);
+    
     await loadAllKpiVatData();
-
-    // 🔥 Пересчёт KPI NO_VAT для всех
-     recalculateAllKpiNoVat()
+    recalculateAllKpiNoVat();
     
     forceUpdate.value = Date.now();
     
