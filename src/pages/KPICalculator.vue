@@ -1552,6 +1552,7 @@ const managerRatings = computed(() => {
       saveStateToServer();
     }
     
+    const managerKpiNoVat = managerKpiValues.value[manager.id] || 0;
     const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
     const payment = maintenancePayment + managerKpi + kpiVatAmount;
     
