@@ -429,41 +429,55 @@
                   <v-row>
                     <v-col cols="12">
 
-<!-- Дата первой заправки (временная) -->
-      <v-card variant="tonal" class="pa-4 mb-4" color="orange-light">
-        <v-card-text>
-          <div class="text-subtitle-1 font-weight-medium mb-3">
-            <v-icon start color="orange">ri-calendar-line</v-icon>
-            Дата первой заправки
-          </div>
-          
-          <v-select
-            v-model="selectedClientForFirstDate"
-            :items="currentManagerKpiVatDetails.map(c => c.client_name)"
-            label="Выберите клиента"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-            clearable
-          ></v-select>
-          
-          <v-text-field
-            v-if="selectedClientForFirstDate"
-            v-model="manualFirstTransactionDate[selectedClientForFirstDate]"
-            label="Дата первой заправки"
-            variant="outlined"
-            density="compact"
-            placeholder="01.01.2026"
-            hint="Формат: ДД.ММ.ГГГГ"
-            persistent-hint
-            @update:model-value="saveManualFirstDate"
-          ></v-text-field>
-          
-          <div v-if="selectedClientForFirstDate && manualFirstTransactionDate[selectedClientForFirstDate]" class="text-caption text-success mt-2">
-            ✅ Сохранено: {{ manualFirstTransactionDate[selectedClientForFirstDate] }}
-          </div>
-        </v-card-text>
-      </v-card>
+<!-- Дата первой заправки -->
+<v-card variant="tonal" class="pa-4 mb-4" color="orange-light">
+  <v-card-text>
+    <div class="text-subtitle-1 font-weight-medium mb-3">
+      <v-icon start color="orange">ri-calendar-line</v-icon>
+      Дата первой заправки
+    </div>
+    
+    <v-select
+      v-model="selectedClientForFirstDate"
+      :items="currentManagerKpiVatDetails.map(c => c.client_name)"
+      label="Выберите клиента"
+      variant="outlined"
+      density="compact"
+      class="mb-3"
+      clearable
+    ></v-select>
+    
+    <v-row v-if="selectedClientForFirstDate" class="mb-2">
+      <v-col cols="8">
+        <v-text-field
+          v-model="manualFirstTransactionDate[selectedClientForFirstDate]"
+          label="Дата первой заправки"
+          variant="outlined"
+          density="compact"
+          placeholder="ДД.ММ.ГГГГ"
+          hint="Формат: ДД.ММ.ГГГГ"
+          persistent-hint
+        ></v-text-field>
+      </v-col>
+      <v-col cols="4" class="d-flex align-center">
+        <v-btn
+          color="success"
+          variant="tonal"
+          @click="saveManualFirstDate"
+          :disabled="!manualFirstTransactionDate[selectedClientForFirstDate]"
+          block
+        >
+          <v-icon start>ri-check-line</v-icon>
+          Сохранить
+        </v-btn>
+      </v-col>
+    </v-row>
+    
+    <div v-if="selectedClientForFirstDate && manualFirstTransactionDate[selectedClientForFirstDate]" class="text-caption text-success mt-2">
+      ✅ Сохранено: {{ manualFirstTransactionDate[selectedClientForFirstDate] }}
+    </div>
+  </v-card-text>
+</v-card>
 
 
 <!-- Загрузка Excel для менеджера -->
@@ -815,10 +829,12 @@ const loadManualFirstDates = async () => {
       if (result.success) {
         const dates: Record<string, string> = {};
         result.data.forEach((row: any) => {
-          // Конвертируем YYYY-MM-DD → ДД.ММ.ГГГГ
-          const isoDate = row.first_transaction_date;
-          const parts = isoDate.split('-');
-          dates[row.client_name] = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : isoDate;
+          // YYYY-MM-DD → ДД.ММ.ГГГГ
+          const d = row.first_transaction_date;
+          if (d) {
+            const parts = d.split('T')[0].split('-'); // убираем время
+            dates[row.client_name] = `${parts[2]}.${parts[1]}.${parts[0]}`;
+          }
         });
         manualFirstTransactionDate.value = dates;
         console.log('✅ Загружены даты с сервера:', Object.keys(dates).length);
