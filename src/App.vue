@@ -182,6 +182,9 @@ const navItemClass = computed(() => (semiDarkMenu.value || selectedTheme.value =
 const subheaderClass = computed(() => (semiDarkMenu.value || selectedTheme.value === 'dark') ? 'text-white' : 'text-grey')
 
 onMounted(() => {
+  console.log('🚀 App.vue mounted');
+  console.log('kpi_auth:', localStorage.getItem('kpi_auth'));
+  
   const savedColor = localStorage.getItem('primary-color')
   if (savedColor) primaryColor.value = savedColor
   
@@ -192,7 +195,8 @@ onMounted(() => {
   if (savedSemiDark) semiDarkMenu.value = savedSemiDark === 'true'
   
   if (!localStorage.getItem('kpi_auth')) {
-    showAuthDialog.value = true
+    console.log('🔒 Показываю авторизацию');
+    showAuthDialog.value = true;
   }
 })
 
