@@ -812,12 +812,15 @@ const loadManualFirstDates = async () => {
 const managerKpiVatFile = ref<File | null>(null);
 
 const uploadManagerKpiVatFile = async () => {
-  console.log('📤 uploadManagerKpiVatFile вызвана');
-  console.log('file:', managerKpiVatFile.value);
-  console.log('manager:', selectedManagerDetails.value?.name);
+  console.log('🚀 Старт загрузки для менеджера');
   
-  if (!managerKpiVatFile.value || !selectedManagerDetails.value) {
-    console.log('❌ Нет файла или менеджера');
+  if (!managerKpiVatFile.value) {
+    console.log('❌ Нет файла');
+    return;
+  }
+  
+  if (!selectedManagerDetails.value) {
+    console.log('❌ Нет менеджера');
     return;
   }
   
@@ -832,31 +835,35 @@ const uploadManagerKpiVatFile = async () => {
     formData.append('month', selectedMonth.value);
     formData.append('manager', selectedManagerDetails.value.name);
     
-console.log('📤 formData:', {
-  file: managerKpiVatFile.value?.name,
-  year: selectedYear.value,
-  month: selectedMonth.value,
-  manager: selectedManagerDetails.value?.name
-});
-
+    console.log('🚀 Отправляю запрос на /api/kpi-vat');
+    
     const response = await fetch('/api/kpi-vat', {
       method: 'POST',
       body: formData
     });
     
+    console.log('🚀 Ответ сервера:', response.status);
+    
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Ошибка');
+    console.log('🚀 result:', result);
+    
+    if (!response.ok) throw new Error(result.error || 'Ошибка сервера');
     
     if (result.success) {
-      const filtered = result.data.filter((item: any) => item.manager_name === selectedManagerDetails.value.name);
-      allKpiVatData.value = [...allKpiVatData.value.filter((item: any) => item.manager_name !== selectedManagerDetails.value.name), ...filtered];
+      console.log('🚀 Успех! Данных:', result.data?.length);
+      allKpiVatData.value = result.data || [];
       kpiVatSuccess.value = `✅ Загружено для ${selectedManagerDetails.value.name}`;
       managerKpiVatFile.value = null;
+    } else {
+      console.log('🚀 result.success = false');
+      kpiVatError.value = result.warning || 'Неизвестная ошибка';
     }
   } catch (error: any) {
+    console.error('🚀 Ошибка:', error);
     kpiVatError.value = error.message;
   } finally {
     kpiVatUploading.value = false;
+    console.log('🚀 Загрузка завершена');
   }
 };
 
