@@ -9,6 +9,10 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+  path: '/',
+  redirect: '/kpi-calculator'
+    },
+    {
       path: '/',
       name: 'home',
       component: MainPage
