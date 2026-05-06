@@ -79,6 +79,8 @@ export default async function handler(req, res) {
       const month = parts['month'] || '';
       const manager = parts['manager'] || '';
       
+      console.log('📥 manager из запроса:', manager);
+      
       if (!file || !file.data) {
         console.error('❌ Файл не найден');
         return res.status(400).json({ error: 'Файл не найден в запросе' });
@@ -103,8 +105,6 @@ export default async function handler(req, res) {
       });
       
       console.log('📊 Строк:', rows.length);
-      console.log('📊 Заголовки:', JSON.stringify(rows[0]));
-      console.log('📊 Первая строка:', JSON.stringify(rows[1]));
       
       if (rows.length < 2) {
         console.error('❌ Файл пустой');
@@ -112,8 +112,6 @@ export default async function handler(req, res) {
       }
       
       const headers = rows[0].map(h => h?.toString()?.toLowerCase()?.trim() || '');
-      console.log('📊 Заголовки (чистые):', headers);
-      
       const data = rows.slice(1);
       
       const indexes = findColumnIndexes(headers);
@@ -133,16 +131,6 @@ export default async function handler(req, res) {
           summary: [],
           warning: 'Нет транзакций за выбранный период'
         });
-      }
-      
-      // Детали
-      for (const mgr of managerNames) {
-        const clients = Object.keys(managerClients[mgr]);
-        console.log(`📊 ${mgr}: ${clients.length} клиентов`);
-        for (const cl of clients) {
-          const d = managerClients[mgr][cl];
-          console.log(`   ${cl}: прибыль=${d.totalProfit.toFixed(2)}, KPI=${d.kpiVat.toFixed(2)}, ставка=${(d.rate * 100).toFixed(1)}%`);
-        }
       }
       
       // Сохраняем
@@ -193,7 +181,7 @@ export default async function handler(req, res) {
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
-// ========== ПАРСИНГ MULTIPART ==========
+// ========== ПАРСИНГ MULTIPART (исправлена кодировка) ==========
 function parseMultipart(buffer, boundary) {
   const parts = {};
   const str = buffer.toString('binary');
@@ -217,13 +205,16 @@ function parseMultipart(buffer, boundary) {
     const filenameMatch = headerStr.match(/filename="([^"]+)"/);
     
     if (filenameMatch) {
+      // Файл — оставляем как Buffer
       const bodyStr = section.substring(bodyStart, bodyEnd);
       parts[fieldName] = {
         filename: filenameMatch[1],
         data: Buffer.from(bodyStr, 'binary')
       };
     } else {
-      parts[fieldName] = section.substring(bodyStart, bodyEnd).trim();
+      // Текстовое поле — конвертируем в UTF-8
+      const bodyStr = section.substring(bodyStart, bodyEnd);
+      parts[fieldName] = Buffer.from(bodyStr, 'binary').toString('utf-8');
     }
   }
   
@@ -312,8 +303,7 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     if (!ourEntity.toLowerCase().includes('фаэтон')) return;
     
     const manager = row[indexes.manager].toString().trim();
-console.log('🔍 filterManager:', filterManager, 'row manager:', manager, 'match:', manager === filterManager);
-if (filterManager && manager !== filterManager) return;
+    if (filterManager && manager !== filterManager) return;
     
     const client = row[indexes.client]?.toString().trim() || 'Неизвестный';
     const operation = row[indexes.operation]?.toString().trim() || '';
@@ -323,10 +313,7 @@ if (filterManager && manager !== filterManager) return;
     
     let date = parseDate(dateStr);
     
-    if (!date) {
-      if (rowIndex < 5) console.log(`⚠️ Строка ${rowIndex}: не удалось распарсить дату "${dateStr}"`);
-      return;
-    }
+    if (!date) return;
     
     const rowYear = date.getFullYear();
     const rowMonth = (date.getMonth() + 1).toString().padStart(2, '0');
