@@ -812,7 +812,14 @@ const loadManualFirstDates = async () => {
 const managerKpiVatFile = ref<File | null>(null);
 
 const uploadManagerKpiVatFile = async () => {
-  if (!managerKpiVatFile.value || !selectedManagerDetails.value) return;
+  console.log('📤 uploadManagerKpiVatFile вызвана');
+  console.log('file:', managerKpiVatFile.value);
+  console.log('manager:', selectedManagerDetails.value?.name);
+  
+  if (!managerKpiVatFile.value || !selectedManagerDetails.value) {
+    console.log('❌ Нет файла или менеджера');
+    return;
+  }
   
   kpiVatUploading.value = true;
   kpiVatError.value = '';
