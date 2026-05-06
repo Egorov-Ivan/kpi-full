@@ -574,6 +574,12 @@
                                 </div>
                               </div>
                             </template>
+
+                            <template v-slot:item.first_date="{ item }">
+  <div class="text-center text-caption">
+    {{ manualFirstTransactionDate[item.client_name] || '—' }}
+  </div>
+</template>
                             
                             <template v-slot:item.transactions_count="{ item }">
                               <div class="text-center">
@@ -1055,6 +1061,7 @@ const kpiVatDetailHeaders = [
   { title: 'Клиент', key: 'client_name', sortable: true },
   { title: 'Прибыль', key: 'total_profit', sortable: true, align: 'end' as const },
   { title: 'KPI НДС', key: 'kpi_vat', sortable: true, align: 'end' as const },
+  { title: 'Дата первой заправки', key: 'first_date', sortable: true, align: 'center' as const },
   { title: 'Пополнений', key: 'transactions_count', sortable: true, align: 'center' as const },
   { title: 'Доля', key: 'share', sortable: true, align: 'end' as const }
 ];
