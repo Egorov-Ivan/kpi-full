@@ -2042,7 +2042,7 @@ const refreshData = async () => {
     await loadAllKpiVatData();
 
     // 🔥 Пересчёт KPI NO_VAT для всех
-     recalculateAllKpiNoVat(
+     recalculateAllKpiNoVat()
     
     forceUpdate.value = Date.now();
     
