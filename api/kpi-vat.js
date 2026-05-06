@@ -169,29 +169,26 @@ export default async function handler(req, res) {
     }
   }
 
-// ========== DELETE — удалить данные за период ==========
-if (req.method === 'DELETE') {
-  try {
-    const { year, month } = req.query;
-    
-    if (!year || !month) {
-      return res.status(400).json({ error: 'year и month обязательны' });
+  // ========== DELETE ==========
+  if (req.method === 'DELETE') {
+    try {
+      const { year, month } = req.query;
+      
+      if (!year || !month) {
+        return res.status(400).json({ error: 'year и month обязательны' });
+      }
+      
+      console.log('🗑️ Удаляю данные за', year, month);
+      await sql.query('DELETE FROM kpi_vat_details WHERE year = $1 AND month = $2', [year, month]);
+      console.log('✅ Удалено');
+      
+      return res.status(200).json({ success: true, message: 'Данные удалены' });
+      
+    } catch (error) {
+      console.error('❌ DELETE error:', error);
+      return res.status(500).json({ error: error.message });
     }
-    
-    console.log('🗑️ Удаляю данные за', year, month);
-    await sql.query('DELETE FROM kpi_vat_details WHERE year = $1 AND month = $2', [year, month]);
-    console.log('✅ Удалено');
-    
-    return res.status(200).json({ success: true, message: 'Данные удалены' });
-    
-  } catch (error) {
-    console.error('❌ DELETE error:', error);
-    return res.status(500).json({ error: error.message });
   }
-}
-
-
-
 
   return res.status(405).json({ error: 'Method not allowed' });
 }
@@ -269,6 +266,40 @@ function findColumnIndexes(headers) {
   return indexes;
 }
 
+// ========== ПАРСИНГ СУММЫ ==========
+function parseAmount(val) {
+  if (val === null || val === undefined) return 0;
+  let str = val.toString().trim();
+  str = str.replace(/,/g, '');
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+// ========== ПАРСИНГ ДАТЫ ==========
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  
+  const num = parseFloat(dateStr);
+  if (!isNaN(num) && num > 40000 && num < 100000) {
+    return new Date((num - 25569) * 86400 * 1000);
+  }
+  
+  const clean = String(dateStr).trim();
+  
+  const dotMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (dotMatch) {
+    const day = parseInt(dotMatch[1]);
+    const month = parseInt(dotMatch[2]) - 1;
+    const year = parseInt(dotMatch[3]);
+    return new Date(year, month, day);
+  }
+  
+  const d = new Date(clean);
+  if (!isNaN(d.getTime())) return d;
+  
+  return null;
+}
+
 // ========== ОБРАБОТКА ТРАНЗАКЦИЙ ==========
 function processTransactions(rows, indexes, targetYear, targetMonth, filterManager = null) {
   const managerClients = {};
@@ -285,8 +316,8 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     
     const client = row[indexes.client]?.toString().trim() || 'Неизвестный';
     const operation = row[indexes.operation]?.toString().trim() || '';
-    const sumForUs = parseFloat(row[indexes.sumForUs]) || 0;
-    const sumForClient = parseFloat(row[indexes.sumForClient]) || 0;
+    const sumForUs = parseAmount(row[indexes.sumForUs]);
+    const sumForClient = parseAmount(row[indexes.sumForClient]);
     const dateStr = row[indexes.date]?.toString().trim() || '';
     
     let date = parseDate(dateStr);
@@ -336,31 +367,6 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
   }
   
   return managerClients;
-}
-
-// ========== ПАРСИНГ ДАТЫ ==========
-function parseDate(dateStr) {
-  if (!dateStr) return null;
-  
-  const num = parseFloat(dateStr);
-  if (!isNaN(num) && num > 40000 && num < 100000) {
-    return new Date((num - 25569) * 86400 * 1000);
-  }
-  
-  const clean = String(dateStr).trim();
-  
-  const dotMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  if (dotMatch) {
-    const day = parseInt(dotMatch[1]);
-    const month = parseInt(dotMatch[2]) - 1;
-    const year = parseInt(dotMatch[3]);
-    return new Date(year, month, day);
-  }
-  
-  const d = new Date(clean);
-  if (!isNaN(d.getTime())) return d;
-  
-  return null;
 }
 
 // ========== ВОЗРАСТ КЛИЕНТА ==========
