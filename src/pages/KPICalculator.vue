@@ -751,45 +751,7 @@ const loading = ref(false);
 const activeTab = ref('maintenance');
 const initialized = ref(false);
 
-
-
-// ========== АВТОРИЗАЦИЯ ==========
-const showAuthDialog = ref(false);
-const authLogin = ref('');
-const authPassword = ref('');
-const authLoading = ref(false);
-const authError = ref('');
-
-const doAuth = async () => {
-  if (!authLogin.value || !authPassword.value) {
-    authError.value = 'Заполните все поля';
-    return;
-  }
-  
-  authLoading.value = true;
-  authError.value = '';
-  
-  try {
-    const response = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: authLogin.value, password: authPassword.value })
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok && data.success) {
-      localStorage.setItem('kpi_auth', 'true');
-      showAuthDialog.value = false;
-    } else {
-      authError.value = data.error || 'Неверный логин или пароль';
-    }
-  } catch (e) {
-    authError.value = 'Ошибка соединения';
-  } finally {
-    authLoading.value = false;
-  }
-};
+// ========== АВТОРИЗАЦИЯ (не используется, перенесено в App.vue) ==========
 
 // Состояние фильтров - текущий месяц по умолчанию
 const currentDate = new Date();
@@ -799,17 +761,15 @@ const selectedMonth = ref((currentDate.getMonth() + 1).toString().padStart(2, '0
 const showDetailsDialog = ref(false);
 const selectedManagerDetails = ref<any>(null);
 
-// Временное: ручной ввод даты первой заправки
+// ========== ДАТА ПЕРВОЙ ЗАПРАВКИ ==========
 const selectedClientForFirstDate = ref('');
 const manualFirstTransactionDate = ref<Record<string, string>>({});
 
 const saveManualFirstDate = async () => {
   const clientName = selectedClientForFirstDate.value;
   const date = manualFirstTransactionDate.value[clientName];
-  
   if (!clientName || !date) return;
   
-  // Конвертируем ДД.ММ.ГГГГ → YYYY-MM-DD
   const parts = date.split('.');
   const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : date;
   
@@ -819,7 +779,7 @@ const saveManualFirstDate = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientName, firstTransactionDate: isoDate })
     });
-    console.log('✅ Дата сохранена на сервер:', clientName, isoDate);
+    console.log('✅ Дата сохранена:', clientName, isoDate);
   } catch (e) {
     console.error('Ошибка сохранения:', e);
   }
@@ -833,15 +793,14 @@ const loadManualFirstDates = async () => {
       if (result.success) {
         const dates: Record<string, string> = {};
         result.data.forEach((row: any) => {
-          // YYYY-MM-DD → ДД.ММ.ГГГГ
           const d = row.first_transaction_date;
           if (d) {
-            const parts = d.split('T')[0].split('-'); // убираем время
+            const parts = d.split('T')[0].split('-');
             dates[row.client_name] = `${parts[2]}.${parts[1]}.${parts[0]}`;
           }
         });
         manualFirstTransactionDate.value = dates;
-        console.log('✅ Загружены даты с сервера:', Object.keys(dates).length);
+        console.log('✅ Загружены даты:', Object.keys(dates).length);
       }
     }
   } catch (e) {
@@ -849,8 +808,7 @@ const loadManualFirstDates = async () => {
   }
 };
 
-
-
+// ========== KPI VAT ЗАГРУЗКА ДЛЯ МЕНЕДЖЕРА ==========
 const managerKpiVatFile = ref<File | null>(null);
 
 const uploadManagerKpiVatFile = async () => {
@@ -873,11 +831,11 @@ const uploadManagerKpiVatFile = async () => {
     });
     
     const result = await response.json();
-    
-    if (!response.ok) throw new Error(result.error || 'Ошибка сервера');
+    if (!response.ok) throw new Error(result.error || 'Ошибка');
     
     if (result.success) {
-      allKpiVatData.value = result.data || [];
+      const filtered = result.data.filter((item: any) => item.manager_name === selectedManagerDetails.value.name);
+      allKpiVatData.value = [...allKpiVatData.value.filter((item: any) => item.manager_name !== selectedManagerDetails.value.name), ...filtered];
       kpiVatSuccess.value = `✅ Загружено для ${selectedManagerDetails.value.name}`;
       managerKpiVatFile.value = null;
     }
@@ -888,8 +846,6 @@ const uploadManagerKpiVatFile = async () => {
   }
 };
 
-
-
 // ========== KPI VAT АВТОМАТИЧЕСКИЙ РАСЧЁТ ==========
 const showKpiVatUploadDialog = ref(false);
 const kpiVatFile = ref<File | null>(null);
@@ -897,7 +853,6 @@ const kpiVatUploading = ref(false);
 const kpiVatError = ref('');
 const kpiVatSuccess = ref('');
 
-// Данные для отображения
 interface KpiVatDetail {
   client_name: string;
   total_profit: number;
@@ -908,21 +863,16 @@ interface KpiVatDetail {
 }
 
 const allKpiVatData = ref<any[]>([]);
+const kpiVatDetails = ref<KpiVatDetail[]>([]);
 
-// Загрузка всех сохранённых данных KPI VAT за период
 const loadAllKpiVatData = async () => {
   try {
-    const params = new URLSearchParams({
-      year: selectedYear.value,
-      month: selectedMonth.value
-    });
-    
+    const params = new URLSearchParams({ year: selectedYear.value, month: selectedMonth.value });
     const response = await fetch(`/api/kpi-vat?${params}`);
     if (response.ok) {
       const result = await response.json();
       if (result.success) {
         allKpiVatData.value = result.data || [];
-        console.log('✅ KPI VAT из БД:', allKpiVatData.value.length, 'записей');
       }
     }
   } catch (error) {
@@ -930,31 +880,14 @@ const loadAllKpiVatData = async () => {
   }
 };
 
-const kpiVatDetails = ref<KpiVatDetail[]>([]);
-
-
-// Удаление данных KPI VAT за текущий период
 const deleteKpiVatData = async () => {
   if (!confirm(`Удалить все данные KPI НДС за ${selectedMonthName.value} ${selectedYear.value}?`)) return;
-  
   kpiVatUploading.value = true;
-  kpiVatError.value = '';
-  kpiVatSuccess.value = '';
-  
   try {
-    const params = new URLSearchParams({
-      year: selectedYear.value,
-      month: selectedMonth.value
-    });
-    
-    const response = await fetch(`/api/kpi-vat?${params}`, {
-      method: 'DELETE'
-    });
-    
+    const params = new URLSearchParams({ year: selectedYear.value, month: selectedMonth.value });
+    const response = await fetch(`/api/kpi-vat?${params}`, { method: 'DELETE' });
     const result = await response.json();
-    
     if (!response.ok) throw new Error(result.error || 'Ошибка');
-    
     if (result.success) {
       allKpiVatData.value = [];
       kpiVatDetails.value = [];
@@ -968,14 +901,9 @@ const deleteKpiVatData = async () => {
   }
 };
 
-
-
-// Данные для текущего менеджера
 const currentManagerKpiVatDetails = computed(() => {
   if (!selectedManagerDetails.value) return [];
-  return allKpiVatData.value.filter(
-    item => item.manager_name === selectedManagerDetails.value.name
-  );
+  return allKpiVatData.value.filter(item => item.manager_name === selectedManagerDetails.value.name);
 });
 
 const currentManagerKpiVatTotal = computed(() => {
@@ -988,25 +916,20 @@ const getCurrentManagerKpiVatShare = (item: any) => {
   return (Number(item.kpi_vat) / total) * 100;
 };
 
-
-// Выбор файла
 const handleKpiVatFileSelect = (file: File | File[]) => {
   kpiVatFile.value = Array.isArray(file) ? file[0] : file;
   kpiVatError.value = '';
   kpiVatSuccess.value = '';
 };
 
-/// Загрузка файла с прогрессом
 const uploadKpiVatFile = async () => {
   if (!kpiVatFile.value) return;
-  
   kpiVatUploading.value = true;
   kpiVatError.value = '';
   kpiVatSuccess.value = '';
   kpiVatProgress.value = 0;
   kpiVatProgressMessage.value = 'Отправка файла...';
   
-  // Этапы с примерным прогрессом
   const steps = [
     { progress: 10, message: 'Отправка файла на сервер...' },
     { progress: 30, message: 'Чтение Excel...' },
@@ -1016,7 +939,6 @@ const uploadKpiVatFile = async () => {
     { progress: 100, message: 'Готово!' }
   ];
   
-  // Запускаем анимацию прогресса
   let stepIndex = 0;
   const progressInterval = setInterval(() => {
     if (stepIndex < steps.length) {
@@ -1032,22 +954,15 @@ const uploadKpiVatFile = async () => {
     formData.append('year', selectedYear.value);
     formData.append('month', selectedMonth.value);
     
-    const response = await fetch('/api/kpi-vat', {
-      method: 'POST',
-      body: formData
-    });
-    
+    const response = await fetch('/api/kpi-vat', { method: 'POST', body: formData });
     clearInterval(progressInterval);
     kpiVatProgress.value = 95;
-    kpiVatProgressMessage.value = 'Обработка ответа...';
     
     const result = await response.json();
-    
-    if (!response.ok) throw new Error(result.error || 'Ошибка сервера');
+    if (!response.ok) throw new Error(result.error || 'Ошибка');
     
     if (result.success) {
       allKpiVatData.value = result.data || [];
-      
       const totalKpi = result.summary?.reduce((s: number, m: any) => s + m.totalKpiVat, 0) || 0;
       const managersCount = result.summary?.length || 0;
       
@@ -1058,9 +973,7 @@ const uploadKpiVatFile = async () => {
       if (result.summary) {
         result.summary.forEach((s: any) => {
           const manager = managerRatings.value.find(m => m.name === s.manager);
-          if (manager) {
-            updateManualKpiVat(manager.id, s.totalKpiVat);
-          }
+          if (manager) updateManualKpiVat(manager.id, s.totalKpiVat);
         });
       }
       
@@ -1078,12 +991,8 @@ const uploadKpiVatFile = async () => {
   }
 };
 
+const kpiVatTotal = computed(() => kpiVatDetails.value.reduce((sum, item) => sum + (item.kpi_vat || 0), 0));
 
-const kpiVatTotal = computed(() => {
-  return kpiVatDetails.value.reduce((sum, item) => sum + (item.kpi_vat || 0), 0);
-});
-
-// Заголовки таблицы KPI VAT
 const kpiVatDetailHeaders = [
   { title: 'Клиент', key: 'client_name', sortable: true },
   { title: 'Прибыль', key: 'total_profit', sortable: true, align: 'end' as const },
@@ -1093,87 +1002,17 @@ const kpiVatDetailHeaders = [
   { title: 'Доля', key: 'share', sortable: true, align: 'end' as const }
 ];
 
-// Получить долю KPI клиента
 const getKpiVatShare = (item: KpiVatDetail) => {
   const total = kpiVatTotal.value;
   if (total === 0) return 0;
   return (item.kpi_vat / total) * 100;
 };
 
-// Загрузка файла
-const handleKpiVatFileUpload = async (file: File | File[]) => {
-  const fileToUpload = Array.isArray(file) ? file[0] : file;
-  
-  if (!fileToUpload) {
-    kpiVatFile.value = null;
-    return;
-  }
-  
-  kpiVatFile.value = fileToUpload;
-  kpiVatUploading.value = true;
-  kpiVatError.value = '';
-  kpiVatSuccess.value = '';
-  
-  try {
-    const formData = new FormData();
-    formData.append('file', fileToUpload);
-    formData.append('year', selectedYear.value);
-    formData.append('month', selectedMonth.value);
-    
-    if (selectedManagerDetails.value) {
-      formData.append('manager', selectedManagerDetails.value.name);
-    }
-    
-    const response = await fetch('/api/kpi-vat', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка загрузки');
-    }
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      kpiVatDetails.value = result.data || [];
-      kpiVatSuccess.value = `✅ Рассчитано: ${kpiVatDetails.value.length} клиентов, общий KPI: ${formatMoney(kpiVatTotal.value)}`;
-      
-      // Если данные есть и открыт менеджер — предзаполняем ручной ввод
-      if (selectedManagerDetails.value && result.summary) {
-        const managerSummary = result.summary.find(
-          (s: any) => s.manager === selectedManagerDetails.value.name
-        );
-        if (managerSummary) {
-          updateManualKpiVat(selectedManagerDetails.value.id, managerSummary.totalKpiVat);
-        }
-      }
-    } else {
-      throw new Error(result.error || 'Неизвестная ошибка');
-    }
-  } catch (error: any) {
-    console.error('KPI VAT upload error:', error);
-    kpiVatError.value = error.message || 'Ошибка загрузки файла';
-    kpiVatDetails.value = [];
-  } finally {
-    kpiVatUploading.value = false;
-  }
-};
-
-// Загрузка сохранённых данных при открытии таба
 const loadKpiVatDetails = async () => {
   if (!selectedManagerDetails.value) return;
-  
   try {
-    const params = new URLSearchParams({
-      year: selectedYear.value,
-      month: selectedMonth.value,
-      manager: selectedManagerDetails.value.name
-    });
-    
+    const params = new URLSearchParams({ year: selectedYear.value, month: selectedMonth.value, manager: selectedManagerDetails.value.name });
     const response = await fetch(`/api/kpi-vat?${params}`);
-    
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data.length > 0) {
@@ -1185,25 +1024,17 @@ const loadKpiVatDetails = async () => {
   }
 };
 
-// Применить KPI к менеджеру
 const applyKpiVatToManager = () => {
   if (!selectedManagerDetails.value) return;
-  
   updateManualKpiVat(selectedManagerDetails.value.id, kpiVatTotal.value);
   kpiVatSuccess.value = `✅ Применено: ${formatMoney(kpiVatTotal.value)}`;
-  
-  // Сохраняем сразу
   saveStateToServer();
 };
 
-// Следим за открытием таба KPI VAT
 watch(activeTab, (newTab) => {
-  if (newTab === 'kpiVat' && selectedManagerDetails.value) {
-    loadKpiVatDetails();
-  }
+  if (newTab === 'kpiVat' && selectedManagerDetails.value) loadKpiVatDetails();
 });
 
-// Следим за сменой менеджера в диалоге
 watch(selectedManagerDetails, (newManager) => {
   if (newManager && activeTab.value === 'kpiVat') {
     kpiVatDetails.value = [];
@@ -1211,42 +1042,30 @@ watch(selectedManagerDetails, (newManager) => {
   }
 });
 
-// Пересчёт KPI NO_VAT для всех менеджеров
 const recalculateAllKpiNoVat = () => {
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
   
   filteredManagers.value.forEach(manager => {
     const managerName = manager.displayName;
-    
-    // Собираем операции этого менеджера
     const allOps = store.bufferData.filter(op => op.manager === managerName);
-    
-    // Группируем по клиентам и месяцам
     const clientMonthlyMap = new Map();
     
     allOps.forEach(op => {
-      if (!clientMonthlyMap.has(op.client)) {
-        clientMonthlyMap.set(op.client, new Map());
-      }
+      if (!clientMonthlyMap.has(op.client)) clientMonthlyMap.set(op.client, new Map());
       const [day, opMonth, opYear] = op.date.split('-');
       const monthKey = `${opYear}-${opMonth}`;
       const current = clientMonthlyMap.get(op.client).get(monthKey) || 0;
       clientMonthlyMap.get(op.client).set(monthKey, current + op.amount);
     });
     
-    // Получаем бонусные статусы клиентов
     const managerBonuses = store.bonusHistory.filter(b => b.currentManager === managerName);
     const bonusClients = new Set(managerBonuses.filter(b => b.status === 'ДА').map(b => b.client));
-    
-    // Считаем KPI NO_VAT
     let totalKpi = 0;
     
     clientMonthlyMap.forEach((months, client) => {
-      // Проверяем кастомный статус
       const customKey = `${client}_${managerName}`;
       const custom = customBonusStatus.value[customKey];
-      
       let status = 'НЕТ';
       if (custom?.status === 'ДА') status = 'ДА';
       else if (custom?.status === 'БЫЛ') status = 'БЫЛ';
@@ -1254,7 +1073,6 @@ const recalculateAllKpiNoVat = () => {
       else if (store.isKpiReceivedForClient(client)) status = 'БЫЛ';
       
       if (status === 'ДА') {
-        // Находим максимальную сумму за 3 месяца
         let maxAmount = 0;
         for (let i = 0; i < 3; i++) {
           const d = new Date(year, month - 1 - i, 1);
@@ -1262,108 +1080,54 @@ const recalculateAllKpiNoVat = () => {
           const amount = months.get(key) || 0;
           if (amount > maxAmount) maxAmount = amount;
         }
-        
         const rate = selectedKpiRate.value[manager.id] || 0.015;
         totalKpi += maxAmount * rate;
       }
     });
-    
     managerKpiValues.value[manager.id] = totalKpi;
   });
-  
-  console.log('🔄 Пересчитан KPI NO_VAT:', JSON.stringify(managerKpiValues.value));
   saveStateToServer();
 };
 
-
-// Состояние для выбранных ставок по каждому менеджеру
+// ========== СТАВКИ ==========
 const selectedRate = ref<Record<string, number>>({});
-
-// Ставки KPI NO VAT
 const kpiNoVatRates = ref([
   { id: 'kpi_1', value: 0.015, label: '1.50%' },
   { id: 'kpi_2', value: 0.02, label: '2.00%' },
   { id: 'kpi_3', value: 0.03, label: '3.00%' },
 ]);
-
-// Выбранные ставки KPI для каждого менеджера
 const selectedKpiRate = ref<Record<string, number>>({});
-
-// Состояние для ручного ввода KPI НДС по каждому менеджеру
 const manualKpiVat = ref<Record<string, number>>({});
 
-// Данные bonusHistory
 const bonushistory = computed(() => store.bonusHistory);
-
-// Кастомные статусы бонусов (переопределение из файла)
-const customBonusStatus = ref<Record<string, {
-  status: string;
-  bonusMonth: string | null;
-}>>({});
-
-// Состояние для хранения KPI всех менеджеров (не только текущего)
+const customBonusStatus = ref<Record<string, { status: string; bonusMonth: string | null }>>({});
 const managerKpiValues = ref<Record<string, number>>({});
-
-// Триггер для принудительного обновления computed свойств
 const forceUpdate = ref(0);
-
-// ВРЕМЕННЫЙ КОД ДЛЯ КНОПОК KPI
 const showKpiButton = ref(true);
 
-// ========== ЗАГРУЗКА ИЗ LOCALSTORAGE (FALLBACK) ==========
+// ========== LOCALSTORAGE / SERVER ==========
 const loadStateFromStorage = () => {
   try {
-    console.log('📂 Загрузка состояния из localStorage (fallback)...');
-    
     const savedCustomStatus = localStorage.getItem('kpi_custom_bonus_status');
-    if (savedCustomStatus) {
-      customBonusStatus.value = JSON.parse(savedCustomStatus);
-    }
-    
+    if (savedCustomStatus) customBonusStatus.value = JSON.parse(savedCustomStatus);
     const savedManagerKpi = localStorage.getItem('kpi_manager_values');
-    if (savedManagerKpi) {
-      managerKpiValues.value = JSON.parse(savedManagerKpi);
-    }
-    
+    if (savedManagerKpi) managerKpiValues.value = JSON.parse(savedManagerKpi);
     const savedRates = localStorage.getItem('kpi_selected_rates');
-    if (savedRates) {
-      selectedRate.value = JSON.parse(savedRates);
-    }
-    
+    if (savedRates) selectedRate.value = JSON.parse(savedRates);
     const savedKpiRates = localStorage.getItem('kpi_selected_kpi_rates');
-    if (savedKpiRates) {
-      selectedKpiRate.value = JSON.parse(savedKpiRates);
-    }
-    
+    if (savedKpiRates) selectedKpiRate.value = JSON.parse(savedKpiRates);
     const savedManualKpiVat = localStorage.getItem('kpi_manual_vat');
-    if (savedManualKpiVat) {
-      manualKpiVat.value = JSON.parse(savedManualKpiVat);
-    }
-    
+    if (savedManualKpiVat) manualKpiVat.value = JSON.parse(savedManualKpiVat);
     const savedTab = localStorage.getItem('kpi_active_tab');
-    if (savedTab) {
-      activeTab.value = savedTab;
-    }
-    
+    if (savedTab) activeTab.value = savedTab;
     const savedYear = localStorage.getItem('kpi_selected_year');
-    if (savedYear) {
-      selectedYear.value = savedYear;
-    }
-    
+    if (savedYear) selectedYear.value = savedYear;
     const savedMonth = localStorage.getItem('kpi_selected_month');
-    if (savedMonth) {
-      selectedMonth.value = savedMonth;
-    }
-    
+    if (savedMonth) selectedMonth.value = savedMonth;
     forceUpdate.value = Date.now();
-    console.log('✅ Состояние загружено из localStorage');
-    
-  } catch (e) {
-    console.error('Ошибка загрузки из localStorage:', e);
-  }
+  } catch (e) {}
 };
 
-// ========== СОХРАНЕНИЕ В LOCALSTORAGE (FALLBACK) ==========
 const saveStateToStorage = () => {
   try {
     localStorage.setItem('kpi_custom_bonus_status', JSON.stringify(customBonusStatus.value));
@@ -1374,66 +1138,28 @@ const saveStateToStorage = () => {
     localStorage.setItem('kpi_active_tab', activeTab.value);
     localStorage.setItem('kpi_selected_year', selectedYear.value);
     localStorage.setItem('kpi_selected_month', selectedMonth.value);
-  } catch (e) {
-    console.error('Ошибка сохранения в localStorage:', e);
-  }
+  } catch (e) {}
 };
 
-// ========== ЗАГРУЗКА С СЕРВЕРА ==========
 const loadStateFromServer = async () => {
   try {
-    console.log('📂 Загрузка состояния с сервера...');
-    
     const settings = await store.loadKpiSettings();
-    
-    if (settings.customBonusStatus) {
-      customBonusStatus.value = settings.customBonusStatus;
-      console.log('✅ Загружены кастомные статусы:', Object.keys(customBonusStatus.value).length);
-    }
-    
-    if (settings.managerKpiValues) {
-      managerKpiValues.value = settings.managerKpiValues;
-      console.log('✅ Загружены KPI менеджеров:', managerKpiValues.value);
-    }
-    
-    if (settings.selectedRate) {
-      selectedRate.value = settings.selectedRate;
-    }
-    
-    if (settings.selectedKpiRate) {
-      selectedKpiRate.value = settings.selectedKpiRate;
-    }
-    
-    if (settings.manualKpiVat) {
-      manualKpiVat.value = settings.manualKpiVat;
-    }
-    
-    const savedTab = localStorage.getItem('kpi_active_tab');
-    if (savedTab) {
-      activeTab.value = savedTab;
-    }
-    
-    if (settings.selectedYear) {
-      selectedYear.value = settings.selectedYear;
-    }
-    
-    if (settings.selectedMonth) {
-      selectedMonth.value = settings.selectedMonth;
-    }
-    
+    if (settings.customBonusStatus) customBonusStatus.value = settings.customBonusStatus;
+    if (settings.managerKpiValues) managerKpiValues.value = settings.managerKpiValues;
+    if (settings.selectedRate) selectedRate.value = settings.selectedRate;
+    if (settings.selectedKpiRate) selectedKpiRate.value = settings.selectedKpiRate;
+    if (settings.manualKpiVat) manualKpiVat.value = settings.manualKpiVat;
+    if (settings.selectedYear) selectedYear.value = settings.selectedYear;
+    if (settings.selectedMonth) selectedMonth.value = settings.selectedMonth;
     forceUpdate.value = Date.now();
-    console.log('✅ Состояние загружено с сервера');
-    
   } catch (e) {
-    console.error('Ошибка загрузки с сервера:', e);
     loadStateFromStorage();
   }
 };
 
-// ========== СОХРАНЕНИЕ НА СЕРВЕР ==========
 const saveStateToServer = async () => {
   try {
-    const settings = {
+    await store.saveAllKpiSettings({
       customBonusStatus: customBonusStatus.value,
       managerKpiValues: managerKpiValues.value,
       selectedRate: selectedRate.value,
@@ -1441,68 +1167,39 @@ const saveStateToServer = async () => {
       manualKpiVat: manualKpiVat.value,
       selectedYear: selectedYear.value,
       selectedMonth: selectedMonth.value
-    };
-    
-    await store.saveAllKpiSettings(settings);
-    console.log('✅ Состояние сохранено на сервер');
-    
-    localStorage.setItem('kpi_active_tab', activeTab.value);
-    
+    });
   } catch (e) {
-    console.error('Ошибка сохранения на сервер:', e);
     saveStateToStorage();
   }
 };
 
-// Функция для принудительного пересчета всех computed
-const refreshAllData = () => {
-  forceUpdate.value = Date.now();
-};
-
-// Следим за изменениями и сохраняем на сервер
 watch([customBonusStatus, managerKpiValues, selectedRate, selectedKpiRate, manualKpiVat, selectedYear, selectedMonth], () => {
   saveStateToServer();
 }, { deep: true });
 
-// Функция для форматирования ввода числа
+// ========== УТИЛИТЫ ==========
 const parseNumberInput = (value: string): number => {
   const cleaned = value.replace(/[^\d.]/g, '');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 };
 
-// Функция для обновления KPI VAT с сохранением
 const updateManualKpiVat = (managerId: string, value: any) => {
-  const numValue = typeof value === 'string' ? parseNumberInput(value) : value;
-  manualKpiVat.value[managerId] = numValue;
+  manualKpiVat.value[managerId] = typeof value === 'string' ? parseNumberInput(value) : value;
   saveStateToServer();
 };
 
-// Функция для форматирования отображения
-const formatNumber = (value: number): string => {
-  return new Intl.NumberFormat('ru-RU').format(value);
-};
+const formatNumber = (value: number): string => new Intl.NumberFormat('ru-RU').format(value);
+const formatMoney = (amount: number): string => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
-// Годы (от 2024 до текущего + 1)
 const years = Array.from({ length: 5 }, (_, i) => (2024 + i).toString());
-
-// Месяцы
 const months = [
-  { title: 'Январь', value: '01' },
-  { title: 'Февраль', value: '02' },
-  { title: 'Март', value: '03' },
-  { title: 'Апрель', value: '04' },
-  { title: 'Май', value: '05' },
-  { title: 'Июнь', value: '06' },
-  { title: 'Июль', value: '07' },
-  { title: 'Август', value: '08' },
-  { title: 'Сентябрь', value: '09' },
-  { title: 'Октябрь', value: '10' },
-  { title: 'Ноябрь', value: '11' },
-  { title: 'Декабрь', value: '12' }
+  { title: 'Январь', value: '01' }, { title: 'Февраль', value: '02' }, { title: 'Март', value: '03' },
+  { title: 'Апрель', value: '04' }, { title: 'Май', value: '05' }, { title: 'Июнь', value: '06' },
+  { title: 'Июль', value: '07' }, { title: 'Август', value: '08' }, { title: 'Сентябрь', value: '09' },
+  { title: 'Октябрь', value: '10' }, { title: 'Ноябрь', value: '11' }, { title: 'Декабрь', value: '12' }
 ];
 
-// Заголовки таблицы рейтинга
 const ratingHeaders = [
   { title: '#', key: 'rank', sortable: false, width: '60', align: 'center' as const },
   { title: 'Менеджер', key: 'manager', sortable: true },
@@ -1513,7 +1210,6 @@ const ratingHeaders = [
   { title: '', key: 'actions', sortable: false, width: '60', align: 'center' as const }
 ];
 
-// Заголовки для таблицы клиентов (ведение)
 const maintenanceClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
   { title: 'Пополнения (NO_VAT)', key: 'totalAmount', sortable: true, align: 'end' as const },
@@ -1522,7 +1218,6 @@ const maintenanceClientHeaders = [
   { title: 'Пополнений', key: 'operations', sortable: true, align: 'center' as const }
 ];
 
-// Заголовки для таблицы KPI клиентов (с бонусом)
 const kpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
   { title: 'База KPI Без НДС', key: 'kpiBase', sortable: true, align: 'end' as const },
@@ -1533,7 +1228,6 @@ const kpiClientHeaders = [
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
-// Заголовки для таблицы клиентов с историей бонуса (БЫЛ)
 const wasKpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
   { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
@@ -1544,7 +1238,6 @@ const wasKpiClientHeaders = [
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
-// Заголовки для таблицы клиентов без бонуса (НЕТ)
 const nonKpiClientHeaders = [
   { title: 'Клиент', key: 'client', sortable: true },
   { title: 'Пополнения без НДС', key: 'noVatAmount', sortable: true, align: 'end' as const },
@@ -1555,100 +1248,44 @@ const nonKpiClientHeaders = [
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
-// Разрешенные роли
 const allowedRoles = ['Менеджер', 'Старший Менеджер'];
 
-// Фильтрованные менеджеры из системы
-const filteredManagers = computed(() => {
-  return store.managers.filter(manager => 
-    manager.role && allowedRoles.includes(manager.role)
-  );
-});
+const filteredManagers = computed(() => store.managers.filter(manager => manager.role && allowedRoles.includes(manager.role)));
 
-// Статистика буфера (из данных API)
 const bufferStats = computed(() => {
   const operations = store.bufferData;
-  if (!operations.length) {
-    return {
-      totalOperations: 0,
-      totalClients: 0,
-      dateRange: { first: null, last: null }
-    };
-  }
-  
+  if (!operations.length) return { totalOperations: 0, totalClients: 0, dateRange: { first: null, last: null } };
   const uniqueClients = new Set(operations.map(op => op.client));
-  const dates = operations.map(op => op.date).filter(Boolean);
-  
-  return {
-    totalOperations: operations.length,
-    totalClients: uniqueClients.size,
-    dateRange: {
-      first: dates.length ? dates.reduce((a, b) => a < b ? a : b) : null,
-      last: dates.length ? dates.reduce((a, b) => a > b ? a : b) : null
-    }
-  };
+  return { totalOperations: operations.length, totalClients: uniqueClients.size };
 });
 
-// Получить статистику менеджеров из буфера за выбранный период
 const managersStats = computed(() => {
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
-  const monthStr = month.toString().padStart(2, '0');
-  
   const filteredOps = store.bufferData.filter(op => {
     if (!op.date) return false;
     const [day, opMonth, opYear] = op.date.split('-');
     return parseInt(opYear) === year && parseInt(opMonth) === month;
   });
-  
-  console.log(`📊 Фильтрация за ${year}-${monthStr}: ${filteredOps.length} операций из ${store.bufferData.length}`);
-  
   const stats = new Map();
-  
   filteredOps.forEach(op => {
-    const managerId = op.managerId;
-    if (!managerId) return;
-    
-    if (!stats.has(managerId)) {
-      stats.set(managerId, {
-        manager: op.manager,
-        managerId: managerId,
-        totalAmount: 0,
-        noVatAmount: 0,
-        vatAmount: 0,
-        operationsCount: 0,
-        uniqueClients: new Set()
-      });
+    if (!op.managerId) return;
+    if (!stats.has(op.managerId)) {
+      stats.set(op.managerId, { manager: op.manager, managerId: op.managerId, totalAmount: 0, noVatAmount: 0, vatAmount: 0, operationsCount: 0, uniqueClients: new Set() });
     }
-    
-    const stat = stats.get(managerId);
+    const stat = stats.get(op.managerId);
     stat.totalAmount += op.amount;
     stat.operationsCount += 1;
     stat.uniqueClients.add(op.client);
-    
-    if (op.clientType === 'NO_VAT') {
-      stat.noVatAmount += op.amount;
-    } else {
-      stat.vatAmount += op.amount;
-    }
+    if (op.clientType === 'NO_VAT') stat.noVatAmount += op.amount;
+    else stat.vatAmount += op.amount;
   });
-  
-  for (const [, stat] of stats.entries()) {
-    stat.uniqueClients = stat.uniqueClients.size;
-  }
-  
+  for (const [, stat] of stats.entries()) stat.uniqueClients = stat.uniqueClients.size;
   return stats;
 });
 
-// Проверка разрешена ли ставка для менеджера
-const isRateAllowed = (manager: Manager, rateId: string): boolean => {
-  if (!manager.allowedMaintenanceRates || manager.allowedMaintenanceRates.length === 0) {
-    return true;
-  }
-  return manager.allowedMaintenanceRates.includes(rateId);
-};
+const isRateAllowed = (manager: Manager, rateId: string): boolean => !manager.allowedMaintenanceRates?.length || manager.allowedMaintenanceRates.includes(rateId);
 
-// Получить разрешенные ставки для менеджера в читаемом виде
 const getAllowedRates = (manager: Manager): string[] => {
   const rates: string[] = [];
   if (manager.allowedMaintenanceRates?.includes('m015')) rates.push('0.15%');
@@ -1657,12 +1294,8 @@ const getAllowedRates = (manager: Manager): string[] => {
   return rates;
 };
 
-// Получить выбранную ставку для менеджера (ведение)
 const getSelectedRate = (item: any): number => {
-  if (selectedRate.value[item.id]) {
-    return selectedRate.value[item.id];
-  }
-  
+  if (selectedRate.value[item.id]) return selectedRate.value[item.id];
   const manager = item.originalManager;
   if (manager.allowedMaintenanceRates?.includes('m015')) return 0.0015;
   if (manager.allowedMaintenanceRates?.includes('m020')) return 0.002;
@@ -1670,613 +1303,215 @@ const getSelectedRate = (item: any): number => {
   return 0.0015;
 };
 
-// Получить выбранную ставку KPI
-const getSelectedKpiRate = (item: any): number => {
-  return selectedKpiRate.value[item.id] || 0.015;
-};
+const getSelectedKpiRate = (item: any): number => selectedKpiRate.value[item.id] || 0.015;
 
-// Рассчитать выплату с учетом выбранной ставки (ведение)
-const calculatePayment = (item: any): number => {
-  const rate = getSelectedRate(item);
-  return (item.noVatAmount || 0) * rate;
-};
+const calculatePayment = (item: any): number => (item.noVatAmount || 0) * getSelectedRate(item);
 
-// Рассчитать KPI сумму
-const calculateKpiAmount = (item: any): number => {
-  const rate = getSelectedKpiRate(item);
-  return kpiClientBaseTotal.value * rate;
-};
+const calculateKpiAmount = (item: any): number => kpiClientBaseTotal.value * getSelectedKpiRate(item);
 
-// Получить статус бонуса для клиента
-const getClientBonusStatus = (
-  clientName: string,
-  managerName: string,
-  currentYear: number,
-  currentMonth: number,
-  monthlyAmounts: Map<string, number>
-) => {
-  // 1. Проверяем кастомный статус (имеет приоритет)
+const getClientBonusStatus = (clientName: string, managerName: string, currentYear: number, currentMonth: number, monthlyAmounts: Map<string, number>) => {
   const customKey = `${clientName}_${managerName}`;
   const custom = customBonusStatus.value[customKey];
-  
-  if (custom) {
-    return {
-      status: custom.status,
-      firstFillDate: null,
-      maxAmount: 0,
-      maxMonth: custom.bonusMonth,
-      hasActiveBonus: custom.status === 'ДА',
-      allMonthsCompleted: true,
-      fileStatus: custom.status
-    };
-  }
-  
-  // 2. Проверяем глобальный список получивших KPI
-  const alreadyReceived = store.isKpiReceivedForClient(clientName);
-  if (alreadyReceived) {
-    return {
-      status: 'БЫЛ',
-      firstFillDate: null,
-      maxAmount: 0,
-      maxMonth: null,
-      hasActiveBonus: false,
-      allMonthsCompleted: true,
-      fileStatus: 'KPI уже получен'
-    };
-  }
-  
-  // 3. По умолчанию — НЕТ
-  return {
-    status: 'НЕТ',
-    firstFillDate: null,
-    maxAmount: 0,
-    maxMonth: null,
-    hasActiveBonus: false,
-    allMonthsCompleted: false,
-    fileStatus: undefined
-  };
+  if (custom) return { status: custom.status, firstFillDate: null, maxAmount: 0, maxMonth: custom.bonusMonth, hasActiveBonus: custom.status === 'ДА', allMonthsCompleted: true, fileStatus: custom.status };
+  if (store.isKpiReceivedForClient(clientName)) return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI уже получен' };
+  return { status: 'НЕТ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: false, fileStatus: undefined };
 };
 
-// ========== ОСНОВНАЯ ФУНКЦИЯ УСТАНОВКИ СТАТУСА ==========
 const setBonusStatus = async (clientName: string, status: string) => {
-  if (!selectedManagerDetails.value) {
-    console.error('❌ Ошибка: выберите менеджера');
-    alert('Ошибка: выберите менеджера');
-    return;
-  }
-
+  if (!selectedManagerDetails.value) return;
   const manager = selectedManagerDetails.value.originalManager;
   const managerName = manager.displayName;
   const managerId = selectedManagerDetails.value.id;
   const customKey = `${clientName}_${managerName}`;
   const currentMonthKey = `${selectedYear.value}-${selectedMonth.value}`;
-
-  console.log(`🔄 setBonusStatus: клиент="${clientName}", статус="${status}", менеджер="${managerName}"`);
-
-  if (status === 'НЕТ') {
-    delete customBonusStatus.value[customKey];
-    await store.removeKpiReceivedClient(clientName);
-  } 
-  else if (status === 'ДА') {
-    customBonusStatus.value = {
-      ...customBonusStatus.value,
-      [customKey]: {
-        status: 'ДА',
-        bonusMonth: currentMonthKey
-      }
-    };
-  } 
-  else if (status === 'БЫЛ') {
-    customBonusStatus.value = {
-      ...customBonusStatus.value,
-      [customKey]: {
-        status: 'БЫЛ',
-        bonusMonth: currentMonthKey
-      }
-    };
-  }
-
+  if (status === 'НЕТ') { delete customBonusStatus.value[customKey]; await store.removeKpiReceivedClient(clientName); }
+  else if (status === 'ДА') { customBonusStatus.value = { ...customBonusStatus.value, [customKey]: { status: 'ДА', bonusMonth: currentMonthKey } }; }
+  else if (status === 'БЫЛ') { customBonusStatus.value = { ...customBonusStatus.value, [customKey]: { status: 'БЫЛ', bonusMonth: currentMonthKey } }; }
   await saveStateToServer();
   await store.loadKpiReceivedClients();
   forceUpdate.value = Date.now();
-  
   setTimeout(() => {
     const managerItem = managerRatings.value.find(m => m.id === managerId);
-    if (managerItem) {
-      managerKpiValues.value[managerId] = managerItem.managerKpi || 0;
-      saveStateToServer();
-    }
+    if (managerItem) { managerKpiValues.value[managerId] = managerItem.managerKpi || 0; saveStateToServer(); }
     forceUpdate.value = Date.now();
   }, 100);
 };
 
-// Кнопка KPI (временная)
 const markSingleClientKpi = async (item: any) => {
   if (!selectedManagerDetails.value) return;
-  
-  const managerName = selectedManagerDetails.value.originalManager.displayName;
-  
-  if (!confirm(`Разрешить получение KPI?\n\nКлиент: ${item.client}\nМенеджер: ${managerName}`)) return;
-  
+  if (!confirm(`Разрешить получение KPI?\n\nКлиент: ${item.client}\nМенеджер: ${selectedManagerDetails.value.originalManager.displayName}`)) return;
   try {
     await store.removeKpiReceived(item.client);
     await store.loadKpiReceivedClients();
     alert(`✅ KPI разрешён: ${item.client}`);
     forceUpdate.value = Date.now();
-  } catch (error) {
-    alert('❌ Ошибка');
-  }
+  } catch (error) { alert('❌ Ошибка'); }
 };
 
-// Рейтинги менеджеров
 const managerRatings = computed(() => {
   const bufferStats = managersStats.value;
-  
   return filteredManagers.value.map((manager) => {
-    let totalAmount = 0;
-    let noVatAmount = 0;
-    let operationsCount = 0;
-    let vatAmount = 0;
-    let uniqueClients = 0;
-    
+    let totalAmount = 0, noVatAmount = 0, operationsCount = 0, vatAmount = 0, uniqueClients = 0;
     const statData = bufferStats.get(manager.id);
-    if (statData) {
-      totalAmount = statData.totalAmount;
-      noVatAmount = statData.noVatAmount;
-      vatAmount = statData.vatAmount;
-      operationsCount = statData.operationsCount;
-      uniqueClients = statData.uniqueClients;
-    }
-    
+    if (statData) { totalAmount = statData.totalAmount; noVatAmount = statData.noVatAmount; vatAmount = statData.vatAmount; operationsCount = statData.operationsCount; uniqueClients = statData.uniqueClients; }
     const plan = manager.plan || 80000;
     const fact = totalAmount;
     const planPercent = plan > 0 ? (fact / plan) * 100 : 0;
-    
     const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
     const maintenancePayment = noVatAmount * rate;
-    
-    let managerKpi = 0;
-    if (managerKpiValues.value[manager.id] !== undefined) {
-      managerKpi = managerKpiValues.value[manager.id];
-    } else if (selectedManagerDetails.value?.id === manager.id) {
-      managerKpi = kpiClientDetails.value.active.reduce((sum, client) => sum + client.kpiAmount, 0);
-      managerKpiValues.value[manager.id] = managerKpi;
-      saveStateToServer();
-    }
-    
-    const managerKpiNoVat = managerKpiValues.value[manager.id] || 0;
+    let managerKpi = managerKpiValues.value[manager.id] || 0;
     const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
     const payment = maintenancePayment + managerKpi + kpiVatAmount;
-    
-    return {
-      id: manager.id,
-      name: manager.displayName,
-      role: manager.role || 'Менеджер',
-      originalManager: manager,
-      plan,
-      fact,
-      planPercent,
-      payment,
-      maintenancePayment,
-      managerKpi,
-      kpiVatAmount,
-      operationsCount,
-      totalAmount,
-      noVatAmount,
-      vatAmount,
-      uniqueClients
-    };
+    return { id: manager.id, name: manager.displayName, role: manager.role || 'Менеджер', originalManager: manager, plan, fact, planPercent, payment, maintenancePayment, managerKpi, kpiVatAmount, operationsCount, totalAmount, noVatAmount, vatAmount, uniqueClients };
   }).sort((a, b) => b.planPercent - a.planPercent);
 });
 
-// Детализация по клиентам для ведения
 const maintenanceClientDetails = computed(() => {
   if (!selectedManagerDetails.value) return [];
-  
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
   const manager = selectedManagerDetails.value.originalManager;
-  
-  const searchNames = [
-    manager.displayName,
-    ...(manager.aliases || [])
-  ].map(n => n?.toLowerCase().trim()).filter(Boolean);
-  
+  const searchNames = [manager.displayName, ...(manager.aliases || [])].map(n => n?.toLowerCase().trim()).filter(Boolean);
   let allOps: any[] = [];
-  
-  searchNames.forEach(name => {
-    const ops = bufferService.getOperationsByManager(name, year, month);
-    allOps = [...allOps, ...ops];
-  });
-  
-  const uniqueOps = Array.from(
-    new Map(allOps.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values()
-  );
-  
+  searchNames.forEach(name => { allOps = [...allOps, ...bufferService.getOperationsByManager(name, year, month)]; });
+  const uniqueOps = Array.from(new Map(allOps.map(op => [`${op.date}-${op.client}-${op.amount}`, op])).values());
   const clientMap = new Map();
-  
   uniqueOps.forEach(op => {
-    if (!clientMap.has(op.client)) {
-      clientMap.set(op.client, {
-        client: op.client,
-        totalAmount: 0,
-        noVatAmount: 0,
-        operationsCount: 0
-      });
-    }
-    
+    if (!clientMap.has(op.client)) clientMap.set(op.client, { client: op.client, totalAmount: 0, noVatAmount: 0, operationsCount: 0 });
     const data = clientMap.get(op.client);
     data.totalAmount += op.amount;
     data.operationsCount += 1;
-    if (op.clientType === 'NO_VAT') {
-      data.noVatAmount += op.amount;
-    }
+    if (op.clientType === 'NO_VAT') data.noVatAmount += op.amount;
   });
-  
   const rate = getSelectedRate(selectedManagerDetails.value);
-  
   let totalMaintenance = 0;
-  const details = Array.from(clientMap.values())
-    .filter(data => data.noVatAmount > 0)
-    .map(data => {
-      const maintenance = data.noVatAmount * rate;
-      totalMaintenance += maintenance;
-      return {
-        ...data,
-        maintenance
-      };
-    });
-  
-  details.forEach(data => {
-    data.share = totalMaintenance > 0 ? (data.maintenance / totalMaintenance) * 100 : 0;
+  const details = Array.from(clientMap.values()).filter(data => data.noVatAmount > 0).map(data => {
+    const maintenance = data.noVatAmount * rate;
+    totalMaintenance += maintenance;
+    return { ...data, maintenance, share: 0 };
   });
-  
+  details.forEach(data => { data.share = totalMaintenance > 0 ? (data.maintenance / totalMaintenance) * 100 : 0; });
   return details.sort((a, b) => b.maintenance - a.maintenance);
 });
 
-// Детализация по клиентам для KPI
 const kpiClientDetails = computed(() => {
-  const update = forceUpdate.value;
-  
   if (!selectedManagerDetails.value) return { active: [], was: [], non: [] };
-  
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
   const manager = selectedManagerDetails.value.originalManager;
   const managerName = manager.displayName;
-  
-  console.log('🔄 Пересчет kpiClientDetails, forceUpdate:', update);
-  
-  // Собираем операции по месяцам
   const clientMonthlyMap = new Map();
   const allOps = store.bufferData.filter(op => op.manager === managerName);
-  
   allOps.forEach(op => {
-    if (!clientMonthlyMap.has(op.client)) {
-      clientMonthlyMap.set(op.client, new Map());
-    }
+    if (!clientMonthlyMap.has(op.client)) clientMonthlyMap.set(op.client, new Map());
     const [day, opMonth, opYear] = op.date.split('-');
-    const monthKey = `${opYear}-${opMonth}`;
-    const currentAmount = clientMonthlyMap.get(op.client).get(monthKey) || 0;
-    clientMonthlyMap.get(op.client).set(monthKey, currentAmount + op.amount);
+    clientMonthlyMap.get(op.client).set(`${opYear}-${opMonth}`, (clientMonthlyMap.get(op.client).get(`${opYear}-${opMonth}`) || 0) + op.amount);
   });
-  
-  // Создаём карту клиентов
   const clientCurrentMap = new Map();
-  
-  // Добавляем клиентов из bonusHistory
   const managerBonuses = bonushistory.value.filter(b => b.currentManager === managerName);
   managerBonuses.forEach(bonus => {
-    if (!clientCurrentMap.has(bonus.client)) {
-      clientCurrentMap.set(bonus.client, {
-        client: bonus.client,
-        totalAmount: 0,
-        noVatAmount: 0,
-        vatAmount: 0,
-        operationsCount: 0,
-        firstFillDate: bonus.firstFillDate || null,
-        clientStatus: bonus.status,
-        maxAmount: 0,
-        maxAmountMonth: null,
-        fileStatus: bonus.status,
-        hasOperations: false
-      });
-    }
+    if (!clientCurrentMap.has(bonus.client)) clientCurrentMap.set(bonus.client, { client: bonus.client, totalAmount: 0, noVatAmount: 0, vatAmount: 0, operationsCount: 0, firstFillDate: bonus.firstFillDate || null, clientStatus: bonus.status, maxAmount: 0, maxAmountMonth: null, fileStatus: bonus.status, hasOperations: false });
   });
-  
-  // Добавляем клиентов из ВСЕХ 3 месяцев
   const threeMonthOps = allOps.filter(op => {
     const [day, opMonth, opYear] = op.date.split('-');
-    const opYearNum = parseInt(opYear);
-    const opMonthNum = parseInt(opMonth);
-    
     for (let i = 0; i < 3; i++) {
       const d = new Date(year, month - 1 - i, 1);
-      if (opYearNum === d.getFullYear() && opMonthNum === (d.getMonth() + 1)) {
-        return true;
-      }
+      if (parseInt(opYear) === d.getFullYear() && parseInt(opMonth) === (d.getMonth() + 1)) return true;
     }
     return false;
   });
-  
   threeMonthOps.forEach(op => {
     if (op.clientType === 'VAT') return;
-    if (!clientCurrentMap.has(op.client)) {
-      clientCurrentMap.set(op.client, {
-        client: op.client,
-        totalAmount: 0,
-        noVatAmount: 0,
-        vatAmount: 0,
-        operationsCount: 0,
-        firstFillDate: null,
-        clientStatus: 'НЕТ',
-        maxAmount: 0,
-        maxAmountMonth: null,
-        fileStatus: null,
-        hasOperations: true
-      });
-    }
-    
+    if (!clientCurrentMap.has(op.client)) clientCurrentMap.set(op.client, { client: op.client, totalAmount: 0, noVatAmount: 0, vatAmount: 0, operationsCount: 0, firstFillDate: null, clientStatus: 'НЕТ', maxAmount: 0, maxAmountMonth: null, fileStatus: null, hasOperations: true });
     const data = clientCurrentMap.get(op.client);
     data.totalAmount += op.amount;
     data.operationsCount += 1;
     data.hasOperations = true;
-    
-    if (op.clientType === 'NO_VAT') {
-      data.noVatAmount += op.amount;
-    } else if (op.clientType === 'VAT') {
-      data.vatAmount += op.amount;
-    }
+    if (op.clientType === 'NO_VAT') data.noVatAmount += op.amount;
   });
-  
-  // Вычисляем maxAmount для всех клиентов
   for (const [client, data] of clientCurrentMap.entries()) {
     const months = clientMonthlyMap.get(client) || new Map();
-    let maxAmount = 0;
-    let maxMonth = null;
-    
+    let maxAmount = 0, maxMonth = null;
     for (let i = 0; i < 3; i++) {
-      const checkDate = new Date(year, month - 1 - i, 1);
-      const checkKey = `${checkDate.getFullYear()}-${(checkDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      const amount = months.get(checkKey) || 0;
-      if (amount > maxAmount) {
-        maxAmount = amount;
-        maxMonth = checkKey;
-      }
+      const d = new Date(year, month - 1 - i, 1);
+      const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      const amount = months.get(key) || 0;
+      if (amount > maxAmount) { maxAmount = amount; maxMonth = key; }
     }
-    
-    data.maxAmount = maxAmount;
-    data.maxAmountMonth = maxMonth;
+    data.maxAmount = maxAmount; data.maxAmountMonth = maxMonth;
   }
-  
-  const allClients = Array.from(clientCurrentMap.values());
   const rate = getSelectedKpiRate(selectedManagerDetails.value);
-  
-  // Применяем логику статусов
-  const clientsWithStatus = allClients.map(data => {
-    const bonusStatus = getClientBonusStatus(
-      data.client,
-      managerName,
-      year,
-      month,
-      clientMonthlyMap.get(data.client) || new Map()
-    );
-    return { 
-      ...data, 
-      ...bonusStatus,
-      maxAmount: data.maxAmount,
-      maxAmountMonth: data.maxAmountMonth
-    };
+  const clientsWithStatus = Array.from(clientCurrentMap.values()).map(data => {
+    const bonusStatus = getClientBonusStatus(data.client, managerName, year, month, clientMonthlyMap.get(data.client) || new Map());
+    return { ...data, ...bonusStatus, maxAmount: data.maxAmount, maxAmountMonth: data.maxAmountMonth };
   });
-  
-  const active = clientsWithStatus
-    .filter(data => data.status === 'ДА' && data.maxAmount > 0)
-    .map(data => ({
-      ...data,
-      displayAmount: data.maxAmount,
-      kpiAmount: data.maxAmount * rate,
-      baseInfo: `Макс. за период: ${formatMoney(data.maxAmount)}`,
-      monthInfo: data.maxAmountMonth ? `Макс. месяц: ${data.maxAmountMonth}` : null
-    }));
-  
-  const was = clientsWithStatus
-    .filter(data => data.status === 'БЫЛ' && data.maxAmount > 0)
-    .map(data => ({ ...data }));
-  
-  const non = clientsWithStatus
-    .filter(data => data.status === 'НЕТ' && data.maxAmount > 0)
-    .map(data => {
-      const displayAmount = data.maxAmount > 0 ? data.maxAmount : data.totalAmount;
-      
-      return {
-        ...data,
-        displayAmount,
-        monthInfo: data.maxAmountMonth ? `Месяц: ${data.maxAmountMonth}` : null,
-        baseInfo: data.maxAmount > 0 ? `Макс. сумма: ${formatMoney(data.maxAmount)}` : null
-      };
-    });
-  
+  const active = clientsWithStatus.filter(data => data.status === 'ДА' && data.maxAmount > 0).map(data => ({ ...data, displayAmount: data.maxAmount, kpiAmount: data.maxAmount * rate, baseInfo: `Макс. за период: ${formatMoney(data.maxAmount)}`, monthInfo: data.maxAmountMonth ? `Макс. месяц: ${data.maxAmountMonth}` : null }));
+  const was = clientsWithStatus.filter(data => data.status === 'БЫЛ' && data.maxAmount > 0).map(data => ({ ...data }));
+  const non = clientsWithStatus.filter(data => data.status === 'НЕТ' && data.maxAmount > 0).map(data => ({ ...data, displayAmount: data.maxAmount || data.totalAmount, monthInfo: data.maxAmountMonth ? `Месяц: ${data.maxAmountMonth}` : null, baseInfo: data.maxAmount > 0 ? `Макс. сумма: ${formatMoney(data.maxAmount)}` : null }));
   return { active, was, non };
 });
 
-// Общая сумма базы KPI по клиентам с бонусом
-const kpiClientBaseTotal = computed(() => {
-  return kpiClientDetails.value.active.reduce((sum, item) => {
-    return sum + (item.displayAmount || 0);
-  }, 0);
-});
+const kpiClientBaseTotal = computed(() => kpiClientDetails.value.active.reduce((sum, item) => sum + (item.displayAmount || 0), 0));
+const wasKpiClientNoVatTotal = computed(() => kpiClientDetails.value.was.reduce((sum, item) => sum + item.noVatAmount, 0));
+const nonKpiClientNoVatTotal = computed(() => kpiClientDetails.value.non.reduce((sum, item) => sum + item.noVatAmount, 0));
 
-// Общая сумма NO_VAT по клиентам с историей бонуса
-const wasKpiClientNoVatTotal = computed(() => {
-  return kpiClientDetails.value.was.reduce((sum, item) => sum + item.noVatAmount, 0);
-});
-
-// Общая сумма NO_VAT по клиентам без бонуса
-const nonKpiClientNoVatTotal = computed(() => {
-  return kpiClientDetails.value.non.reduce((sum, item) => sum + item.noVatAmount, 0);
-});
-
-// Итоги
 const forecast = computed(() => {
   const fact = totalFact.value;
-  
   const now = new Date();
-  const selectedYearNum = parseInt(selectedYear.value);
-  const selectedMonthNum = parseInt(selectedMonth.value);
-  
-  if (selectedYearNum < now.getFullYear() || 
-      (selectedYearNum === now.getFullYear() && selectedMonthNum < now.getMonth() + 1)) {
-    return fact;
-  }
-  
+  if (parseInt(selectedYear.value) < now.getFullYear() || (parseInt(selectedYear.value) === now.getFullYear() && parseInt(selectedMonth.value) < now.getMonth() + 1)) return fact;
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const passedDays = now.getDate();
-  
-  return (fact / Math.max(passedDays, 1)) * daysInMonth;
+  return (fact / Math.max(now.getDate(), 1)) * daysInMonth;
 });
 
-const totalFact = computed(() => {
-  return managerRatings.value.reduce((sum, m) => sum + m.fact, 0);
-});
+const totalFact = computed(() => managerRatings.value.reduce((sum, m) => sum + m.fact, 0));
+const totalPayment = computed(() => managerRatings.value.reduce((sum, m) => sum + m.payment, 0));
+const averagePlanPercent = computed(() => managerRatings.value.length ? managerRatings.value.reduce((sum, m) => sum + m.planPercent, 0) / managerRatings.value.length : 0);
+const selectedMonthName = computed(() => months.find(m => m.value === selectedMonth.value)?.title || '');
+const totalPlan = computed(() => filteredManagers.value.reduce((sum, m) => sum + (m.plan || 80000), 0));
 
-const totalPayment = computed(() => {
-  return managerRatings.value.reduce((sum, m) => sum + m.payment, 0);
-});
-
-const averagePlanPercent = computed(() => {
-  if (managerRatings.value.length === 0) return 0;
-  return managerRatings.value.reduce((sum, m) => sum + m.planPercent, 0) / managerRatings.value.length;
-});
-
-// Название месяца
-const selectedMonthName = computed(() => {
-  const month = months.find(m => m.value === selectedMonth.value);
-  return month ? month.title : '';
-});
-
-const totalPlan = computed(() => {
-  return filteredManagers.value.reduce((sum, m) => sum + (m.plan || 80000), 0);
-});
-
-// Функции для иконок и цветов
 const getRoleIcon = (role?: string): string => {
-  switch(role) {
-    case 'Старший Менеджер': return 'ri-computer-line';
-    case 'Руководитель ОП': return 'ri-team-line';
-    case 'Менеджер': return 'ri-user-line';
-    default: return 'ri-user-line';
-  }
+  switch(role) { case 'Старший Менеджер': return 'ri-computer-line'; case 'Руководитель ОП': return 'ri-team-line'; default: return 'ri-user-line'; }
 };
-
 const getRoleColor = (role?: string): string => {
-  switch(role) {
-    case 'Старший Менеджер': return 'error';
-    case 'Руководитель ОП': return 'primary';
-    case 'Менеджер': return 'success';
-    default: return 'grey';
-  }
+  switch(role) { case 'Старший Менеджер': return 'error'; case 'Руководитель ОП': return 'primary'; case 'Менеджер': return 'success'; default: return 'grey'; }
 };
+const getPercentColor = (percent: number): string => percent >= 100 ? 'success' : percent >= 50 ? 'warning' : 'error';
+const getPercentTextColor = (percent: number): string => percent >= 100 ? 'text-success' : percent >= 50 ? 'text-warning' : 'text-error';
+const getPaymentColor = (payment: number): string => payment > 0 ? 'text-primary' : 'text-grey';
 
-const getPercentColor = (percent: number): string => {
-  if (percent >= 100) return 'success';
-  if (percent >= 50) return 'warning';
-  return 'error';
-};
+const saveDialogState = (isOpen: boolean) => { if (!isOpen && selectedManagerDetails.value) saveStateToServer(); };
 
-const getPercentTextColor = (percent: number): string => {
-  if (percent >= 100) return 'text-success';
-  if (percent >= 50) return 'text-warning';
-  return 'text-error';
-};
-
-const getPaymentColor = (payment: number): string => {
-  return payment > 0 ? 'text-primary' : 'text-grey';
-};
-
-// Форматирование денег
-const formatMoney = (amount: number): string => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount);
-};
-
-// Сохранить состояние диалога
-const saveDialogState = (isOpen: boolean) => {
-  if (!isOpen && selectedManagerDetails.value) {
-    saveStateToServer();
-  }
-};
-
-// Открыть детали менеджера
 const openManagerDetails = (item: any) => {
   selectedManagerDetails.value = item;
-  
-  if (!selectedRate.value[item.id]) {
-    selectedRate.value[item.id] = getSelectedRate(item);
-  }
-  
-  if (!selectedKpiRate.value[item.id]) {
-    selectedKpiRate.value[item.id] = 0.015;
-  }
-  
-  if (manualKpiVat.value[item.id] === undefined) {
-    manualKpiVat.value[item.id] = 0;
-  }
-  
-  const savedTabKey = `kpi_tab_${item.id}`;
-  const savedTab = localStorage.getItem(savedTabKey);
-  if (savedTab) {
-    activeTab.value = savedTab;
-  } else {
-    activeTab.value = 'maintenance';
-  }
-  
+  if (!selectedRate.value[item.id]) selectedRate.value[item.id] = getSelectedRate(item);
+  if (!selectedKpiRate.value[item.id]) selectedKpiRate.value[item.id] = 0.015;
+  if (manualKpiVat.value[item.id] === undefined) manualKpiVat.value[item.id] = 0;
+  activeTab.value = localStorage.getItem(`kpi_tab_${item.id}`) || 'maintenance';
   showDetailsDialog.value = true;
 };
 
-// Защита от двойного вызова
 let isRefreshing = false;
-
-// Обновление данных
 const refreshData = async () => {
-  if (isRefreshing) {
-    console.log('⏩ refreshData уже выполняется, пропускаю');
-    return;
-  }
-  
+  if (isRefreshing) return;
   isRefreshing = true;
   loading.value = true;
-  
   try {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
-    
     store.bufferData = [];
-    
-    if (store.managers.length === 0) {
-      await store.loadManagers();
-    }
-    
+    if (store.managers.length === 0) await store.loadManagers();
     await store.loadPlans(year, month);
-    
     for (let i = 0; i < 3; i++) {
       const d = new Date(year, month - 1 - i, 1);
       await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
     }
-    
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
     await store.loadBonusHistory();
     await store.loadKpiReceivedClients();
-    
     await loadAllKpiVatData();
     recalculateAllKpiNoVat();
-    
     forceUpdate.value = Date.now();
-    
   } catch (error) {
     console.error('Ошибка:', error);
   } finally {
@@ -2285,35 +1520,18 @@ const refreshData = async () => {
   }
 };
 
-// Обработчик для временных кнопок KPI
 const handleKpiKeyDown = (e: KeyboardEvent) => {
-  if (e.ctrlKey && e.shiftKey && e.key === 'K') {
-    showKpiButton.value = !showKpiButton.value;
-    console.log('🔧 Кнопки KPI:', showKpiButton.value ? 'показаны' : 'скрыты');
-  }
+  if (e.ctrlKey && e.shiftKey && e.key === 'K') { showKpiButton.value = !showKpiButton.value; }
 };
 
 const kpiVatProgress = ref(0);
 const kpiVatProgressMessage = ref('');
 
+watch(activeTab, (newTab) => { if (selectedManagerDetails.value) localStorage.setItem(`kpi_tab_${selectedManagerDetails.value.id}`, newTab); });
+watch([selectedYear, selectedMonth], () => refreshData());
 
-
-// Сохраняем активный таб при его изменении
-watch(activeTab, (newTab) => {
-  if (selectedManagerDetails.value) {
-    localStorage.setItem(`kpi_tab_${selectedManagerDetails.value.id}`, newTab);
-  }
-});
-
-
-// Следим за изменением года/месяца
-watch([selectedYear, selectedMonth], () => {
-  refreshData();
-});
-
-// ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
-    store.bufferData = [];
+  store.bufferData = [];
   await loadManualFirstDates();
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
@@ -2321,6 +1539,7 @@ onMounted(async () => {
   window.addEventListener('keydown', handleKpiKeyDown);
 });
 </script>
+
 
 <style scoped>
 
