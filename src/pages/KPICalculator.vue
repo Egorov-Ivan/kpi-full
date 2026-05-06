@@ -542,8 +542,19 @@
               </v-window>
             </v-card-text>
           </v-card>
-        </v-dialog>
+               </v-dialog>
 
+        <!-- 🔥 ДИАЛОГ ЗАГРУЗКИ KPI VAT -->
+        <v-dialog v-model="showKpiVatUploadDialog" max-width="500" persistent>
+          <v-card>
+            <v-card-title class="d-flex align-center pa-4">
+              <v-icon color="info" class="mr-2">ri-file-excel-2-line</v-icon>
+              Загрузка KPI НДС из Excel
+              <v-spacer></v-spacer>
+              <v-btn icon variant="text" @click="showKpiVatUploadDialog = false" :disabled="kpiVatUploading">
+                <v-icon>ri-close-line</v-icon>
+              </v-btn>
+            </v-card-title>
             
             <v-card-text class="pa-4">
               <p class="text-body-2 text-grey mb-4">
@@ -565,16 +576,16 @@
               ></v-file-input>
               
               <v-progress-linear
-  v-if="kpiVatUploading"
-  v-model="kpiVatProgress"
-  color="info"
-  height="6"
-  rounded
-  class="mt-3"
-></v-progress-linear>
-<div v-if="kpiVatUploading" class="text-caption text-center mt-1 text-grey">
-  {{ kpiVatProgressMessage }}
-</div>
+                v-if="kpiVatUploading"
+                v-model="kpiVatProgress"
+                color="info"
+                height="6"
+                rounded
+                class="mt-3"
+              ></v-progress-linear>
+              <div v-if="kpiVatUploading" class="text-caption text-center mt-1 text-grey">
+                {{ kpiVatProgressMessage }}
+              </div>
               
               <v-alert
                 v-if="kpiVatError"
@@ -625,6 +636,9 @@
                 Загрузить и рассчитать
               </v-btn>
             </v-card-actions>
+          </v-card>
+        </v-dialog>
+
       </v-col>
     </v-row>
   </v-container>
@@ -2048,7 +2062,9 @@ const refreshData = async () => {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
     
+    // 🔥 ЯВНАЯ ОЧИСТКА перед загрузкой
     store.bufferData = [];
+    console.log('🧹 Буфер очищен');
     
     if (store.managers.length === 0) {
       await store.loadManagers();
@@ -2056,17 +2072,21 @@ const refreshData = async () => {
     
     await store.loadPlans(year, month);
     
+    // Загружаем 3 месяца с логированием
     for (let i = 0; i < 3; i++) {
       const d = new Date(year, month - 1 - i, 1);
+      console.log(`📥 Загружаю ${d.getFullYear()}-${d.getMonth() + 1}`);
       await store.loadBufferData(d.getFullYear(), d.getMonth() + 1);
+      console.log(`   После загрузки: ${store.bufferData.length} операций`);
     }
     
-    // 🔥 Убираем дубликаты после всех загрузок
+    // Убираем дубликаты
+    const before = store.bufferData.length;
     const uniqueOps = Array.from(
       new Map(store.bufferData.map(op => [`${op.date}|${op.client}|${op.amount}|${op.clientType}`, op])).values()
     );
     store.bufferData = uniqueOps;
-    console.log(`📊 Уникальных: ${uniqueOps.length} из ${store.bufferData.length}`);
+    console.log(`📊 Дубликатов удалено: ${before - uniqueOps.length}, осталось: ${uniqueOps.length}`);
     
     await store.loadMaintenanceRates();
     await store.loadKpiRates();
