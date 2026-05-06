@@ -312,7 +312,8 @@ function processTransactions(rows, indexes, targetYear, targetMonth, filterManag
     if (!ourEntity.toLowerCase().includes('фаэтон')) return;
     
     const manager = row[indexes.manager].toString().trim();
-    if (filterManager && manager !== filterManager) return;
+console.log('🔍 filterManager:', filterManager, 'row manager:', manager, 'match:', manager === filterManager);
+if (filterManager && manager !== filterManager) return;
     
     const client = row[indexes.client]?.toString().trim() || 'Неизвестный';
     const operation = row[indexes.operation]?.toString().trim() || '';
