@@ -781,7 +781,6 @@ const selectedMonth = ref((currentDate.getMonth() + 1).toString().padStart(2, '0
 const showDetailsDialog = ref(false);
 const selectedManagerDetails = ref<any>(null);
 
-
 // Временное: ручной ввод даты первой заправки
 const selectedClientForFirstDate = ref('');
 const manualFirstTransactionDate = ref<Record<string, string>>({});
@@ -792,13 +791,17 @@ const saveManualFirstDate = async () => {
   
   if (!clientName || !date) return;
   
+  // Конвертируем ДД.ММ.ГГГГ → YYYY-MM-DD
+  const parts = date.split('.');
+  const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : date;
+  
   try {
     await fetch('/api/client-first-dates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientName, firstTransactionDate: date })
+      body: JSON.stringify({ clientName, firstTransactionDate: isoDate })
     });
-    console.log('✅ Дата сохранена на сервер:', clientName, date);
+    console.log('✅ Дата сохранена на сервер:', clientName, isoDate);
   } catch (e) {
     console.error('Ошибка сохранения:', e);
   }
@@ -812,7 +815,10 @@ const loadManualFirstDates = async () => {
       if (result.success) {
         const dates: Record<string, string> = {};
         result.data.forEach((row: any) => {
-          dates[row.client_name] = row.first_transaction_date;
+          // Конвертируем YYYY-MM-DD → ДД.ММ.ГГГГ
+          const isoDate = row.first_transaction_date;
+          const parts = isoDate.split('-');
+          dates[row.client_name] = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : isoDate;
         });
         manualFirstTransactionDate.value = dates;
         console.log('✅ Загружены даты с сервера:', Object.keys(dates).length);
@@ -822,6 +828,7 @@ const loadManualFirstDates = async () => {
     console.error('Ошибка загрузки дат:', e);
   }
 };
+
 
 
 const managerKpiVatFile = ref<File | null>(null);
