@@ -653,6 +653,7 @@ import type { Manager } from '@/types/kpi.types';
 const store = useKpiStore();
 const loading = ref(false);
 const activeTab = ref('maintenance');
+const initialized = ref(false);
 
 
 
@@ -2112,6 +2113,7 @@ watch(activeTab, (newTab) => {
   }
 });
 
+
 // Следим за изменением года/месяца
 watch([selectedYear, selectedMonth], () => {
   refreshData();
@@ -2119,7 +2121,7 @@ watch([selectedYear, selectedMonth], () => {
 
 // ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
-  store.bufferData = []; // 🔥 Очистка перед загрузкой
+    store.bufferData = [];
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
   await refreshData();
