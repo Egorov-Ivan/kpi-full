@@ -2056,9 +2056,19 @@ const openManagerDetails = (item: any) => {
   showDetailsDialog.value = true;
 };
 
-/// Обновление данных
+// Защита от двойного вызова
+let isRefreshing = false;
+
+// Обновление данных
 const refreshData = async () => {
+  if (isRefreshing) {
+    console.log('⏩ refreshData уже выполняется, пропускаю');
+    return;
+  }
+  
+  isRefreshing = true;
   loading.value = true;
+  
   try {
     const year = parseInt(selectedYear.value);
     const month = parseInt(selectedMonth.value);
@@ -2090,6 +2100,7 @@ const refreshData = async () => {
     console.error('Ошибка:', error);
   } finally {
     loading.value = false;
+    isRefreshing = false;
   }
 };
 
