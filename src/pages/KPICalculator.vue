@@ -428,6 +428,82 @@
                 <v-window-item value="kpiVat">
                   <v-row>
                     <v-col cols="12">
+
+<!-- Дата первой заправки (временная) -->
+      <v-card variant="tonal" class="pa-4 mb-4" color="orange-light">
+        <v-card-text>
+          <div class="text-subtitle-1 font-weight-medium mb-3">
+            <v-icon start color="orange">ri-calendar-line</v-icon>
+            Дата первой заправки
+          </div>
+          
+          <v-select
+            v-model="selectedClientForFirstDate"
+            :items="currentManagerKpiVatDetails.map(c => c.client_name)"
+            label="Выберите клиента"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            clearable
+          ></v-select>
+          
+          <v-text-field
+            v-if="selectedClientForFirstDate"
+            v-model="manualFirstTransactionDate[selectedClientForFirstDate]"
+            label="Дата первой заправки"
+            variant="outlined"
+            density="compact"
+            placeholder="01.01.2026"
+            hint="Формат: ДД.ММ.ГГГГ"
+            persistent-hint
+            @update:model-value="saveManualFirstDate"
+          ></v-text-field>
+          
+          <div v-if="selectedClientForFirstDate && manualFirstTransactionDate[selectedClientForFirstDate]" class="text-caption text-success mt-2">
+            ✅ Сохранено: {{ manualFirstTransactionDate[selectedClientForFirstDate] }}
+          </div>
+        </v-card-text>
+      </v-card>
+
+
+<!-- Загрузка Excel для менеджера -->
+<v-card variant="tonal" class="pa-4 mb-4" color="info-light">
+  <v-card-text>
+    <div class="text-subtitle-1 font-weight-medium mb-3">
+      <v-icon start color="info">ri-file-excel-2-line</v-icon>
+      Загрузить Excel для менеджера
+    </div>
+    
+    <v-file-input
+      v-model="managerKpiVatFile"
+      label="Выберите Excel-файл (.xlsx)"
+      accept=".xlsx,.xls"
+      prepend-icon="ri-upload-cloud-2-line"
+      variant="outlined"
+      density="compact"
+      :disabled="kpiVatUploading"
+      persistent-hint
+      hint="KPI НДС будет рассчитан только для {{ selectedManagerDetails?.name }}"
+    ></v-file-input>
+    
+    <v-btn
+      v-if="managerKpiVatFile"
+      color="info"
+      variant="tonal"
+      :loading="kpiVatUploading"
+      :disabled="kpiVatUploading"
+      @click="uploadManagerKpiVatFile"
+      block
+      class="mt-2"
+    >
+      Загрузить для {{ selectedManagerDetails?.name }}
+    </v-btn>
+  </v-card-text>
+</v-card>
+
+
+
+
                       <!-- Ручной ввод -->
                       <v-card variant="tonal" class="pa-4 mb-4">
                         <v-card-text>
@@ -698,6 +774,87 @@ const selectedMonth = ref((currentDate.getMonth() + 1).toString().padStart(2, '0
 
 const showDetailsDialog = ref(false);
 const selectedManagerDetails = ref<any>(null);
+
+
+// Временное: ручной ввод даты первой заправки
+const selectedClientForFirstDate = ref('');
+const manualFirstTransactionDate = ref<Record<string, string>>({});
+
+const saveManualFirstDate = async () => {
+  const clientName = selectedClientForFirstDate.value;
+  const date = manualFirstTransactionDate.value[clientName];
+  
+  if (!clientName || !date) return;
+  
+  try {
+    await fetch('/api/client-first-dates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientName, firstTransactionDate: date })
+    });
+    console.log('✅ Дата сохранена на сервер:', clientName, date);
+  } catch (e) {
+    console.error('Ошибка сохранения:', e);
+  }
+};
+
+const loadManualFirstDates = async () => {
+  try {
+    const response = await fetch('/api/client-first-dates');
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success) {
+        const dates: Record<string, string> = {};
+        result.data.forEach((row: any) => {
+          dates[row.client_name] = row.first_transaction_date;
+        });
+        manualFirstTransactionDate.value = dates;
+        console.log('✅ Загружены даты с сервера:', Object.keys(dates).length);
+      }
+    }
+  } catch (e) {
+    console.error('Ошибка загрузки дат:', e);
+  }
+};
+
+
+const managerKpiVatFile = ref<File | null>(null);
+
+const uploadManagerKpiVatFile = async () => {
+  if (!managerKpiVatFile.value || !selectedManagerDetails.value) return;
+  
+  kpiVatUploading.value = true;
+  kpiVatError.value = '';
+  kpiVatSuccess.value = '';
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', managerKpiVatFile.value);
+    formData.append('year', selectedYear.value);
+    formData.append('month', selectedMonth.value);
+    formData.append('manager', selectedManagerDetails.value.name);
+    
+    const response = await fetch('/api/kpi-vat', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) throw new Error(result.error || 'Ошибка сервера');
+    
+    if (result.success) {
+      allKpiVatData.value = result.data || [];
+      kpiVatSuccess.value = `✅ Загружено для ${selectedManagerDetails.value.name}`;
+      managerKpiVatFile.value = null;
+    }
+  } catch (error: any) {
+    kpiVatError.value = error.message;
+  } finally {
+    kpiVatUploading.value = false;
+  }
+};
+
 
 
 // ========== KPI VAT АВТОМАТИЧЕСКИЙ РАСЧЁТ ==========
@@ -2129,6 +2286,7 @@ watch([selectedYear, selectedMonth], () => {
 // ИНИЦИАЛИЗАЦИЯ
 onMounted(async () => {
     store.bufferData = [];
+  await loadManualFirstDates();
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
   await refreshData();
@@ -2233,5 +2391,9 @@ onMounted(async () => {
 .auth-basic-card {
   border-radius: 8px !important;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+}
+
+.orange-light {
+  background-color: rgba(255, 152, 0, 0.05) !important;
 }
 </style>
