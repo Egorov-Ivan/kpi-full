@@ -832,6 +832,13 @@ const uploadManagerKpiVatFile = async () => {
     formData.append('month', selectedMonth.value);
     formData.append('manager', selectedManagerDetails.value.name);
     
+console.log('📤 formData:', {
+  file: managerKpiVatFile.value?.name,
+  year: selectedYear.value,
+  month: selectedMonth.value,
+  manager: selectedManagerDetails.value?.name
+});
+
     const response = await fetch('/api/kpi-vat', {
       method: 'POST',
       body: formData
