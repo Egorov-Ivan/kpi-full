@@ -2000,6 +2000,7 @@ const kpiClientDetails = computed(() => {
   });
   
   threeMonthOps.forEach(op => {
+    if (op.clientType === 'VAT') return;
     if (!clientCurrentMap.has(op.client)) {
       clientCurrentMap.set(op.client, {
         client: op.client,
