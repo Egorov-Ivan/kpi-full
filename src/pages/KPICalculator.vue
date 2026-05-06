@@ -981,7 +981,69 @@ watch(selectedManagerDetails, (newManager) => {
   }
 });
 
-
+// Пересчёт KPI NO_VAT для всех менеджеров
+const recalculateAllKpiNoVat = () => {
+  const year = parseInt(selectedYear.value);
+  const month = parseInt(selectedMonth.value);
+  
+  filteredManagers.value.forEach(manager => {
+    const managerName = manager.displayName;
+    
+    // Собираем операции этого менеджера
+    const allOps = store.bufferData.filter(op => op.manager === managerName);
+    
+    // Группируем по клиентам и месяцам
+    const clientMonthlyMap = new Map();
+    
+    allOps.forEach(op => {
+      if (!clientMonthlyMap.has(op.client)) {
+        clientMonthlyMap.set(op.client, new Map());
+      }
+      const [day, opMonth, opYear] = op.date.split('-');
+      const monthKey = `${opYear}-${opMonth}`;
+      const current = clientMonthlyMap.get(op.client).get(monthKey) || 0;
+      clientMonthlyMap.get(op.client).set(monthKey, current + op.amount);
+    });
+    
+    // Получаем бонусные статусы клиентов
+    const managerBonuses = store.bonusHistory.filter(b => b.currentManager === managerName);
+    const bonusClients = new Set(managerBonuses.filter(b => b.status === 'ДА').map(b => b.client));
+    
+    // Считаем KPI NO_VAT
+    let totalKpi = 0;
+    
+    clientMonthlyMap.forEach((months, client) => {
+      // Проверяем кастомный статус
+      const customKey = `${client}_${managerName}`;
+      const custom = customBonusStatus.value[customKey];
+      
+      let status = 'НЕТ';
+      if (custom?.status === 'ДА') status = 'ДА';
+      else if (custom?.status === 'БЫЛ') status = 'БЫЛ';
+      else if (bonusClients.has(client)) status = 'ДА';
+      else if (store.isKpiReceivedForClient(client)) status = 'БЫЛ';
+      
+      if (status === 'ДА') {
+        // Находим максимальную сумму за 3 месяца
+        let maxAmount = 0;
+        for (let i = 0; i < 3; i++) {
+          const d = new Date(year, month - 1 - i, 1);
+          const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+          const amount = months.get(key) || 0;
+          if (amount > maxAmount) maxAmount = amount;
+        }
+        
+        const rate = selectedKpiRate.value[manager.id] || 0.015;
+        totalKpi += maxAmount * rate;
+      }
+    });
+    
+    managerKpiValues.value[manager.id] = totalKpi;
+  });
+  
+  console.log('🔄 Пересчитан KPI NO_VAT:', JSON.stringify(managerKpiValues.value));
+  saveStateToServer();
+};
 
 
 // Состояние для выбранных ставок по каждому менеджеру
@@ -1978,6 +2040,9 @@ const refreshData = async () => {
     
     // 🔥 ЗАГРУЗКА СОХРАНЁННЫХ ДАННЫХ KPI VAT
     await loadAllKpiVatData();
+
+    // 🔥 Пересчёт KPI NO_VAT для всех
+     recalculateAllKpiNoVat(
     
     forceUpdate.value = Date.now();
     
