@@ -1086,12 +1086,24 @@ const recalculateAllKpiNoVat = () => {
     
     clientMonthlyMap.forEach((months, client) => {
       const customKey = `${client}_${managerName}`;
-      const custom = customBonusStatus.value[customKey];
+      const currentMonthKey = `${year}-${month.toString().padStart(2, '0')}`;
       let status = 'НЕТ';
+      
+      const newFormat = customBonusStatus.value[currentMonthKey]?.[customKey];
+      const oldFormat = customBonusStatus.value[customKey];
+      const custom = newFormat || oldFormat;
+      
       if (custom?.status === 'ДА') status = 'ДА';
       else if (custom?.status === 'БЫЛ') status = 'БЫЛ';
-      else if (bonusClients.has(client)) status = 'ДА';
-      else if (store.isKpiReceivedForClient(client)) status = 'БЫЛ';
+      else {
+        let wasEarlier = false;
+        for (const mk of Object.keys(customBonusStatus.value)) {
+          if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]?.status === 'ДА') { wasEarlier = true; break; }
+        }
+        if (wasEarlier) status = 'БЫЛ';
+        else if (bonusClients.has(client)) status = 'ДА';
+        else if (store.isKpiReceivedForClient(client)) status = 'БЫЛ';
+      }
       
       if (status === 'ДА') {
         let maxAmount = 0;
@@ -1101,8 +1113,7 @@ const recalculateAllKpiNoVat = () => {
           const amount = months.get(key) || 0;
           if (amount > maxAmount) maxAmount = amount;
         }
-        const rate = selectedKpiRate.value[manager.id] || 0.015;
-        totalKpi += maxAmount * rate;
+        totalKpi += maxAmount * (selectedKpiRate.value[manager.id] || 0.015);
       }
     });
     managerKpiValues.value[manager.id] = totalKpi;
@@ -1332,9 +1343,31 @@ const calculateKpiAmount = (item: any): number => kpiClientBaseTotal.value * get
 
 const getClientBonusStatus = (clientName: string, managerName: string, currentYear: number, currentMonth: number, monthlyAmounts: Map<string, number>) => {
   const customKey = `${clientName}_${managerName}`;
-  const custom = customBonusStatus.value[customKey];
-  if (custom) return { status: custom.status, firstFillDate: null, maxAmount: 0, maxMonth: custom.bonusMonth, hasActiveBonus: custom.status === 'ДА', allMonthsCompleted: true, fileStatus: custom.status };
-  if (store.isKpiReceivedForClient(clientName)) return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI уже получен' };
+  const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
+  
+  // Старый формат
+  const oldFormat = customBonusStatus.value[customKey];
+  // Новый формат
+  const newFormat = customBonusStatus.value[currentMonthKey]?.[customKey];
+  
+  // Приоритет: новый формат > старый формат
+  const custom = newFormat || oldFormat;
+  
+  if (custom) {
+    return { status: custom.status, firstFillDate: null, maxAmount: 0, maxMonth: custom.bonusMonth, hasActiveBonus: custom.status === 'ДА', allMonthsCompleted: true, fileStatus: custom.status };
+  }
+  
+  // Предыдущие месяцы (новый формат)
+  for (const mk of Object.keys(customBonusStatus.value)) {
+    if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]?.status === 'ДА') {
+      return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI ранее' };
+    }
+  }
+  
+  if (store.isKpiReceivedForClient(clientName)) {
+    return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI уже получен' };
+  }
+  
   return { status: 'НЕТ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: false, fileStatus: undefined };
 };
 
@@ -1345,17 +1378,20 @@ const setBonusStatus = async (clientName: string, status: string) => {
   const managerId = selectedManagerDetails.value.id;
   const customKey = `${clientName}_${managerName}`;
   const currentMonthKey = `${selectedYear.value}-${selectedMonth.value}`;
-  if (status === 'НЕТ') { delete customBonusStatus.value[customKey]; await store.removeKpiReceivedClient(clientName); }
-  else if (status === 'ДА') { customBonusStatus.value = { ...customBonusStatus.value, [customKey]: { status: 'ДА', bonusMonth: currentMonthKey } }; }
-  else if (status === 'БЫЛ') { customBonusStatus.value = { ...customBonusStatus.value, [customKey]: { status: 'БЫЛ', bonusMonth: currentMonthKey } }; }
+  
+  if (!customBonusStatus.value[currentMonthKey]) customBonusStatus.value[currentMonthKey] = {};
+  
+  if (status === 'НЕТ') {
+    delete customBonusStatus.value[currentMonthKey][customKey];
+    if (!Object.keys(customBonusStatus.value[currentMonthKey]).length) delete customBonusStatus.value[currentMonthKey];
+    await store.removeKpiReceivedClient(clientName);
+  } else {
+    customBonusStatus.value[currentMonthKey][customKey] = { status, bonusMonth: currentMonthKey };
+  }
+  
   await saveStateToServer();
   await store.loadKpiReceivedClients();
   forceUpdate.value = Date.now();
-  setTimeout(() => {
-    const managerItem = managerRatings.value.find(m => m.id === managerId);
-    if (managerItem) { managerKpiValues.value[managerId] = managerItem.managerKpi || 0; saveStateToServer(); }
-    forceUpdate.value = Date.now();
-  }, 100);
 };
 
 const markSingleClientKpi = async (item: any) => {
