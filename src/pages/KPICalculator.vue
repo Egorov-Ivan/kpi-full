@@ -132,7 +132,7 @@
               </div>
             </template>
 
-            <template v-slot:item.actions="{ item }">
+                       <template v-slot:item.actions="{ item }">
               <v-btn icon variant="text" size="small" color="primary" @click="openManagerDetails(item)">
                 <v-icon>ri-eye-line</v-icon>
                 <v-tooltip activator="parent" location="top">Детали</v-tooltip>
@@ -412,6 +412,9 @@
                             <div class="d-flex gap-1">
                               <v-btn size="x-small" color="success" variant="tonal" @click="setBonusStatus(item.client, 'ДА')">
                                 <v-icon size="small">ri-check-line</v-icon> ДА
+                              </v-btn>
+                              <v-btn size="x-small" color="warning" variant="tonal" @click="setBonusStatus(item.client, 'БЫЛ')">
+                                <v-icon size="small">ri-arrow-right-line</v-icon> БЫЛ
                               </v-btn>
                               <v-btn v-if="showKpiButton" size="x-small" color="warning" variant="tonal" @click="markSingleClientKpi(item)">
                                 <v-icon size="small">ri-check-double-line</v-icon> KPI
