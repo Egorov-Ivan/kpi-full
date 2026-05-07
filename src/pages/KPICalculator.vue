@@ -893,8 +893,10 @@ const loadAllKpiVatData = async () => {
   try {
     const params = new URLSearchParams({ year: selectedYear.value, month: selectedMonth.value });
     const response = await fetch(`/api/kpi-vat?${params}`);
+    console.log('📥 KPI VAT GET статус:', response.status);
     if (response.ok) {
       const result = await response.json();
+      console.log('📥 KPI VAT данные:', result.data?.length, 'записей');
       if (result.success) {
         allKpiVatData.value = result.data || [];
       }
