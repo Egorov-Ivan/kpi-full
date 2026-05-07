@@ -1132,7 +1132,7 @@ const selectedKpiRate = ref<Record<string, number>>({});
 const manualKpiVat = ref<Record<string, number>>({});
 
 const bonushistory = computed(() => store.bonusHistory);
-const customBonusStatus = ref<Record<string, { status: string; bonusMonth: string | null }>>({});
+const customBonusStatus = ref<Record<string, any>>({});
 const managerKpiValues = ref<Record<string, number>>({});
 const forceUpdate = ref(0);
 const showKpiButton = ref(true);
