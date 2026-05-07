@@ -927,7 +927,26 @@ const deleteKpiVatData = async () => {
 
 const currentManagerKpiVatDetails = computed(() => {
   if (!selectedManagerDetails.value) return [];
-  return allKpiVatData.value.filter(item => item.manager_name === selectedManagerDetails.value.name);
+  const year = parseInt(selectedYear.value);
+  const month = parseInt(selectedMonth.value);
+  
+  return allKpiVatData.value
+    .filter(item => item.manager_name === selectedManagerDetails.value.name)
+    .map(item => {
+      // Пытаемся взять ручную дату
+      const manualDate = manualFirstTransactionDate.value[item.client_name];
+      if (manualDate) {
+        const parts = manualDate.split('.');
+        if (parts.length === 3) {
+          const firstDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          const calcDate = new Date(year, month - 1, 1);
+          let months = (calcDate.getFullYear() - firstDate.getFullYear()) * 12;
+          months += calcDate.getMonth() - firstDate.getMonth();
+          return { ...item, client_age_months: Math.max(0, months) };
+        }
+      }
+      return item;
+    });
 });
 
 const currentManagerKpiVatTotal = computed(() => {
