@@ -42,9 +42,6 @@
       </v-alert>
       
       <div class="d-flex justify-end gap-2">
-        <v-btn variant="text" size="small" @click="showAuthDialog = false">
-          Отмена
-        </v-btn>
         <v-btn color="primary" size="small" @click="doAuth">
           Войти
         </v-btn>
