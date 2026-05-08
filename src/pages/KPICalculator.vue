@@ -1071,10 +1071,11 @@ const loadKpiVatDetails = async () => {
   }
 };
 
-const applyKpiVatToManager = () => {
+  const applyKpiVatToManager = () => {
   if (!selectedManagerDetails.value) return;
-  updateManualKpiVat(selectedManagerDetails.value.id, kpiVatTotal.value);
-  kpiVatSuccess.value = `✅ Применено: ${formatMoney(kpiVatTotal.value)}`;
+  const total = Math.round(currentManagerKpiVatTotal.value * 100) / 100;
+  updateManualKpiVat(selectedManagerDetails.value.id, total);
+  kpiVatSuccess.value = `✅ Применено: ${formatMoney(total)}`;
   saveStateToServer();
 };
 
