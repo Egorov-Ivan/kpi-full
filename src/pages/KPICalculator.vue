@@ -128,9 +128,23 @@
 
             <template v-slot:item.payment="{ item }">
               <div class="text-right">
-                <span class="text-h6 font-weight-bold" :class="getPaymentColor(item.payment)">{{ formatMoney(item.payment) }}</span>
-              </div>
+                 <span class="text-h6 font-weight-bold" :class="approvedManagers[item.id] ? 'text-success' : 'text-grey'">
+      {{ formatMoney(item.payment) }}
+    </span>
+  </div>
             </template>
+
+
+            <template v-slot:item.approved="{ item }">
+  <v-checkbox
+    v-model="approvedManagers[item.id]"
+    @change="saveApprovedManagers"
+    density="compact"
+    hide-details
+    color="success"
+  ></v-checkbox>
+</template>
+
 
                        <template v-slot:item.actions="{ item }">
               <v-btn icon variant="text" size="small" color="primary" @click="openManagerDetails(item)">
@@ -1270,7 +1284,8 @@ const ratingHeaders = [
   { title: 'Факт (пополнения)', key: 'fact', sortable: true, align: 'end' as const },
   { title: 'Выполнение', key: 'planPercent', sortable: true },
   { title: 'К выплате', key: 'payment', sortable: true, align: 'end' as const },
-  { title: '', key: 'actions', sortable: false, width: '60', align: 'center' as const }
+  { title: '', key: 'actions', sortable: false, width: '60', align: 'center' as const },
+  { title: 'Утв.', key: 'approved', sortable: false, width: '50', align: 'center' as const },
 ];
 
 const maintenanceClientHeaders = [
@@ -1578,6 +1593,20 @@ const openManagerDetails = (item: any) => {
   showDetailsDialog.value = true;
 };
 
+const approvedManagers = ref<Record<string, boolean>>({});
+
+const saveApprovedManagers = () => {
+  localStorage.setItem('kpi_approved_managers', JSON.stringify(approvedManagers.value));
+};
+
+const loadApprovedManagers = () => {
+  const saved = localStorage.getItem('kpi_approved_managers');
+  if (saved) approvedManagers.value = JSON.parse(saved);
+};
+
+
+
+
 let isRefreshing = false;
 const refreshData = async () => {
   if (isRefreshing) return;
@@ -1615,11 +1644,13 @@ const handleKpiKeyDown = (e: KeyboardEvent) => {
 const kpiVatProgress = ref(0);
 const kpiVatProgressMessage = ref('');
 
+
 watch(activeTab, (newTab) => { if (selectedManagerDetails.value) localStorage.setItem(`kpi_tab_${selectedManagerDetails.value.id}`, newTab); });
 watch([selectedYear, selectedMonth], () => refreshData());
 
 onMounted(async () => {
   store.bufferData = [];
+  loadApprovedManagers();
   await loadManualFirstDates();
   await store.loadKpiReceivedClients();
   await loadStateFromServer();
