@@ -128,21 +128,23 @@
 
             <template v-slot:item.payment="{ item }">
               <div class="text-right">
-                 <span class="text-h6 font-weight-bold" :class="approvedManagers[item.id] ? 'text-success' : 'text-grey'">
+           <span class="text-h6 font-weight-bold" :class="approvedManagers[item.id] ? 'text-success' : 'text-error'">
       {{ formatMoney(item.payment) }}
     </span>
   </div>
             </template>
 
 
-            <template v-slot:item.approved="{ item }">
-  <v-checkbox
-    v-model="approvedManagers[item.id]"
-    @change="saveApprovedManagers"
-    density="compact"
-    hide-details
-    color="success"
-  ></v-checkbox>
+   <template v-slot:item.approved="{ item }">
+  <v-chip 
+    size="x-small" 
+    :color="approvedManagers[item.id] ? 'success' : 'error'" 
+    variant="tonal"
+    @click="toggleApproved(item.id)"
+    class="cursor-pointer"
+  >
+    {{ approvedManagers[item.id] ? 'Да' : 'Нет' }}
+  </v-chip>
 </template>
 
 
@@ -1604,7 +1606,10 @@ const loadApprovedManagers = () => {
   if (saved) approvedManagers.value = JSON.parse(saved);
 };
 
-
+const toggleApproved = (managerId: string) => {
+  approvedManagers.value[managerId] = !approvedManagers.value[managerId];
+  saveApprovedManagers();
+};
 
 
 let isRefreshing = false;
