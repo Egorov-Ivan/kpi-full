@@ -234,7 +234,7 @@
                 <v-col cols="3">
                   <v-card variant="tonal" class="pa-4">
                     <div class="text-caption text-grey mb-1">KPI НДС (ручной ввод)</div>
-                    <div class="text-h5 font-weight-bold text-info">{{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}</div>
+                    <div class="text-h5 font-weight-bold text-info">{{ formatMoney(manualKpiVat[`${selectedYear}-${selectedMonth}`]?.[selectedManagerDetails.id] || 0) }}</div>
                   </v-card>
                 </v-col>
               </v-row>
@@ -572,7 +572,7 @@
                           </v-text-field>
                           <div class="d-flex align-center justify-space-between mt-2 text-caption text-grey">
                             <span>Текущее значение:</span>
-                            <span class="font-weight-medium text-primary">{{ formatMoney(manualKpiVat[selectedManagerDetails.id] || 0) }}</span>
+                            <span class="font-weight-medium text-primary">{{ formatMoney(manualKpiVat[`${selectedYear}-${selectedMonth}`]?.[selectedManagerDetails.id] || 0) }}</span>
                           </div>
                         </v-card-text>
                       </v-card>
@@ -1279,7 +1279,6 @@ const parseNumberInput = (value: string): number => {
 
 const updateManualKpiVat = (managerId: string, value: any) => {
 const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
-const kpiVatAmount = manualKpiVat.value[monthKey]?.[manager.id] || 0;
   if (!manualKpiVat.value[monthKey]) manualKpiVat.value[monthKey] = {};
   manualKpiVat.value[monthKey][managerId] = typeof value === 'string' ? parseNumberInput(value) : value;
   saveStateToServer();
@@ -1423,7 +1422,7 @@ const getClientBonusStatus = (clientName: string, managerName: string, currentYe
   }
   
   // Предыдущие месяцы (новый формат)
- for (const mk of Object.keys(customBonusStatus.value)) {
+  for (const mk of Object.keys(customBonusStatus.value)) {
   if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]) {
     return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI ранее' };
   }
@@ -1482,7 +1481,8 @@ const managerRatings = computed(() => {
     const rate = getSelectedRate({ id: manager.id, originalManager: manager, noVatAmount });
     const maintenancePayment = noVatAmount * rate;
     let managerKpi = managerKpiValues.value[manager.id] || 0;
-    const kpiVatAmount = manualKpiVat.value[manager.id] || 0;
+    const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
+    const kpiVatAmount = manualKpiVat.value[monthKey]?.[manager.id] || 0;
     const payment = maintenancePayment + managerKpi + kpiVatAmount;
     return { id: manager.id, name: manager.displayName, role: manager.role || 'Менеджер', originalManager: manager, plan, fact, planPercent, payment, maintenancePayment, managerKpi, kpiVatAmount, operationsCount, totalAmount, noVatAmount, vatAmount, uniqueClients };
   }).sort((a, b) => b.planPercent - a.planPercent);
@@ -1607,7 +1607,9 @@ const openManagerDetails = (item: any) => {
   selectedManagerDetails.value = item;
   if (!selectedRate.value[item.id]) selectedRate.value[item.id] = getSelectedRate(item);
   if (!selectedKpiRate.value[item.id]) selectedKpiRate.value[item.id] = 0.015;
-  if (manualKpiVat.value[item.id] === undefined) manualKpiVat.value[item.id] = 0;
+  const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
+  if (!manualKpiVat.value[monthKey]) manualKpiVat.value[monthKey] = {};
+  if (manualKpiVat.value[monthKey][item.id] === undefined) manualKpiVat.value[monthKey][item.id] = 0;
   activeTab.value = localStorage.getItem(`kpi_tab_${item.id}`) || 'maintenance';
   showDetailsDialog.value = true;
 };
