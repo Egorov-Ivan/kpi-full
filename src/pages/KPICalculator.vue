@@ -1409,10 +1409,14 @@ const getClientBonusStatus = (clientName: string, managerName: string, currentYe
   const customKey = `${clientName}_${managerName}`;
   const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
   
+  console.log('🔍 getClientBonusStatus:', clientName, 'currentMonthKey:', currentMonthKey, 'keys:', Object.keys(customBonusStatus.value));
+  
   // Старый формат
   const oldFormat = customBonusStatus.value[customKey];
   // Новый формат
   const newFormat = customBonusStatus.value[currentMonthKey]?.[customKey];
+  
+  console.log('  oldFormat:', !!oldFormat, 'newFormat:', !!newFormat);
   
   // Приоритет: новый формат > старый формат
   const custom = newFormat || oldFormat;
