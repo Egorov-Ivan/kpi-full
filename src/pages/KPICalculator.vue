@@ -1022,12 +1022,8 @@ const uploadKpiVatFile = async () => {
       kpiVatProgressMessage.value = '✅ Готово';
       kpiVatSuccess.value = `Рассчитано для ${managersCount} менеджеров, общий KPI: ${formatMoney(totalKpi)}`;
       
-      if (result.summary) {
-        result.summary.forEach((s: any) => {
-          const manager = managerRatings.value.find(m => m.name === s.manager);
-          if (manager) updateManualKpiVat(manager.id, s.totalKpiVat);
-        });
-      }
+      
+      
       
       setTimeout(() => {
         showKpiVatUploadDialog.value = false;
