@@ -206,7 +206,11 @@
               </v-btn>
             </v-card-title>
             <v-divider></v-divider>
-            <v-card-text class="pa-4">
+             <v-card-text class="pa-4">
+              <!-- 🔥 АЛЕРТ БЛОКИРОВКИ -->
+              <v-alert v-if="isManagerLocked" type="warning" variant="tonal" class="mb-4">
+                ⚠️ Выплата утверждена. Изменения заблокированы.
+              </v-alert>
               <!-- Статистика по менеджеру -->
               <v-row>
                 <v-col cols="3">
@@ -263,7 +267,8 @@
                   <v-card class="mb-4" variant="tonal">
                     <v-card-text>
                       <div class="text-subtitle-1 font-weight-medium mb-3">Ставка ведения</div>
-                      <v-btn-toggle v-model="selectedRate[selectedManagerDetails.id]" mandatory divided class="flex-wrap">
+                      <v-btn-toggle v-model="selectedRate[selectedManagerDetails.id]" mandatory divided class="flex-wrap"
+                      :disabled="isManagerLocked">
                         <v-btn v-for="rate in store.maintenanceRates" :key="rate.id" :value="rate.value" :color="selectedRate[selectedManagerDetails.id] === rate.value ? 'primary' : undefined" variant="outlined" class="ma-1" :disabled="!isRateAllowed(selectedManagerDetails.originalManager, rate.id)">
                           {{ rate.label }}
                         </v-btn>
@@ -329,11 +334,11 @@
                   <v-card class="mt-4 mb-4" variant="tonal">
                     <v-card-text>
                       <div class="text-subtitle-1 font-weight-medium mb-3">Ставка KPI Без НДС</div>
-                      <v-btn-toggle v-model="selectedKpiRate[selectedManagerDetails.id]" mandatory divided class="flex-wrap">
-                        <v-btn v-for="rate in kpiNoVatRates" :key="rate.id" :value="rate.value" :color="selectedKpiRate[selectedManagerDetails.id] === rate.value ? 'success' : undefined" variant="outlined" class="ma-1">
-                          {{ rate.label }}
-                        </v-btn>
-                      </v-btn-toggle>
+                      <v-btn-toggle v-model="selectedKpiRate[selectedManagerDetails.id]" mandatory divided class="flex-wrap" :disabled="isManagerLocked">
+  <v-btn v-for="rate in kpiNoVatRates" :key="rate.id" :value="rate.value" :color="selectedKpiRate[selectedManagerDetails.id] === rate.value ? 'success' : undefined" variant="outlined" class="ma-1">
+    {{ rate.label }}
+  </v-btn>
+</v-btn-toggle>
                     </v-card-text>
                   </v-card>
 
@@ -426,7 +431,8 @@
                           <template v-slot:item.operations="{ item }"><div class="text-center"><v-chip size="x-small" variant="tonal">{{ item.operationsCount }}</v-chip></div></template>
                           <template v-slot:item.actions="{ item }">
                             <div class="d-flex gap-1">
-                              <v-btn size="x-small" color="success" variant="tonal" @click="setBonusStatus(item.client, 'ДА')">
+                              <v-btn size="x-small" color="success" variant="tonal" @click="setBonusStatus(item.client, 'ДА')"
+                              :disabled="isManagerLocked">
                                 <v-icon size="small">ri-check-line</v-icon> ДА
                               </v-btn>
                               <v-btn size="x-small" color="warning" variant="tonal" @click="setBonusStatus(item.client, 'БЫЛ')">
@@ -512,16 +518,16 @@
     </div>
     
     <v-file-input
-      v-model="managerKpiVatFile"
-      label="Выберите Excel-файл (.xlsx)"
-      accept=".xlsx,.xls"
-      prepend-icon="ri-upload-cloud-2-line"
-      variant="outlined"
-      density="compact"
-      :disabled="kpiVatUploading"
-      persistent-hint
-      hint="KPI НДС будет рассчитан только для {{ selectedManagerDetails?.name }}"
-    ></v-file-input>
+  v-model="managerKpiVatFile"
+  label="Выберите Excel-файл (.xlsx)"
+  accept=".xlsx,.xls"
+  prepend-icon="ri-upload-cloud-2-line"
+  variant="outlined"
+  density="compact"
+  :disabled="isManagerLocked || kpiVatUploading"
+  persistent-hint
+  hint="KPI НДС будет рассчитан только для {{ selectedManagerDetails?.name }}"
+></v-file-input>
     
     <v-btn
       v-if="managerKpiVatFile"
@@ -547,7 +553,8 @@
                           <div class="text-subtitle-1 font-weight-medium mb-3">Ручной ввод KPI НДС</div>
                           <v-text-field 
                             :model-value="manualKpiVat[selectedManagerDetails.id]" 
-                            @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)" 
+                            @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)"
+                            :disabled="isManagerLocked"
                             label="Сумма KPI НДС" 
                             prefix="₽" 
                             variant="outlined" 
@@ -630,16 +637,17 @@
                           </v-data-table>
                           
                           <div class="d-flex justify-end mt-3">
-                            <v-btn
-                              color="success"
-                              variant="tonal"
-                              size="small"
-                              prepend-icon="ri-check-line"
-                              @click="applyKpiVatToManager"
-                            >
-                              Применить ({{ formatMoney(currentManagerKpiVatTotal) }})
-                            </v-btn>
-                          </div>
+  <v-btn
+    color="success"
+    variant="tonal"
+    size="small"
+    prepend-icon="ri-check-line"
+    @click="applyKpiVatToManager"
+    :disabled="isManagerLocked"
+  >
+    Применить ({{ formatMoney(currentManagerKpiVatTotal) }})
+  </v-btn>
+</div>
                         </v-card-text>
                       </v-card>
 
@@ -1610,6 +1618,12 @@ const toggleApproved = (managerId: string) => {
   approvedManagers.value[managerId] = !approvedManagers.value[managerId];
   saveApprovedManagers();
 };
+
+const isManagerLocked = computed(() => {
+  if (!selectedManagerDetails.value) return false;
+  return !!approvedManagers.value[selectedManagerDetails.value.id];
+});
+
 
 
 let isRefreshing = false;
