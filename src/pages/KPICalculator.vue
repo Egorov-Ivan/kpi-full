@@ -137,14 +137,14 @@
 
    <template v-slot:item.approved="{ item }">
   <v-chip 
-    size="x-small" 
-    :color="approvedManagers[item.id] ? 'success' : 'error'" 
-    variant="tonal"
-    @click="toggleApproved(item.id)"
-    class="cursor-pointer"
-  >
-    {{ approvedManagers[`${selectedYear}-${selectedMonth}`]?.[item.id] ? 'Да' : 'Нет' }}
-  </v-chip>
+  size="x-small" 
+  :color="approvedManagers[`${selectedYear}-${selectedMonth}`]?.[item.id] ? 'success' : 'error'" 
+  variant="tonal"
+  @click="toggleApproved(item.id)"
+  class="cursor-pointer"
+>
+  {{ approvedManagers[`${selectedYear}-${selectedMonth}`]?.[item.id] ? 'ДА' : 'НЕТ' }}
+</v-chip>
 </template>
 
 
@@ -1153,7 +1153,7 @@ const recalculateAllKpiNoVat = () => {
       else {
         let wasEarlier = false;
         for (const mk of Object.keys(customBonusStatus.value)) {
-          if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]?.status === 'ДА') { wasEarlier = true; break; }
+          if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]) { wasEarlier = true; break; }
         }
         if (wasEarlier) status = 'БЫЛ';
         else if (bonusClients.has(client)) status = 'ДА';
