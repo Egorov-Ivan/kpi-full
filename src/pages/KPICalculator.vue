@@ -917,7 +917,10 @@ const deleteKpiVatData = async () => {
     if (result.success) {
       allKpiVatData.value = [];
       kpiVatDetails.value = [];
-      kpiVatSuccess.value = '✅ Данные удалены';
+      // 🔥 Очищаем ручные вводы
+      manualKpiVat.value = {};
+      saveStateToServer();
+      kpiVatSuccess.value = '✅ Данные и ручные вводы удалены';
       kpiVatFile.value = null;
     }
   } catch (error: any) {
