@@ -128,9 +128,9 @@
 
             <template v-slot:item.payment="{ item }">
               <div class="text-right">
-           <span class="text-h6 font-weight-bold" :class="approvedManagers[item.id] ? 'text-success' : 'text-error'">
-      {{ formatMoney(item.payment) }}
-    </span>
+         <span class="text-h6 font-weight-bold" :class="approvedManagers[`${selectedYear}-${selectedMonth}`]?.[item.id] ? 'text-success' : 'text-error'">
+  {{ formatMoney(item.payment) }}
+</span>
   </div>
             </template>
 
@@ -143,7 +143,7 @@
     @click="toggleApproved(item.id)"
     class="cursor-pointer"
   >
-    {{ approvedManagers[item.id] ? 'Да' : 'Нет' }}
+    {{ approvedManagers[`${selectedYear}-${selectedMonth}`]?.[item.id] ? 'Да' : 'Нет' }}
   </v-chip>
 </template>
 
@@ -1257,7 +1257,7 @@ const saveStateToServer = async () => {
       selectedRate: selectedRate.value,
       selectedKpiRate: selectedKpiRate.value,
       manualKpiVat: manualKpiVat.value,
-      approvedManagers: approvedManagers.value, // ← ДОБАВИТЬ
+      approvedManagers: approvedManagers.value, // ← СЮДА
       selectedYear: selectedYear.value,
       selectedMonth: selectedMonth.value
     });
@@ -1614,7 +1614,7 @@ const openManagerDetails = (item: any) => {
   showDetailsDialog.value = true;
 };
 
-const approvedManagers = ref<Record<string, boolean>>({});
+const approvedManagers = ref<Record<string, Record<string, boolean>>>({});
 
 const saveApprovedManagers = () => {
   localStorage.setItem('kpi_approved_managers', JSON.stringify(approvedManagers.value));
@@ -1626,15 +1626,17 @@ const loadApprovedManagers = () => {
 };
 
 const toggleApproved = (managerId: string) => {
-  approvedManagers.value[managerId] = !approvedManagers.value[managerId];
+  const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
+  if (!approvedManagers.value[monthKey]) approvedManagers.value[monthKey] = {};
+  approvedManagers.value[monthKey][managerId] = !approvedManagers.value[monthKey][managerId];
   saveApprovedManagers();
 };
 
 const isManagerLocked = computed(() => {
   if (!selectedManagerDetails.value) return false;
-  return !!approvedManagers.value[selectedManagerDetails.value.id];
+  const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
+  return !!approvedManagers.value[monthKey]?.[selectedManagerDetails.value.id];
 });
-
 
 
 let isRefreshing = false;
