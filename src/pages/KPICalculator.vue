@@ -1423,11 +1423,11 @@ const getClientBonusStatus = (clientName: string, managerName: string, currentYe
   }
   
   // Предыдущие месяцы (новый формат)
-  for (const mk of Object.keys(customBonusStatus.value)) {
-    if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]?.status === 'ДА') {
-      return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI ранее' };
-    }
+ for (const mk of Object.keys(customBonusStatus.value)) {
+  if (mk !== currentMonthKey && customBonusStatus.value[mk]?.[customKey]) {
+    return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI ранее' };
   }
+}
   
   if (store.isKpiReceivedForClient(clientName)) {
     return { status: 'БЫЛ', firstFillDate: null, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'KPI уже получен' };
