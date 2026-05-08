@@ -932,25 +932,30 @@ const currentManagerKpiVatDetails = computed(() => {
   const year = parseInt(selectedYear.value);
   const month = parseInt(selectedMonth.value);
   
-  return allKpiVatData.value
-    .filter(item => item && item.manager_name === selectedManagerDetails.value.name)
-    .map(item => {
-      // Берём ручную дату первой заправки
-      const manualDate = manualFirstTransactionDate.value[item.client_name];
-      if (manualDate) {
-        const parts = manualDate.split('.');
-        if (parts.length === 3) {
-          const firstDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-          const calcDate = new Date(year, month - 1, 1);
-          let ageMonths = (calcDate.getFullYear() - firstDate.getFullYear()) * 12;
-          ageMonths += calcDate.getMonth() - firstDate.getMonth();
-          const age = Math.max(0, ageMonths);
-          const rate = age < 3 ? 0.25 : 0.025;
-          return { ...item, client_age_months: age, rate: rate, kpi_vat: item.total_profit * rate };
-        }
+  const filtered = allKpiVatData.value
+    .filter(item => item && item.manager_name === selectedManagerDetails.value.name);
+  
+  console.log('📊 filtered KPI VAT:', filtered.length, 'manager:', selectedManagerDetails.value.name);
+  
+  const result = filtered.map(item => {
+    const manualDate = manualFirstTransactionDate.value[item.client_name];
+    if (manualDate) {
+      const parts = manualDate.split('.');
+      if (parts.length === 3) {
+        const firstDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        const calcDate = new Date(year, month - 1, 1);
+        let ageMonths = (calcDate.getFullYear() - firstDate.getFullYear()) * 12;
+        ageMonths += calcDate.getMonth() - firstDate.getMonth();
+        const age = Math.max(0, ageMonths);
+        const rate = age < 3 ? 0.25 : 0.025;
+        return { ...item, client_age_months: age, rate: rate, kpi_vat: item.total_profit * rate };
       }
-      return item;
-    });
+    }
+    return item;
+  });
+  
+  console.log('📊 result KPI VAT:', result.length);
+  return result;
 });
 
 const currentManagerKpiVatTotal = computed(() => {
