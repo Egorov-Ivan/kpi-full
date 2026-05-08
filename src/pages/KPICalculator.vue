@@ -552,7 +552,7 @@
                         <v-card-text>
                           <div class="text-subtitle-1 font-weight-medium mb-3">Ручной ввод KPI НДС</div>
                           <v-text-field 
-                            :model-value="manualKpiVat[selectedManagerDetails.id]" 
+                            :model-value="manualKpiVat[`${selectedYear}-${selectedMonth}`]?.[selectedManagerDetails.id]"
                             @update:model-value="val => updateManualKpiVat(selectedManagerDetails.id, val)"
                             :disabled="isManagerLocked"
                             label="Сумма KPI НДС" 
@@ -1184,7 +1184,7 @@ const kpiNoVatRates = ref([
   { id: 'kpi_3', value: 0.03, label: '3.00%' },
 ]);
 const selectedKpiRate = ref<Record<string, number>>({});
-const manualKpiVat = ref<Record<string, number>>({});
+const manualKpiVat = ref<Record<string, Record<string, number>>>({});
 
 const bonushistory = computed(() => store.bonusHistory);
 const customBonusStatus = ref<Record<string, any>>({});
@@ -1278,7 +1278,10 @@ const parseNumberInput = (value: string): number => {
 };
 
 const updateManualKpiVat = (managerId: string, value: any) => {
-  manualKpiVat.value[managerId] = typeof value === 'string' ? parseNumberInput(value) : value;
+const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
+const kpiVatAmount = manualKpiVat.value[monthKey]?.[manager.id] || 0;
+  if (!manualKpiVat.value[monthKey]) manualKpiVat.value[monthKey] = {};
+  manualKpiVat.value[monthKey][managerId] = typeof value === 'string' ? parseNumberInput(value) : value;
   saveStateToServer();
 };
 
