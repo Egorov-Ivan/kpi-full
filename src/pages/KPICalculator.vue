@@ -1205,6 +1205,10 @@ const loadStateFromStorage = () => {
     if (savedKpiRates) selectedKpiRate.value = JSON.parse(savedKpiRates);
     const savedManualKpiVat = localStorage.getItem('kpi_manual_vat');
     if (savedManualKpiVat) manualKpiVat.value = JSON.parse(savedManualKpiVat);
+    // ↓ СЮДА
+    const savedApproved = localStorage.getItem('kpi_approved_managers');
+    if (savedApproved) approvedManagers.value = JSON.parse(savedApproved);
+    // ↑ СЮДА
     const savedTab = localStorage.getItem('kpi_active_tab');
     if (savedTab) activeTab.value = savedTab;
     const savedYear = localStorage.getItem('kpi_selected_year');
@@ -1236,6 +1240,7 @@ const loadStateFromServer = async () => {
     if (settings.selectedRate) selectedRate.value = settings.selectedRate;
     if (settings.selectedKpiRate) selectedKpiRate.value = settings.selectedKpiRate;
     if (settings.manualKpiVat) manualKpiVat.value = settings.manualKpiVat;
+    if (settings.approvedManagers) approvedManagers.value = settings.approvedManagers; // ← СЮДА
     if (settings.selectedYear) selectedYear.value = settings.selectedYear;
     if (settings.selectedMonth) selectedMonth.value = settings.selectedMonth;
     forceUpdate.value = Date.now();
@@ -1252,6 +1257,7 @@ const saveStateToServer = async () => {
       selectedRate: selectedRate.value,
       selectedKpiRate: selectedKpiRate.value,
       manualKpiVat: manualKpiVat.value,
+      approvedManagers: approvedManagers.value, // ← ДОБАВИТЬ
       selectedYear: selectedYear.value,
       selectedMonth: selectedMonth.value
     });
