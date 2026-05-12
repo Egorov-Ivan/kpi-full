@@ -1234,17 +1234,34 @@ const saveStateToStorage = () => {
 
 const loadStateFromServer = async () => {
   try {
+    console.log('📡 Загрузка KPI настроек с сервера...');
     const settings = await store.loadKpiSettings();
-    if (settings.customBonusStatus) customBonusStatus.value = settings.customBonusStatus;
-    if (settings.managerKpiValues) managerKpiValues.value = settings.managerKpiValues;
+    
+    if (settings.customBonusStatus) {
+  customBonusStatus.value = settings.customBonusStatus;
+  const months = Object.keys(settings.customBonusStatus);
+  let totalDa = 0;
+  months.forEach(m => {
+    totalDa += Object.values(settings.customBonusStatus[m] || {}).filter((s: any) => s?.status === 'ДА').length;
+  });
+  console.log('✅ customBonusStatus:', months.length, 'месяцев, всего ДА:', totalDa);
+}
+    
+    if (settings.managerKpiValues) {
+      managerKpiValues.value = settings.managerKpiValues;
+      console.log('✅ managerKpiValues:', Object.keys(settings.managerKpiValues).length, 'менеджеров');
+    }
+    
     if (settings.selectedRate) selectedRate.value = settings.selectedRate;
     if (settings.selectedKpiRate) selectedKpiRate.value = settings.selectedKpiRate;
     if (settings.manualKpiVat) manualKpiVat.value = settings.manualKpiVat;
-    if (settings.approvedManagers) approvedManagers.value = settings.approvedManagers; // ← СЮДА
+    if (settings.approvedManagers) approvedManagers.value = settings.approvedManagers;
     if (settings.selectedYear) selectedYear.value = settings.selectedYear;
     if (settings.selectedMonth) selectedMonth.value = settings.selectedMonth;
+    
     forceUpdate.value = Date.now();
   } catch (e) {
+    console.error('Ошибка загрузки с сервера:', e);
     loadStateFromStorage();
   }
 };
