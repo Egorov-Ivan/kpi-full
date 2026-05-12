@@ -1344,7 +1344,7 @@ const nonKpiClientHeaders = [
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
-const allowedRoles = ['Менеджер', 'Старший Менеджер'];
+const allowedRoles = ['Менеджер', 'Старший Менеджер', 'Ведущий Менеджер'];
 
 const filteredManagers = computed(() => store.managers.filter(manager => manager.role && allowedRoles.includes(manager.role)));
 
