@@ -1430,7 +1430,23 @@ const getClientBonusStatus = (clientName: string, managerName: string, currentYe
   const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
   
   console.log('🔍 getClientBonusStatus:', clientName, 'currentMonthKey:', currentMonthKey, 'keys:', Object.keys(customBonusStatus.value));
-  
+
+// Авто-БЫЛ: первая заправка > 3 месяцев
+  const apiDate = manualFirstTransactionDate.value[clientName];
+  if (apiDate) {
+    const parts = apiDate.split('.');
+    if (parts.length === 3) {
+      const firstDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      const calcDate = new Date(currentYear, currentMonth - 1, 1);
+      let ageMonths = (calcDate.getFullYear() - firstDate.getFullYear()) * 12;
+      ageMonths += calcDate.getMonth() - firstDate.getMonth();
+      
+      if (ageMonths >= 3) {
+        return { status: 'БЫЛ', firstFillDate: apiDate, maxAmount: 0, maxMonth: null, hasActiveBonus: false, allMonthsCompleted: true, fileStatus: 'Бонус закончился (>3 мес)' };
+      }
+    }
+  }
+
   // Старый формат
   const oldFormat = customBonusStatus.value[customKey];
   // Новый формат
