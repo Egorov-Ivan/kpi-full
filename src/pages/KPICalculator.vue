@@ -814,20 +814,23 @@ const saveManualFirstDate = async () => {
 
 const loadManualFirstDates = async () => {
   try {
-    const response = await fetch('/api/client-first-dates');
+    const response = await fetch('/api/proxy/client-first-transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    
     if (response.ok) {
       const result = await response.json();
-      if (result.success) {
+      if (result.status === 'ok' && result.clients) {
         const dates: Record<string, string> = {};
-        result.data.forEach((row: any) => {
-          const d = row.first_transaction_date;
-          if (d) {
-            const parts = d.split('T')[0].split('-');
-            dates[row.client_name] = `${parts[2]}.${parts[1]}.${parts[0]}`;
+        result.clients.forEach((c: any) => {
+          if (c.clientName && c.firstTransactionDate) {
+            dates[c.clientName] = c.firstTransactionDate;
           }
         });
         manualFirstTransactionDate.value = dates;
-        console.log('✅ Загружены даты:', Object.keys(dates).length);
+        console.log('✅ Загружены даты из API:', Object.keys(dates).length);
       }
     }
   } catch (e) {
@@ -1588,6 +1591,14 @@ const kpiClientDetails = computed(() => {
     const bonusStatus = getClientBonusStatus(data.client, managerName, year, month, clientMonthlyMap.get(data.client) || new Map());
     return { ...data, ...bonusStatus, maxAmount: data.maxAmount, maxAmountMonth: data.maxAmountMonth };
   });
+
+     //Даты первой заправки из API
+   clientsWithStatus.forEach(data => {
+    if (!data.firstFillDate || data.firstFillDate === '—') {
+      data.firstFillDate = manualFirstTransactionDate.value[data.client] || data.firstFillDate;
+    }
+  });
+
   const active = clientsWithStatus.filter(data => data.status === 'ДА' && data.maxAmount > 0).map(data => ({ ...data, displayAmount: data.maxAmount, kpiAmount: data.maxAmount * rate, baseInfo: `Макс. за период: ${formatMoney(data.maxAmount)}`, monthInfo: data.maxAmountMonth ? `Макс. месяц: ${data.maxAmountMonth}` : null }));
   const was = clientsWithStatus.filter(data => data.status === 'БЫЛ' && data.maxAmount > 0).map(data => ({ ...data }));
   const non = clientsWithStatus.filter(data => data.status === 'НЕТ' && data.maxAmount > 0).map(data => ({ ...data, displayAmount: data.maxAmount || data.totalAmount, monthInfo: data.maxAmountMonth ? `Месяц: ${data.maxAmountMonth}` : null, baseInfo: data.maxAmount > 0 ? `Макс. сумма: ${formatMoney(data.maxAmount)}` : null }));
