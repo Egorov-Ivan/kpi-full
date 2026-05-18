@@ -48,7 +48,7 @@ export default async function handler(req, res) {
           `Фаэтон: —\n` +
           `Монблан: —`;
 
-        const msg = `💰 *Балансы на ${time}*\n\n${rnMsg}\n\n${lukoilMsg}\n\n${tnMsg}\n\n${natcarMsg}\n\n${pprMsg};`
+        const msg = `💰 *Балансы на ${time}*\n\n${rnMsg}\n\n${lukoilMsg}\n\n${tnMsg}\n\n${natcarMsg}\n\n${pprMsg}`
         
         await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
