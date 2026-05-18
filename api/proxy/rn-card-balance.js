@@ -36,8 +36,9 @@ export default async function handler(req, res) {
           { headers: { 'RnCard-Identity-Account-Pass': base64pass } }
         );
         const data = await response.json();
+        console.log('🔍 Ответ для', c.name, ':', JSON.stringify(data));
         return {
-          supplier: `${c.name} (${entity})`,
+          supplier: c.name,
           balance: data.Available || data.Balance || 0,
           updatedAt: new Date().toLocaleString('ru-RU')
         };
