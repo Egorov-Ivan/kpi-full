@@ -65,7 +65,7 @@ const loadBalances = async () => {
   loading.value = true;
   try {
     const contracts = [
-      { supplier: 'РН-Карт', contract: 'ВАШ_КОД_ДОГОВОРА' }
+      { supplier: 'Роснефть Монблан', contract: 'ISS218557' }
     ];
     
     const results = await Promise.all(
