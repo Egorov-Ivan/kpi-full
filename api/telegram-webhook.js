@@ -23,16 +23,31 @@ export default async function handler(req, res) {
           { headers: { 'RnCard-Identity-Account-Pass': monblanPass } }
         );
         const monblanData = await monblanRes.json();
-        
+        // === РОСНЕФТЬ ===
         const rnMsg = `*Роснефть*\n` +
-          `🟡 Фаэтон: ${(faetonData.Available || 0).toLocaleString('ru-RU')} ₽\n` +
-          `🔵 Монблан: ${(monblanData.Available || 0).toLocaleString('ru-RU')} ₽`;
+          `Фаэтон: ${(faetonData.Available || 0).toLocaleString('ru-RU')} ₽\n` +
+          `Монблан: ${(monblanData.Available || 0).toLocaleString('ru-RU')} ₽`;
         
         // === ЛУКОЙЛ (заглушка) ===
         const lukoilMsg = `*Лукойл*\n` +
-          `🟡 Фаэтон: —\n` +
-          `🔵 Монблан: —`;
+          `Фаэтон: —\n` +
+          `Монблан: —`;
         
+         // === ТАТНЕФТЬ (заглушка) ===
+        const tnMsg = `*Татнефть*\n` +
+          `Фаэтон: —\n` +
+          `Монблан: —`;
+        
+          // === НАТКАР (заглушка) ===
+        const natcarMsg = `*Наткар*\n` +
+          `Фаэтон: —\n` +
+          `Монблан: —`;
+
+          // === ППР (заглушка) ===
+          const pprMsg = `*ППР*\n` +
+          `Фаэтон: —\n` +
+          `Монблан: —`;
+
         const msg = `💰 *Балансы на ${time}*\n\n${rnMsg}\n\n${lukoilMsg}`;
         
         await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -44,14 +59,6 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('❌ Ошибка:', e);
       }
-    }
-    
-    if (message?.text === '/start') {
-      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: message.chat.id, text: '👋 Бот мониторинга балансов\n/balance — текущие балансы' })
-      });
     }
     
     return res.status(200).json({ success: true });
