@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 const loading = ref(false);
 const balances = ref<any[]>([]);
@@ -96,6 +96,10 @@ const formatMoney = (amount: number): string => {
     maximumFractionDigits: 2
   }).format(amount);
 };
+
+onMounted(() => {
+  loadBalances();
+});
 </script>
 
 <style scoped>
