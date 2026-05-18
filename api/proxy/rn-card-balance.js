@@ -2,26 +2,49 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { contract } = req.query;
-  const login = process.env.RNCARD_LOGIN;
-  const password = process.env.RNCARD_PASSWORD;
+  const accounts = {
+    monblan: {
+      login: process.env.RNCARD_MONBLAN_LOGIN,
+      password: process.env.RNCARD_MONBLAN_PASSWORD,
+      contracts: [
+        { name: 'Роснефть Монблан', contract: 'ISS218557' }
+      ]
+    },
+    faeton: {
+      login: process.env.RNCARD_FAETON_PASSWORD,
+      password: process.env.RNCARD_FAETON_LOGIN,
+      contracts: [
+        { name: 'Роснефть Фаэтон', contract: 'ISS238084' }
+      ]
+    }
+  };
+
+  const { entity } = req.query;
   
-  if (!login || !password) {
-    return res.status(500).json({ error: 'RNCARD_LOGIN и RNCARD_PASSWORD не настроены' });
+  if (!entity || !accounts[entity]) {
+    return res.status(400).json({ error: 'Укажите entity=faeton или entity=monblan' });
   }
-  
-  const base64pass = Buffer.from(password).toString('base64');
-  
+
+  const acc = accounts[entity];
+  const base64pass = Buffer.from(acc.password || '').toString('base64');
+
   try {
-    const response = await fetch(
-      `https://lkapi.rn-card.ru/api/emv/v1/GetContractBalance?u=${login}&contract=${contract}&type=json`,
-      {
-        headers: { 'RnCard-Identity-Account-Pass': base64pass }
-      }
+    const results = await Promise.all(
+      acc.contracts.map(async (c) => {
+        const response = await fetch(
+          `https://lkapi.rn-card.ru/api/emv/v1/GetContractBalance?u=${acc.login}&contract=${c.contract}&type=json`,
+          { headers: { 'RnCard-Identity-Account-Pass': base64pass } }
+        );
+        const data = await response.json();
+        return {
+          supplier: `${c.name} (${entity})`,
+          balance: data.Available || data.Balance || 0,
+          updatedAt: new Date().toLocaleString('ru-RU')
+        };
+      })
     );
-    
-    const data = await response.json();
-    return res.status(200).json({ success: true, balance: data });
+
+    return res.status(200).json({ success: true, balances: results });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
