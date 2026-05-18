@@ -11,8 +11,8 @@ export default async function handler(req, res) {
       ]
     },
     faeton: {
-      login: process.env.RNCARD_FAETON_PASSWORD,
-      password: process.env.RNCARD_FAETON_LOGIN,
+      login: process.env.RNCARD_FAETON_LOGIN,
+      password: process.env.RNCARD_FAETON_PASSWORD,
       contracts: [
         { name: 'Роснефть Фаэтон', contract: 'ISS238084' }
       ]
