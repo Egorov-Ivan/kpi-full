@@ -18,7 +18,7 @@ export default async function handler(req, res) {
           { headers: { 'RnCard-Identity-Account-Pass': rnCardPass } }
         );
         const rnData = await rnRes.json();
-        
+        console.log('🔍 RN-Card ответ:', JSON.stringify(rnData)); // ← добавить эту строку
         const msg = `💰 *РН-Карт*\nДоступно: ${rnData.Available?.toLocaleString('ru-RU') || 'н/д'} ₽`;
         
         await sendMessage(chatId, msg);
