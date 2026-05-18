@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       try {
         const rnCardPass = Buffer.from(process.env.RNCARD_PASSWORD || '').toString('base64');
         const rnRes = await fetch(
-          `https://lkapi.rn-card.ru/api/emv/v1/GetContractBalance?u=${process.env.RNCARD_LOGIN}&contract=ISS00000&type=json`,
+          `https://lkapi.rn-card.ru/api/emv/v1/GetContractBalance?u=${process.env.RNCARD_LOGIN}&contract=ISS218557&type=json`,
           { headers: { 'RnCard-Identity-Account-Pass': rnCardPass } }
         );
         const rnData = await rnRes.json();
