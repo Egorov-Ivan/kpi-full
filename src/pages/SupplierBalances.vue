@@ -64,14 +64,25 @@ const headers = [
 const loadBalances = async () => {
   loading.value = true;
   try {
-    // Заглушка — замените на реальный API
-    const response = await fetch('/api/proxy/supplier-balances');
-    if (response.ok) {
-      const data = await response.json();
-      balances.value = data.balances || [];
-    }
+    const contracts = [
+      { supplier: 'РН-Карт', contract: 'ВАШ_КОД_ДОГОВОРА' }
+    ];
+    
+    const results = await Promise.all(
+      contracts.map(async (c) => {
+        const response = await fetch(`/api/proxy/rn-card-balance?contract=${c.contract}`);
+        const data = await response.json();
+        return {
+          supplier: c.supplier,
+          balance: data.balance?.Available || 0,
+          updatedAt: new Date().toLocaleString('ru-RU')
+        };
+      })
+    );
+    
+    balances.value = results;
   } catch (e) {
-    console.error('Ошибка загрузки балансов:', e);
+    console.error(e);
   } finally {
     loading.value = false;
   }
