@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const acc = accounts[entity];
   const base64pass = Buffer.from(acc.password || '').toString('base64');
 
-  try {
+   try {
     const results = await Promise.all(
       acc.contracts.map(async (c) => {
         const response = await fetch(
@@ -40,7 +40,14 @@ export default async function handler(req, res) {
         return {
           supplier: c.name,
           balance: data.Available || data.Balance || 0,
-          updatedAt: new Date().toLocaleString('ru-RU')
+          updatedAt: new Date().toLocaleString('ru-RU', {
+            timeZone: 'Europe/Moscow',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
         };
       })
     );
@@ -48,5 +55,4 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, balances: results });
   } catch (error) {
     return res.status(500).json({ error: error.message });
-  }
-}
+  }}
