@@ -86,6 +86,8 @@
         <v-list-subheader :class="subheaderClass">Управление</v-list-subheader>
         -->
         <v-list-item prepend-icon="ri-calculator-line" title="KPI Калькулятор" to="/kpi-calculator" :active="$route.path === '/kpi-calculator'" :class="navItemClass"></v-list-item>
+
+        <v-list-item prepend-icon="ri-bank-line" title="Балансы Поставщиков" to="/supplier-balances" :active="$route.path === '/supplier-balances'" :class="navItemClass"></v-list-item>
         <!--
         <v-list-item prepend-icon="ri-user-star-line" title="Сотрудники" :class="navItemClass" @click="showDevelopmentAlert('Сотрудники')"></v-list-item>
         <v-list-item prepend-icon="ri-settings-4-line" title="Настройки" :class="navItemClass" @click="showDevelopmentAlert('Настройки')"></v-list-item>

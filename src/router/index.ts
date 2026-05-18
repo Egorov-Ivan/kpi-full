@@ -31,7 +31,12 @@ const router = createRouter({
       path: '/client-main-page',
       name: 'client-main-page',
       component: ClientMainPage
-    }
+    },
+    {
+  path: '/supplier-balances',
+  name: 'SupplierBalances',
+  component: () => import('@/pages/SupplierBalances.vue')
+}
   ] // Закрываем массив routes
 }) // Закрываем createRouter
 
