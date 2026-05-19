@@ -25,13 +25,23 @@ export default async function handler(req, res) {
       monblan: {
         contracts: [{ name: 'Ликард Монблан', contractId: process.env.LICARD_CONTRACT_MONBLAN || '111' }]
       }
+    },
+    natcar: {
+      faeton: {
+        token: process.env.NATCAR_TOKEN_FAETON,
+        contracts: [{ name: 'NATCAR Фаэтон' }]
+      },
+      monblan: {
+        token: process.env.NATCAR_TOKEN_MONBLAN,
+        contracts: [{ name: 'NATCAR Монблан' }]
+      }
     }
   };
 
   const { supplier, client } = req.query;
   
   if (!supplier || !client || !accounts[supplier]?.[client]) {
-    return res.status(400).json({ error: 'Укажите supplier=rncard|licard и client=faeton|monblan' });
+    return res.status(400).json({ error: 'Укажите supplier=rncard|licard|natcar и client=faeton|monblan' });
   }
 
   const acc = accounts[supplier][client];
@@ -40,7 +50,26 @@ export default async function handler(req, res) {
   });
 
   try {
-    // Ликард — без клиентского сертификата (проверяем)
+    // NATCAR
+    if (supplier === 'natcar') {
+      const results = await Promise.all(
+        acc.contracts.map(async (c) => {
+          const response = await fetch('https://lk.natcar.ru/api/v3/companies/companies/', {
+            headers: { 'Authorization': `Token ${acc.token}` }
+          });
+          const data = await response.json();
+          const company = data.results?.[0];
+          return {
+            supplier: c.name,
+            balance: company?.ballance || 0,
+            updatedAt: time
+          };
+        })
+      );
+      return res.status(200).json({ success: true, balances: results });
+    }
+
+    // Ликард
     if (supplier === 'licard') {
       const results = await Promise.all(
         acc.contracts.map(async (c) => {
@@ -78,7 +107,7 @@ export default async function handler(req, res) {
   }
 }
 
-// Запрос к Ликард (без клиентского сертификата)
+// Запрос к Ликард
 function licardRequest(service, body) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -94,9 +123,8 @@ function licardRequest(service, body) {
       let data = '';
       response.on('data', chunk => data += chunk);
       response.on('end', () => {
-        console.log('🔍 Ликард ответ:', data.substring(0, 500)); // ← лог
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Невалидный JSON: ' + data.substring(0, 100))); }
+        catch (e) { reject(new Error('Невалидный JSON от Ликард')); }
       });
     });
 
