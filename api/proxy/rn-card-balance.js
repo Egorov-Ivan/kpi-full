@@ -66,9 +66,7 @@ export default async function handler(req, res) {
           }
 
           // Получаем баланс
-          const data = await licardRequest(certBuffer, acc.pass, 'getContractBalance', {
-            contractId: parseInt(contractId)
-          });
+          const data = await licardRequest(acc.cert, acc.key || acc.cert, acc.pass, 'getContractBalance', { contractId: parseInt(contractId) });
           
           const available = data?.getContractBalancePayload?.find(b => b.balanceTypeCode === 'AVAILABLE');
           return {
@@ -104,15 +102,20 @@ export default async function handler(req, res) {
 }
 
 // Запрос к Ликард
-function licardRequest(certBuffer, certPass, service, body) {
+function licardRequest(certBase64, keyBase64, certPass, service, body) {
   return new Promise((resolve, reject) => {
+    // Конвертируем PEM в Buffer
+    const certPem = Buffer.from(certBase64, 'base64').toString('utf-8');
+    const keyPem = Buffer.from(keyBase64, 'base64').toString('utf-8');
+    
     const options = {
       hostname: '91.234.16.145',
       port: 443,
       path: '/solar-bridge-ext/ext/json-services/' + service,
       method: 'POST',
-      pfx: certBuffer,
-      passphrase: certPass,
+      cert: certPem,  // PEM как строка
+      key: keyPem,    // PEM как строка
+      passphrase: certPass || undefined,
       headers: { 'Content-Type': 'application/json' },
       rejectUnauthorized: false
     };
@@ -121,11 +124,8 @@ function licardRequest(certBuffer, certPass, service, body) {
       let data = '';
       response.on('data', chunk => data += chunk);
       response.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error('Невалидный JSON от Ликард'));
-        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('Невалидный JSON')); }
       });
     });
 
