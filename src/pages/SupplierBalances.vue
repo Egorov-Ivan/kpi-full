@@ -65,11 +65,11 @@ const loadBalances = async () => {
   loading.value = true;
   try {
   const entities = [
-    { supplier: 'rncard', client: 'faeton'  },
+    //{ supplier: 'rncard', client: 'faeton'  },
     { supplier: 'rncard', client: 'monblan' },
-    { supplier: 'licard', client: 'faeton'  },
+    //{ supplier: 'licard', client: 'faeton'  },
     { supplier: 'licard', client: 'monblan' },
-    { supplier: 'natcar', client: 'faeton'  },
+    //{ supplier: 'natcar', client: 'faeton'  },
     { supplier: 'natcar', client: 'monblan' }
 ];
 
