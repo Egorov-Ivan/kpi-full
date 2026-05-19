@@ -1,5 +1,5 @@
 // api/proxy/rn-card-balance.js
-const https = require('https');
+import https from 'https';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
