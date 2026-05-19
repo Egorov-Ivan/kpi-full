@@ -20,14 +20,10 @@ export default async function handler(req, res) {
     },
     licard: {
       faeton: {
-        cert: process.env.LICARD_FAETON_CERT_BASE64,
-        pass: process.env.LICARD_FAETON_CERT_PASS,
-        contracts: [{ name: 'Ликард Фаэтон', contractNumber: process.env.LICARD_CONTRACT_FAETON || '0' }]
+        contracts: [{ name: 'Ликард Фаэтон', contractId: process.env.LICARD_CONTRACT_FAETON || '223686501' }]
       },
       monblan: {
-        cert: process.env.LICARD_MONBLAN_CERT_BASE64,
-        pass: process.env.LICARD_MONBLAN_CERT_PASS,
-        contracts: [{ name: 'Ликард Монблан', contractNumber: process.env.LICARD_CONTRACT_MONBLAN || '223686501' }]
+        contracts: [{ name: 'Ликард Монблан', contractId: process.env.LICARD_CONTRACT_MONBLAN || '111' }]
       }
     }
   };
@@ -35,9 +31,7 @@ export default async function handler(req, res) {
   const { supplier, client } = req.query;
   
   if (!supplier || !client || !accounts[supplier]?.[client]) {
-    return res.status(400).json({ 
-      error: 'Укажите supplier=rncard|licard и client=faeton|monblan' 
-    });
+    return res.status(400).json({ error: 'Укажите supplier=rncard|licard и client=faeton|monblan' });
   }
 
   const acc = accounts[supplier][client];
@@ -46,28 +40,11 @@ export default async function handler(req, res) {
   });
 
   try {
-    // Ликард
+    // Ликард — без клиентского сертификата (проверяем)
     if (supplier === 'licard') {
-      if (!acc.cert || !acc.pass) {
-        return res.status(500).json({ error: 'Сертификаты Ликард не настроены' });
-      }
-
-      const certBuffer = Buffer.from(acc.cert, 'base64');
-
       const results = await Promise.all(
         acc.contracts.map(async (c) => {
-          // Получаем contractId по номеру
-          let contractId = c.contractNumber;
-          if (!/^\d+$/.test(contractId)) {
-            const idData = await licardRequest(certBuffer, acc.pass, 'getContractIdByNumber', {
-              contractNumber: contractId
-            });
-            contractId = idData?.contractId || contractId;
-          }
-
-          // Получаем баланс
-          const data = await licardRequest(acc.cert, acc.key || acc.cert, acc.pass, 'getContractBalance', { contractId: parseInt(contractId) });
-          
+          const data = await licardRequest('getContractBalance', { contractId: parseInt(c.contractId) });
           const available = data?.getContractBalancePayload?.find(b => b.balanceTypeCode === 'AVAILABLE');
           return {
             supplier: c.name,
@@ -101,18 +78,14 @@ export default async function handler(req, res) {
   }
 }
 
-// Запрос к Ликард
-function licardRequest(pfxBase64, certPass, service, body) {
+// Запрос к Ликард (без клиентского сертификата)
+function licardRequest(service, body) {
   return new Promise((resolve, reject) => {
-    const pfxBuffer = Buffer.from(pfxBase64, 'base64');
-    
     const options = {
       hostname: '91.234.16.145',
       port: 443,
       path: '/solar-bridge-ext/ext/json-services/' + service,
       method: 'POST',
-      pfx: pfxBuffer,
-      passphrase: certPass || undefined,
       headers: { 'Content-Type': 'application/json' },
       rejectUnauthorized: false
     };
