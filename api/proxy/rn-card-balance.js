@@ -94,8 +94,9 @@ function licardRequest(service, body) {
       let data = '';
       response.on('data', chunk => data += chunk);
       response.on('end', () => {
+        console.log('🔍 Ликард ответ:', data.substring(0, 500)); // ← лог
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Невалидный JSON')); }
+        catch (e) { reject(new Error('Невалидный JSON: ' + data.substring(0, 100))); }
       });
     });
 
