@@ -102,16 +102,16 @@ export default async function handler(req, res) {
 }
 
 // Запрос к Ликард
-function licardRequest(certBase64, certPass, service, body) {
+function licardRequest(pfxBase64, certPass, service, body) {
   return new Promise((resolve, reject) => {
-    const certBuffer = Buffer.from(certBase64, 'base64'); // Buffer, не строка!
+    const pfxBuffer = Buffer.from(pfxBase64, 'base64');
     
     const options = {
       hostname: '91.234.16.145',
       port: 443,
       path: '/solar-bridge-ext/ext/json-services/' + service,
       method: 'POST',
-      cert: certBuffer,  // Buffer напрямую
+      pfx: pfxBuffer,
       passphrase: certPass || undefined,
       headers: { 'Content-Type': 'application/json' },
       rejectUnauthorized: false
