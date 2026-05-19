@@ -64,14 +64,20 @@ const headers = [
 const loadBalances = async () => {
   loading.value = true;
   try {
-    const entities = ['faeton', 'monblan'];
-    const allResults = await Promise.all(
-      entities.map(async (entity) => {
-        const response = await fetch(`/api/proxy/rn-card-balance?entity=${entity}`);
-        const data = await response.json();
-        return data.balances || [];
-      })
-    );
+  const entities = [
+    { supplier: 'rncard', client: 'faeton' },
+    { supplier: 'rncard', client: 'monblan' },
+    { supplier: 'licard', client: 'faeton' },
+    { supplier: 'licard', client: 'monblan' }
+];
+
+const allResults = await Promise.all(
+  entities.map(async ({ supplier, client }) => {
+    const response = await fetch(`/api/proxy/rn-card-balance?supplier=${supplier}&client=${client}`);
+    const data = await response.json();
+    return data.balances || [];
+  })
+);
     balances.value = allResults.flat();
   } catch (e) {
     console.error(e);
