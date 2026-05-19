@@ -102,19 +102,16 @@ export default async function handler(req, res) {
 }
 
 // Запрос к Ликард
-function licardRequest(certBase64, keyBase64, certPass, service, body) {
+function licardRequest(certBase64, certPass, service, body) {
   return new Promise((resolve, reject) => {
-    // Конвертируем PEM в Buffer
     const certPem = Buffer.from(certBase64, 'base64').toString('utf-8');
-    const keyPem = Buffer.from(keyBase64, 'base64').toString('utf-8');
     
     const options = {
       hostname: '91.234.16.145',
       port: 443,
       path: '/solar-bridge-ext/ext/json-services/' + service,
       method: 'POST',
-      cert: certPem,  // PEM как строка
-      key: keyPem,    // PEM как строка
+      cert: certPem,
       passphrase: certPass || undefined,
       headers: { 'Content-Type': 'application/json' },
       rejectUnauthorized: false
