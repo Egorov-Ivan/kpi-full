@@ -7,25 +7,25 @@ export default async function handler(req, res) {
 
   const accounts = {
     rncard: {
-      faeton: {
-        login: process.env.RNCARD_FAETON_LOGIN,
-        password: process.env.RNCARD_FAETON_PASSWORD,
-        contracts: [{ name: 'Роснефть Фаэтон', contract: 'ISS238084' }]
-      },
+      //faeton: {
+        //login: process.env.RNCARD_FAETON_LOGIN,
+        //password: process.env.RNCARD_FAETON_PASSWORD,
+        //contracts: [{ name: 'Роснефть Фаэтон', contract: 'ISS238084' }]
+      //},
       monblan: {
         login: process.env.RNCARD_MONBLAN_LOGIN,
         password: process.env.RNCARD_MONBLAN_PASSWORD,
         contracts: [{ name: 'Роснефть Монблан', contract: 'ISS218557' }]
       }
     },
-    licard: {
-      faeton: {
-        contracts: [{ name: 'Ликард Фаэтон', contractId: process.env.LICARD_CONTRACT_FAETON || '223686501' }]
-      },
-      monblan: {
-        contracts: [{ name: 'Ликард Монблан', contractId: process.env.LICARD_CONTRACT_MONBLAN || '111' }]
-      }
-    },
+    //licard: {
+     //faeton: {
+       // contracts: [{ name: 'Ликард Фаэтон', contractId: process.env.LICARD_CONTRACT_FAETON || '223686501' }]
+      //},
+      //monblan: {
+        //contracts: [{ name: 'Ликард Монблан', contractId: process.env.LICARD_CONTRACT_MONBLAN || '111' }]
+      //}
+    //},
     natcar: {
       faeton: {
         token: process.env.NATCAR_TOKEN_FAETON,
