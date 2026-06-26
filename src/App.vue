@@ -2,147 +2,162 @@
 <template>
   <v-app>
     <!-- ДИАЛОГ АВТОРИЗАЦИИ -->
-<v-dialog v-model="showAuthDialog" max-width="360" persistent>
-  <v-card class="auth-basic-card">
-    <v-card-text class="pa-4 text-center">
-      <v-icon size="32" color="grey-darken-1" class="mb-2">ri-lock-line</v-icon>
-      <p class="text-h6 font-weight-medium mb-1">Войти</p>
-      <p class="text-caption text-grey mb-4">KPI Калькулятор</p>
-      
-      <v-text-field
-        v-model="authLogin"
-        label="Имя пользователя"
-        variant="outlined"
-        density="compact"
-        class="mb-3"
-        autofocus
-        @keyup.enter="doAuth"
-      ></v-text-field>
-      
-      <v-text-field
-        v-model="authPassword"
-        label="Пароль"
-        type="password"
-        variant="outlined"
-        density="compact"
-        class="mb-3"
-        @keyup.enter="doAuth"
-      ></v-text-field>
-      
-      <v-alert
-        v-if="authError"
-        type="error"
-        variant="tonal"
-        density="compact"
-        closable
-        class="mb-3"
-        @click:close="authError = ''"
+    <v-dialog v-model="showAuthDialog" max-width="360" persistent>
+      <v-card class="auth-basic-card">
+        <v-card-text class="pa-4 text-center">
+          <v-icon size="32" color="grey-darken-1" class="mb-2">ri-lock-line</v-icon>
+          <p class="text-h6 font-weight-medium mb-1">Войти</p>
+          <p class="text-caption text-grey mb-4">KPI Калькулятор</p>
+          
+          <v-text-field
+            v-model="authLogin"
+            label="Имя пользователя"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            autofocus
+            @keyup.enter="doAuth"
+          ></v-text-field>
+          
+          <v-text-field
+            v-model="authPassword"
+            label="Пароль"
+            type="password"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+            @keyup.enter="doAuth"
+          ></v-text-field>
+          
+          <v-alert
+            v-if="authError"
+            type="error"
+            variant="tonal"
+            density="compact"
+            closable
+            class="mb-3"
+            @click:close="authError = ''"
+          >
+            {{ authError }}
+          </v-alert>
+          
+          <div class="d-flex justify-end gap-2">
+            <v-btn color="primary" size="small" @click="doAuth">Войти</v-btn>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <div :style="{ filter: showAuthDialog ? 'blur(5px)' : 'none', transition: 'filter 0.3s' }">
+      <!-- Боковое меню: десктоп (мышь/трекпад) -->
+      <v-navigation-drawer 
+        v-if="!isMobile"
+        permanent 
+        class="sidebar"
+        :class="{
+          'semi-dark': semiDarkMenu,
+          'light-sidebar': !semiDarkMenu && selectedTheme !== 'dark',
+          'dark-sidebar': selectedTheme === 'dark'
+        }"
       >
-        {{ authError }}
-      </v-alert>
-      
-      <div class="d-flex justify-end gap-2">
-        <v-btn color="primary" size="small" @click="doAuth">
-          Войти
-        </v-btn>
-      </div>
-    </v-card-text>
-  </v-card>
-</v-dialog>
-
-<!-- ОСНОВНОЙ КОНТЕНТ С РАЗМЫТИЕМ -->
-<div :style="{ filter: showAuthDialog ? 'blur(5px)' : 'none', transition: 'filter 0.3s' }">
-    <!-- Боковое меню -->
-    <v-navigation-drawer 
-      permanent 
-      class="sidebar"
-      :class="{
-        'semi-dark': semiDarkMenu,
-        'light-sidebar': !semiDarkMenu && selectedTheme !== 'dark',
-        'dark-sidebar': selectedTheme === 'dark'
-      }"
-    >
-      <div class="nav-header">
-        <div class="d-flex align-center ga-3">
-          <img src="@/assets/logo.svg" width="40" height="42" alt="Benzigo">
-          <span class="text-h6 font-weight-bold" :class="logoTextClass">Benzigo CRM</span>
+        <div class="nav-header">
+          <div class="d-flex align-center ga-3">
+            <img src="@/assets/logo.svg" width="40" height="42" alt="Benzigo">
+            <span class="text-h6 font-weight-bold" :class="logoTextClass">Benzigo Workspace</span>
+          </div>
         </div>
-      </div>
-      
-      <v-divider :class="dividerClass"></v-divider>
-      
-      <v-list density="compact" nav class="mt-2">
-         <!--
-        <v-list-item prepend-icon="ri-home-line" title="Главная" to="/" :active="$route.path === '/'" :class="navItemClass"></v-list-item>
-        <v-list-item prepend-icon="ri-home-line" title="Главная Менеджера" to="/manager" :active="$route.path === '/manager'" :class="navItemClass"></v-list-item>
-        <v-list-item prepend-icon="ri-team-line" title="Клиенты" :class="navItemClass" @click="showDevelopmentAlert('Клиенты')"></v-list-item>
-        <v-list-item prepend-icon="ri-bank-card-2-line" title="Карты" :class="navItemClass" @click="showDevelopmentAlert('Карты')"></v-list-item>
-        <v-list-item prepend-icon="ri-swap-box-line" title="Транзакции" :class="navItemClass" @click="showDevelopmentAlert('Транзакции')"></v-list-item>
-      </v-list>
+        
+        <v-divider :class="dividerClass"></v-divider>
+        
+        <v-list density="compact" nav class="mt-2">
+          <v-list-item prepend-icon="ri-calculator-line" title="KPI Калькулятор" to="/kpi-calculator" :active="$route.path === '/kpi-calculator'" :class="navItemClass"></v-list-item>
+          <v-list-item prepend-icon="ri-bank-line" title="Прогноз и отчеты" to="/supplier-balances" :active="$route.path === '/supplier-balances'" :class="navItemClass"></v-list-item>
+        </v-list>
+      </v-navigation-drawer>
 
-      <v-divider :class="dividerClass" class="my-4"></v-divider>
-      
-      <v-list density="compact" nav>
-        <v-list-subheader :class="subheaderClass">Управление</v-list-subheader>
-        -->
-        <v-list-item prepend-icon="ri-calculator-line" title="KPI Калькулятор" to="/kpi-calculator" :active="$route.path === '/kpi-calculator'" :class="navItemClass"></v-list-item>
+      <!-- Шапка -->
+      <v-app-bar elevation="0" class="header">
+        <v-app-bar-title class="text-h6 font-weight-medium app-title">{{ pageTitle }}</v-app-bar-title>
+        
+        <v-spacer></v-spacer>
 
-        <v-list-item prepend-icon="ri-bank-line" title="Балансы Поставщиков" to="/supplier-balances" :active="$route.path === '/supplier-balances'" :class="navItemClass"></v-list-item>
-        <!--
-        <v-list-item prepend-icon="ri-user-star-line" title="Сотрудники" :class="navItemClass" @click="showDevelopmentAlert('Сотрудники')"></v-list-item>
-        <v-list-item prepend-icon="ri-settings-4-line" title="Настройки" :class="navItemClass" @click="showDevelopmentAlert('Настройки')"></v-list-item>
-        <v-list-item prepend-icon="ri-exchange-line" title="1C" :class="navItemClass" @click="showDevelopmentAlert('1C')"></v-list-item>
-        <v-list-item prepend-icon="ri-exchange-line" title="Лукойл" :class="navItemClass" @click="showDevelopmentAlert('Лукойл')"></v-list-item>
-        <v-list-item prepend-icon="ri-exchange-line" title="ЛК Клиент" to="/client-main-page" :active="$route.path === '/client-main-page'" :class="navItemClass"></v-list-item>
-        -->
-      </v-list>
-    </v-navigation-drawer>
+        <v-btn icon variant="text" size="small" class="text-medium-emphasis">
+          <v-icon size="22">ri-question-line</v-icon>
+        </v-btn>
+        <v-btn icon variant="text" size="small" class="text-medium-emphasis">
+          <v-badge dot color="error" bordered>
+            <v-icon size="22">ri-notification-2-line</v-icon>
+          </v-badge>
+        </v-btn>
+        <v-avatar :color="`rgb(${primaryColor})`" size="40" class="cursor-pointer ml-2">
+          <v-icon size="24" color="white">ri-user-line</v-icon>
+        </v-avatar>
+      </v-app-bar>
 
-    <!-- Шапка -->
-    <v-app-bar elevation="0" class="header">
-      <v-app-bar-title class="text-h6 font-weight-medium">{{ pageTitle }}</v-app-bar-title>
-      <v-spacer></v-spacer>
-      <v-btn icon variant="text" class="text-medium-emphasis">
-        <v-icon size="24">ri-question-line</v-icon>
-      </v-btn>
-      <v-btn icon variant="text" class="text-medium-emphasis">
-        <v-badge dot color="error" bordered>
-          <v-icon size="24">ri-notification-2-line</v-icon>
-        </v-badge>
-      </v-btn>
-      <v-avatar :color="`rgb(${primaryColor})`" size="40" class="cursor-pointer ml-2">
-        <v-icon size="24" color="white">ri-user-line</v-icon>
-      </v-avatar>
-    </v-app-bar>
+      <!-- Основной контент -->
+      <v-main :class="{ 'mb-16': isMobile }">
+        <router-view v-slot="{ Component }">
+          <component :is="Component" :theme="selectedTheme" :primary-color="primaryColor" />
+        </router-view>
+      </v-main>
 
-    <!-- Основной контент -->
-    <v-main>
-      <router-view></router-view>
-    </v-main>
+      <!-- Нижнее меню: мобильные (тачскрин) -->
+      <v-bottom-navigation
+        v-if="isMobile"
+        v-model="bottomNav"
+        fixed
+        grow
+        class="bottom-nav"
+        color="primary"
+      >
+        <v-btn value="calculator" to="/kpi-calculator">
+          <v-icon>ri-calculator-line</v-icon>
+          <span class="text-caption">KPI</span>
+        </v-btn>
+        <v-btn value="forecast" to="/supplier-balances">
+          <v-icon>ri-bank-line</v-icon>
+          <span class="text-caption">Прогноз</span>
+        </v-btn>
+      </v-bottom-navigation>
 
-    <!-- Виджет настройки -->
-    <AppCustomizer 
-      @update:primary-color="updatePrimaryColor"
-      @update:theme="updateTheme"
-      @update:semi-dark="updateSemiDark"
-    />
+      <AppCustomizer 
+        @update:primary-color="updatePrimaryColor"
+        @update:theme="updateTheme"
+        @update:semi-dark="updateSemiDark"
+      />
     </div>
   </v-app>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import AppCustomizer from '@/components/AppCustomizer.vue'
 
 const route = useRoute()
 
-// Состояние
+// Определение мобильного устройства по сенсорному экрану
+const isMobile = ref(false)
+const mediaQuery = window.matchMedia('(hover: none) and (pointer: coarse)')
+
+const updateDevice = (e: MediaQueryListEvent | MediaQueryList) => {
+  isMobile.value = e.matches
+}
+
+onMounted(() => {
+  updateDevice(mediaQuery)
+  mediaQuery.addEventListener('change', updateDevice)
+})
+
+onBeforeUnmount(() => {
+  mediaQuery.removeEventListener('change', updateDevice)
+})
+
+const bottomNav = ref('forecast')
 const primaryColor = ref('230,4,16')
 const selectedTheme = ref('light')
 const semiDarkMenu = ref(false)
 
-// ========== АВТОРИЗАЦИЯ ==========
 const showAuthDialog = ref(false)
 const authLogin = ref('')
 const authPassword = ref('')
@@ -153,7 +168,6 @@ const doAuth = () => {
     authError.value = 'Заполните все поля'
     return
   }
-  
   if (authLogin.value === 'bnz' && authPassword.value === 'bnz') {
     localStorage.setItem('kpi_auth', 'true')
     showAuthDialog.value = false
@@ -162,16 +176,12 @@ const doAuth = () => {
   }
 }
 
-// Заголовок страницы
 const pageTitle = computed(() => {
   switch(route.path) {
     case '/': return 'Главная'
     case '/kpi-calculator': return 'KPI Калькулятор'
-    case '/clients': return 'Клиенты'
-    case '/cards': return 'Карты'
-    case '/transactions': return 'Транзакции'
-    case '/manager': return 'Главная Менеджера'
-    default: return 'Benzigo CRM'
+    case '/supplier-balances': return 'Прогноз и отчеты'
+    default: return 'Benzigo Workspace'
   }
 })
 
@@ -182,36 +192,40 @@ const updateSemiDark = (value: boolean) => { semiDarkMenu.value = value }
 const logoTextClass = computed(() => (semiDarkMenu.value || selectedTheme.value === 'dark') ? 'text-white' : 'text-dark')
 const dividerClass = computed(() => (semiDarkMenu.value || selectedTheme.value === 'dark') ? 'border-white' : '')
 const navItemClass = computed(() => (semiDarkMenu.value || selectedTheme.value === 'dark') ? 'dark-nav-item' : 'light-nav-item')
-const subheaderClass = computed(() => (semiDarkMenu.value || selectedTheme.value === 'dark') ? 'text-white' : 'text-grey')
 
 onMounted(() => {
-  console.log('🚀 App.vue mounted');
-  console.log('kpi_auth:', localStorage.getItem('kpi_auth'));
+  console.log('🚀 App.vue mounted')
+  console.log('isMobile:', isMobile.value)
   
   const savedColor = localStorage.getItem('primary-color')
   if (savedColor) primaryColor.value = savedColor
-  
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme) selectedTheme.value = savedTheme
-  
   const savedSemiDark = localStorage.getItem('semi-dark-menu')
   if (savedSemiDark) semiDarkMenu.value = savedSemiDark === 'true'
   
   if (!localStorage.getItem('kpi_auth')) {
-    console.log('🔒 Показываю авторизацию');
-    showAuthDialog.value = true;
+    showAuthDialog.value = true
   }
 })
-
-const showDevelopmentAlert = (section: string) => {
-  alert(`Раздел "${section}" Тут не нужен =)`)
-}
 </script>
 
 <style>
+/* ========== РЕЗИНОВАЯ ТИПОГРАФИКА ========== */
+html {
+  font-size: 16px;
+}
+
+@media (max-width: 960px) {
+  html {
+    font-size: clamp(12px, calc(100vw / 375 * 10), 16px);
+  }
+}
+
+/* ========== БАЗОВЫЕ СТИЛИ ========== */
 .auth-basic-card {
-  border-radius: 8px !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+  border-radius: 0.8rem !important;
+  box-shadow: 0 0.8rem 3.2rem rgba(0,0,0,0.3) !important;
 }
 
 .sidebar {
@@ -260,8 +274,8 @@ const showDevelopmentAlert = (section: string) => {
 }
 
 .v-list-subheader {
-  padding-left: 16px !important;
-  margin-top: 8px !important;
+  padding-left: 1.6rem !important;
+  margin-top: 0.8rem !important;
   font-size: 0.75rem !important;
   font-weight: 500 !important;
   text-transform: uppercase !important;
@@ -299,5 +313,9 @@ const showDevelopmentAlert = (section: string) => {
 
 .bordered-skin.dark-theme .v-card {
   border: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+.bottom-nav {
+  border-top: 1px solid rgba(0,0,0,0.1);
 }
 </style>

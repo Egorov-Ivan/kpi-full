@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node server.js",
     "server": "json-server --watch server/db.json --port 3000",
     "setup-db": "node -e \"fetch('/api/setup-db', {method:'POST'}).then(r=>r.json()).then(console.log)\""
   },
@@ -15,6 +16,8 @@
     "@vercel/postgres": "^0.10.0",
     "axios": "^1.13.5",
     "googleapis": "^171.4.0",
+    "highcharts": "^12.6.0",
+    "highcharts-vue": "^2.0.1",
     "nodemailer": "^8.0.4",
     "pinia": "^2.1.7",
     "remixicon": "^4.9.1",

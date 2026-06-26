@@ -220,80 +220,78 @@ export const useKpiStore = defineStore('kpi', () => {
 
   // ========== ЗАГРУЗКА ОПЕРАЦИЙ (через прокси) ==========
   const loadBufferData = async (year?: number, month?: number) => {
-  loading.value = true;
-  error.value = null;
-  
-  try {
-    let dateStart: string | null = null;
-    let dateEnd: string | null = null;
+    loading.value = true;
+    error.value = null;
     
-    if (year && month) {
-      dateStart = `01-${String(month).padStart(2, '0')}-${year}`;
-      const lastDay = new Date(year, month, 0).getDate();
-      dateEnd = `${String(lastDay).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
-    }
-    
-    const body: { dateStart: string | null; dateEnd?: string | null } = { dateStart };
-    if (dateEnd) {
-      body.dateEnd = dateEnd;
-    }
-    
-    console.log('📡 Запрос к прокси /api/proxy/managers-replenishments:', body);
-    
-    const response = await fetch('/api/proxy/managers-replenishments', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'accessToken': ADR_TOKEN
-      },
-      body: JSON.stringify(body)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
-      const newOps = data.replenishments.map((item: ApiReplenishment) => ({
-        date: item.date,
-        amount: parseFloat(item.amount),
-        client: item.client,
-        clientType: item.clientType,
-        legalEntity: item.legalEntity,
-        managerId: String(item.managerId),
-        manager: managers.value.find(m => m.id === String(item.managerId))?.displayName || `Менеджер ${item.managerId}`,
-        operationId: item.id
-      }));
+    try {
+      let dateStart: string | null = null;
+      let dateEnd: string | null = null;
       
-      // Добавляем новые операции, исключая дубликаты по operationId
-      const existingIds = new Set(bufferData.value.map(op => op.operationId).filter(Boolean));
-      const uniqueNewOps = newOps.filter(op => !op.operationId || !existingIds.has(op.operationId));
-      bufferData.value = [...bufferData.value, ...uniqueNewOps];
-      
-      // 🔥 Обновляем bufferService
-      if (bufferService && typeof bufferService.updateOperations === 'function') {
-        bufferService.updateOperations(bufferData.value);
-        console.log(`✅ BufferService обновлен: ${bufferData.value.length} операций`);
+      if (year && month) {
+        dateStart = `01-${String(month).padStart(2, '0')}-${year}`;
+        const lastDay = new Date(year, month, 0).getDate();
+        dateEnd = `${String(lastDay).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
       }
       
-      console.log(`✅ Загружено операций: ${bufferData.value.length} (новых: ${uniqueNewOps.length})`);
-    } else {
-      console.warn('⚠️ Неожиданный формат ответа:', data);
+      const body: { dateStart: string | null; dateEnd?: string | null } = { dateStart };
+      if (dateEnd) {
+        body.dateEnd = dateEnd;
+      }
+      
+      console.log('📡 Запрос к прокси /api/proxy/managers-replenishments:', body);
+      
+      const response = await fetch('/api/proxy/managers-replenishments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accessToken': ADR_TOKEN
+        },
+        body: JSON.stringify(body)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.status === 'ok' && data.replenishments && Array.isArray(data.replenishments)) {
+        const newOps = data.replenishments.map((item: ApiReplenishment) => ({
+          date: item.date,
+          amount: parseFloat(item.amount),
+          client: item.client,
+          clientType: item.clientType,
+          legalEntity: item.legalEntity,
+          managerId: String(item.managerId),
+          manager: managers.value.find(m => m.id === String(item.managerId))?.displayName || `Менеджер ${item.managerId}`,
+          operationId: item.id
+        }));
+        
+        const existingIds = new Set(bufferData.value.map(op => op.operationId).filter(Boolean));
+        const uniqueNewOps = newOps.filter(op => !op.operationId || !existingIds.has(op.operationId));
+        bufferData.value = [...bufferData.value, ...uniqueNewOps];
+        
+        if (bufferService && typeof bufferService.updateOperations === 'function') {
+          bufferService.updateOperations(bufferData.value);
+          console.log(`✅ BufferService обновлен: ${bufferData.value.length} операций`);
+        }
+        
+        console.log(`✅ Загружено операций: ${bufferData.value.length} (новых: ${uniqueNewOps.length})`);
+      } else {
+        console.warn('⚠️ Неожиданный формат ответа:', data);
+      }
+      
+      return bufferData.value;
+      
+    } catch (err) {
+      console.error('❌ Ошибка загрузки операций:', err);
+      error.value = 'Не удалось загрузить данные';
+      bufferData.value = [];
+      return [];
+    } finally {
+      loading.value = false;
     }
-    
-    return bufferData.value;
-    
-  } catch (err) {
-    console.error('❌ Ошибка загрузки операций:', err);
-    error.value = 'Не удалось загрузить данные';
-    bufferData.value = [];
-    return [];
-  } finally {
-    loading.value = false;
-  }
-};
+  };
 
   // ========== ЗАГРУЗКА ИСТОРИИ БОНУСОВ ==========
   const loadBonusHistory = async () => {
@@ -323,177 +321,213 @@ export const useKpiStore = defineStore('kpi', () => {
     }
   };
 
-// ========== ЗАГРУЗКА НАСТРОЕК KPI С СЕРВЕРА ==========
-const loadKpiSettings = async () => {
-  try {
-    console.log('📡 Загрузка KPI настроек с сервера...');
-    
-    const response = await fetch('/api/kpi-settings', {
-      method: 'GET'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.success && data.settings) {
-      console.log('✅ KPI настройки загружены:', data.settings);
-      return data.settings;
-    } else {
-      console.warn('⚠️ Сервер вернул пустые настройки');
+  // ========== ЗАГРУЗКА НАСТРОЕК KPI С СЕРВЕРА ==========
+  const loadKpiSettings = async () => {
+    try {
+      console.log('📡 Загрузка KPI настроек с сервера...');
+      
+      const response = await fetch('/api/kpi-settings.php', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.settings) {
+        console.log('✅ KPI настройки загружены:', Object.keys(data.settings));
+        return data.settings;
+      } else {
+        console.warn('⚠️ Сервер вернул пустые настройки');
+        return {};
+      }
+      
+    } catch (error) {
+      console.error('❌ Ошибка загрузки KPI настроек:', error);
       return {};
     }
-    
-  } catch (error) {
-    console.error('❌ Ошибка загрузки KPI настроек:', error);
-    return {};
-  }
-};
+  };
 
-// ========== СОХРАНЕНИЕ НАСТРОЙКИ KPI НА СЕРВЕР ==========
-const saveKpiSetting = async (key: string, value: any) => {
-  try {
-    console.log(`📤 Сохранение настройки '${key}' на сервер...`);
-    
-    const response = await fetch('/api/kpi-settings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ key, value })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log(`✅ Настройка '${key}' сохранена:`, data);
-    return data;
-    
-  } catch (error) {
-    console.error(`❌ Ошибка сохранения настройки '${key}':`, error);
-    throw error;
-  }
-};
-
-// ========== ПАКЕТНОЕ СОХРАНЕНИЕ НАСТРОЕК ==========
-const saveAllKpiSettings = async (settings: Record<string, any>) => {
-  try {
-    console.log('📤 Пакетное сохранение настроек на сервер...');
-    
-    const response = await fetch('/api/kpi-settings', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ settings })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log('✅ Настройки сохранены:', data);
-    return data;
-    
-  } catch (error) {
-    console.error('❌ Ошибка пакетного сохранения настроек:', error);
-    throw error;
-  }
-};
-
-// ========== РАБОТА С KPI КЛИЕНТАМИ ==========
-const kpiReceivedClients = ref<any[]>([]);
-
-const loadKpiReceivedClients = async () => {
-  try {
-    const response = await fetch('/api/get-kpi-received');
-    const data = await response.json();
-    if (data.success) {
-      kpiReceivedClients.value = data.clients || [];
-      console.log(`✅ Загружено ${kpiReceivedClients.value.length} клиентов с KPI`);
-    }
-  } catch (error) {
-    console.error('Ошибка загрузки KPI клиентов:', error);
-  }
-};
-
-const markKpiReceived = async (client: string, managerName: string, month: string) => {
-  try {
-    const response = await fetch('/api/mark-kpi-received', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client, managerName, month })
-    });
-    const data = await response.json();
-    if (data.success) {
-      await loadKpiReceivedClients();
-      return data;
-    }
-    throw new Error(data.error || 'Unknown error');
-  } catch (error) {
-    console.error('Ошибка отметки KPI:', error);
-    throw error;
-  }
-};
-
-
-// Удаление клиента из списка получивших KPI
-const removeKpiReceived = async (client: string) => {
-  try {
-    const response = await fetch('/api/remove-kpi-received', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client })
-    });
-    const data = await response.json();
-    if (data.success) {
-      await loadKpiReceivedClients();
-      return data;
-    }
-    throw new Error(data.error || 'Unknown error');
-  } catch (error) {
-    console.error('Ошибка удаления KPI:', error);
-    throw error;
-  }
-};
-
-// ВРЕМЕННО: импорт всех клиентов как "KPI получен"
-const importAllClientsAsKpiReceived = async () => {
-  if (bufferData.value.length === 0) {
-    console.log('⚠️ Нет данных для импорта');
-    return;
-  }
-  
-  const allClients = [...new Set(bufferData.value.map(op => op.client))];
-  console.log(`📤 Импорт ${allClients.length} клиентов как "KPI получен"...`);
-  
-  for (const client of allClients) {
+  // ========== СОХРАНЕНИЕ НАСТРОЙКИ KPI НА СЕРВЕР (одиночное) ==========
+  const saveKpiSetting = async (key: string, value: any) => {
     try {
-      await fetch('/api/mark-kpi-received', {
+      console.log(`📤 Сохранение настройки '${key}' на сервер...`);
+      
+      const response = await fetch('/api/kpi-settings.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ key, value })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(`✅ Настройка '${key}' сохранена:`, data);
+      return data;
+      
+    } catch (error) {
+      console.error(`❌ Ошибка сохранения настройки '${key}':`, error);
+      throw error;
+    }
+  };
+
+  // ========== ПАКЕТНОЕ СОХРАНЕНИЕ НАСТРОЕК ==========
+  const saveAllKpiSettings = async (settings: Record<string, any>) => {
+    try {
+      console.log('📤 Пакетное сохранение настроек...');
+      
+      // Убираем undefined значения
+      const cleanSettings = JSON.parse(JSON.stringify({ settings }));
+      
+      console.log('📦 Отправляемые данные:', cleanSettings);
+      
+      const response = await fetch('/api/kpi-settings.php', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(cleanSettings)
+      });
+      
+      console.log('📥 Статус ответа:', response.status);
+      
+      const responseText = await response.text();
+      console.log('📥 Тело ответа:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ Ответ не JSON:', responseText);
+        throw new Error('Неверный формат ответа от сервера');
+      }
+      
+      if (data.success) {
+        console.log('✅ Настройки успешно сохранены');
+      } else {
+        console.error('❌ Сервер вернул ошибку:', data.error);
+      }
+      
+      return data;
+      
+    } catch (error) {
+      console.error('❌ Ошибка пакетного сохранения:', error);
+      throw error;
+    }
+  };
+
+  // ========== РАБОТА С KPI КЛИЕНТАМИ ==========
+  const kpiReceivedClients = ref<any[]>([]);
+
+  const loadKpiReceivedClients = async () => {
+    try {
+      const response = await fetch('/api/get-kpi-received');
+      const data = await response.json();
+      if (data.success) {
+        kpiReceivedClients.value = data.clients || [];
+        console.log(`✅ Загружено ${kpiReceivedClients.value.length} клиентов с KPI`);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки KPI клиентов:', error);
+    }
+  };
+
+  const markKpiReceived = async (client: string, managerName: string, month: string) => {
+    try {
+      const response = await fetch('/api/mark-kpi-received', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client, managerName: 'system', month: '1970-01' })
+        body: JSON.stringify({ client, managerName, month })
       });
-    } catch (e) {
-      // игнорируем дубликаты
+      const data = await response.json();
+      if (data.success) {
+        await loadKpiReceivedClients();
+        return data;
+      }
+      throw new Error(data.error || 'Unknown error');
+    } catch (error) {
+      console.error('Ошибка отметки KPI:', error);
+      throw error;
     }
-  }
-  
-  await loadKpiReceivedClients();
-  console.log('✅ Импорт завершён');
-};
+  };
 
+  // Удаление клиента из списка получивших KPI
+  const removeKpiReceived = async (client: string) => {
+    try {
+      const response = await fetch('/api/remove-kpi-received', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client })
+      });
+      const data = await response.json();
+      if (data.success) {
+        await loadKpiReceivedClients();
+        return data;
+      }
+      throw new Error(data.error || 'Unknown error');
+    } catch (error) {
+      console.error('Ошибка удаления KPI:', error);
+      throw error;
+    }
+  };
 
+  // Удаление клиента из kpiReceivedClients (используется в setBonusStatus)
+  const removeKpiReceivedClient = async (clientName: string) => {
+    try {
+      const response = await fetch('/api/remove-kpi-received', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client: clientName })
+      });
+      const data = await response.json();
+      if (data.success) {
+        await loadKpiReceivedClients();
+        return data;
+      }
+      throw new Error(data.error || 'Unknown error');
+    } catch (error) {
+      console.error('Ошибка удаления клиента из kpiReceivedClients:', error);
+    }
+  };
 
+  // ВРЕМЕННО: импорт всех клиентов как "KPI получен"
+  const importAllClientsAsKpiReceived = async () => {
+    if (bufferData.value.length === 0) {
+      console.log('⚠️ Нет данных для импорта');
+      return;
+    }
+    
+    const allClients = [...new Set(bufferData.value.map(op => op.client))];
+    console.log(`📤 Импорт ${allClients.length} клиентов как "KPI получен"...`);
+    
+    for (const client of allClients) {
+      try {
+        await fetch('/api/mark-kpi-received', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client, managerName: 'system', month: '1970-01' })
+        });
+      } catch (e) {
+        // игнорируем дубликаты
+      }
+    }
+    
+    await loadKpiReceivedClients();
+    console.log('✅ Импорт завершён');
+  };
 
-const isKpiReceivedForClient = (client: string): boolean => {
-  return kpiReceivedClients.value.some(c => c.client === client);
-};
+  const isKpiReceivedForClient = (client: string): boolean => {
+    return kpiReceivedClients.value.some(c => c.client === client);
+  };
 
   // ========== ХЕЛПЕРЫ ==========
   const getManagerById = (id: string) => {
@@ -544,21 +578,6 @@ const isKpiReceivedForClient = (client: string): boolean => {
     );
   };
 
-const removeKpiReceivedClient = async (clientName: string) => {
-  try {
-    await fetch('/api/kpi-received/remove', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientName })
-    });
-    await loadKpiReceivedClients(); // перезагружаем список
-  } catch (error) {
-    console.error('Ошибка удаления клиента из kpiReceivedClients:', error);
-  }
-};
-
-
-
   // ========== RETURN ==========
   return {
     managers,
@@ -594,7 +613,5 @@ const removeKpiReceivedClient = async (clientName: string) => {
     loadKpiReceivedClients,
     markKpiReceived,
     removeKpiReceivedClient 
-    
-    
   };
 });
