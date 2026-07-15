@@ -909,10 +909,8 @@ const uploadManagerKpiVatFile = async () => {
   kpiVatSuccess.value = '';
   
   try {
-    const csvFile = await convertExcelToCsv(managerKpiVatFile.value);
-    
     const formData = new FormData();
-    formData.append('file', csvFile);
+    formData.append('file', managerKpiVatFile.value);  // ← XLSX напрямую
     formData.append('year', selectedYear.value);
     formData.append('month', selectedMonth.value);
     formData.append('manager', selectedManagerDetails.value.name);
@@ -1061,18 +1059,14 @@ const uploadKpiVatFile = async () => {
   kpiVatError.value = '';
   kpiVatSuccess.value = '';
   kpiVatProgress.value = 0;
-  kpiVatProgressMessage.value = 'Конвертация файла...';
+  kpiVatProgressMessage.value = 'Отправка файла...';
   
   try {
-    kpiVatProgress.value = 15;
-    kpiVatProgressMessage.value = 'Чтение файла...';
-    const csvFile = await convertExcelToCsv(kpiVatFile.value);
-    
     const steps = [
-      { progress: 30, message: 'Отправка на сервер...' },
-      { progress: 50, message: 'Парсинг данных...' },
-      { progress: 70, message: 'Расчёт KPI...' },
-      { progress: 90, message: 'Сохранение в БД...' },
+      { progress: 20, message: 'Отправка файла на сервер...' },
+      { progress: 40, message: 'Парсинг XLSX...' },
+      { progress: 60, message: 'Расчёт KPI...' },
+      { progress: 80, message: 'Сохранение в БД...' },
       { progress: 100, message: 'Готово!' }
     ];
     
@@ -1086,7 +1080,7 @@ const uploadKpiVatFile = async () => {
     }, 800);
     
     const formData = new FormData();
-    formData.append('file', csvFile);
+    formData.append('file', kpiVatFile.value);  // ← XLSX напрямую
     formData.append('year', selectedYear.value);
     formData.append('month', selectedMonth.value);
     
