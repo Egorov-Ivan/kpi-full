@@ -29,7 +29,7 @@ $ftpConfig = [
     ]
 ];
 
-// ==================== КЭШ ====================
+// ==================== КЭШ С ИСТОРИЕЙ ====================
 $cacheDir = __DIR__ . '/../../cache';
 if (!is_dir($cacheDir)) mkdir($cacheDir, 0755, true);
 
@@ -39,13 +39,38 @@ function getCache($client) {
     if (file_exists($file)) {
         return json_decode(file_get_contents($file), true);
     }
-    return null;
+    return ['current' => null, 'history' => []];
 }
 
 function setCache($client, $data) {
     global $cacheDir;
     $file = "$cacheDir/tatneft_$client.json";
-    file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    
+    $cache = getCache($client);
+    
+    // Новый снапшот
+    $snapshot = [
+        'balance'     => $data['balance'],
+        'forecast'    => $data['forecast'],
+        'received_at' => date('c')
+    ];
+    
+    // Обновляем текущий
+    $cache['current'] = $snapshot;
+    
+    // Добавляем в историю
+    $cache['history'][] = $snapshot;
+    
+    // Оставляем только записи за последние 24 часа
+    $cutoff = time() - 86400;
+    $cache['history'] = array_filter($cache['history'], function($entry) use ($cutoff) {
+        return strtotime($entry['received_at']) >= $cutoff;
+    });
+    
+    // Переиндексируем массив
+    $cache['history'] = array_values($cache['history']);
+    
+    file_put_contents($file, json_encode($cache, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 }
 
 // ==================== РАБОТА С FTP ====================
@@ -100,7 +125,6 @@ function waitForResponse($conn, $config, $task, $timeout = 120) {
         foreach ($files as $file) {
             $basename = basename($file);
             if ($basename === $pattern) {
-                // Скачиваем ответ
                 $tmpFile = tempnam(sys_get_temp_dir(), 'tatneft_resp_');
                 if (!@ftp_get($conn, $tmpFile, $config['outbound'] . '/' . $basename, FTP_ASCII)) {
                     unlink($tmpFile);
@@ -110,7 +134,6 @@ function waitForResponse($conn, $config, $task, $timeout = 120) {
                 $xmlContent = file_get_contents($tmpFile);
                 unlink($tmpFile);
 
-                // Парсим XML
                 libxml_use_internal_errors(true);
                 $xml = simplexml_load_string($xmlContent);
                 if ($xml === false) {
@@ -121,7 +144,6 @@ function waitForResponse($conn, $config, $task, $timeout = 120) {
                 $balance = (float) $xml->balance;
                 $forecast = (string) $xml->end_of_funds_forecast;
 
-                // Архивируем
                 @ftp_rename($conn, $config['outbound'] . '/' . $basename, $config['archive'] . '/' . $basename);
 
                 return [
@@ -142,22 +164,19 @@ function updateBalance($client, $config) {
     $conn = ftpConnect($config);
     if (is_array($conn) && isset($conn['error'])) return $conn;
 
-    // Отправляем запрос
     $request = placeRequest($conn, $config);
     if (isset($request['error'])) {
         ftp_close($conn);
         return $request;
     }
 
-    // Ждём ответ (до 120 секунд)
     $result = waitForResponse($conn, $config, $request['task'], 120);
     ftp_close($conn);
 
     if ($result['status'] === 'done') {
         setCache($client, [
-            'balance'     => $result['balance'],
-            'forecast'    => $result['forecast'],
-            'received_at' => date('c')
+            'balance'  => $result['balance'],
+            'forecast' => $result['forecast']
         ]);
     }
 
@@ -168,7 +187,6 @@ function updateBalance($client, $config) {
 $action = $_GET['action'] ?? 'cached';
 
 if ($action === 'cron') {
-    // Фоновое обновление (вызывается cron или кнопкой)
     $results = [];
     foreach (['montblanc', 'faeton'] as $client) {
         $results[$client] = updateBalance($client, $ftpConfig[$client]);
@@ -176,11 +194,10 @@ if ($action === 'cron') {
     echo json_encode($results, JSON_UNESCAPED_UNICODE);
 
 } elseif ($action === 'cached') {
-    // Отдача кэша
     $response = [];
     foreach (['montblanc', 'faeton'] as $client) {
         $cache = getCache($client);
-        $response[$client] = $cache ?: ['balance' => null, 'forecast' => null, 'received_at' => null];
+        $response[$client] = $cache ?: ['current' => null, 'history' => []];
     }
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
 

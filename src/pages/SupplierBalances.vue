@@ -42,6 +42,10 @@
         <v-btn color="primary" variant="tonal" density="compact" prepend-icon="ri-refresh-line" @click="refreshAll" :loading="loading">
           Обновить
         </v-btn>
+        <v-chip v-if="tatneftRefreshing" color="warning" size="small" variant="tonal" class="ml-2">
+          <v-icon size="16" class="mr-1">ri-timer-line</v-icon>
+          Запрос Татнефти...
+        </v-chip>
       </div>
     </div>
 
@@ -70,8 +74,15 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="item in forecastData" :key="item.name">
-                    <td class="font-weight-bold">{{ item.name }}</td>
+                  <tr v-for="item in forecastData" :key="item.name" :class="{ 'stale-row': item.isStale }">
+                    <td class="font-weight-bold">
+                      {{ item.name }}
+                      <template v-if="item.isTatneft">
+                        <br>
+                        <small v-if="tatneftRefreshing" class="text-warning">⏳ запрос...</small>
+                        <small v-else-if="item.tnReceivedAt" class="text-grey">{{ formatTime(item.tnReceivedAt) }}</small>
+                      </template>
+                    </td>
                     <td class="text-right font-weight-bold">
                       <span :class="item.balance >= 0 ? 'text-success' : 'text-error'">
                         {{ formatMoney(item.balance) }}
@@ -170,10 +181,6 @@ let expensesInstance: any = null;
 
 const forecastData = ref<any[]>([]);
 
-// ==================== ТАТНЕФТЬ FTP ====================
-const tatneftLoading = ref(false);
-const tatneftStatus = ref('');
-
 const clients = ['Монблан', 'Фаэтон'];
 const selectedClients = ref(['Монблан', 'Фаэтон']);
 const allClientsSelected = computed(() => selectedClients.value.length === clients.length);
@@ -222,11 +229,17 @@ const formatMoney = (amount: number): string => {
 
 // ==================== ТАТНЕФТЬ FTP ====================
 const tatneftRefreshing = ref(false);
+const lastTatneftRefresh = ref<number>(0);
 
-const refreshTatneft = async (): Promise<void> => {
+const refreshTatneft = async (force: boolean = false): Promise<void> => {
+  if (!force && Date.now() - lastTatneftRefresh.value < 5 * 60 * 1000) {
+    return;
+  }
+
   tatneftRefreshing.value = true;
   try {
     await fetch('/api/proxy/tatneft-balance.php?action=cron');
+    lastTatneftRefresh.value = Date.now();
   } catch (e) {
     console.error('Ошибка обновления Татнефти:', e);
   } finally {
@@ -322,19 +335,15 @@ const loadExpenses = async () => {
 // ==================== ТАБЛИЦА ПРОГНОЗА ====================
 const loadForecast = async () => {
   try {
-    const respBalances = await fetch('/api/proxy/balances.php');
+    const [respBalances, tnResp] = await Promise.all([
+      fetch('/api/proxy/balances.php'),
+      fetch('/api/proxy/tatneft-balance.php?action=cached')
+    ]);
+
     const balancesData = await respBalances.json();
-
-    // Загружаем кэшированные данные Татнефти
-    let tnCache: Record<string, any> = {};
-    try {
-      const tnResp = await fetch('/api/proxy/tatneft-balance.php');
-      tnCache = await tnResp.json();
-    } catch (e) {
-      console.error('Ошибка загрузки кэша Татнефти:', e);
-    }
-
+    const tnCache = await tnResp.json();
     const daily7 = await fetchDailyExpenses(7);
+
     const result: any[] = [];
 
     for (const supplier of suppliers) {
@@ -343,11 +352,13 @@ const loadForecast = async () => {
         const displayName = supplier.label + suffix;
 
         let balance: number;
+        let tnReceivedAt: string | null = null;
 
         // Для Татнефти берём баланс из кэша FTP
         if (supplier.key === 'ТН') {
           const tnKey = client === 'Фаэтон' ? 'faeton' : 'montblanc';
-          balance = tnCache[tnKey]?.balance ?? 0;
+          balance = tnCache[tnKey]?.current?.balance ?? 0;
+          tnReceivedAt = tnCache[tnKey]?.current?.received_at ?? null;
         } else {
           const balanceKey = client === 'Фаэтон' ? supplier.key + ' ( Фаэтон )' : supplier.key;
           const balanceItem = balancesData.find((b: any) => b.agregator === balanceKey);
@@ -366,12 +377,19 @@ const loadForecast = async () => {
 
         const daysLeft = avg7 > 0 ? Math.floor(balance / avg7) : (balance > 0 ? 99 : 0);
 
+        const isStale = tnReceivedAt
+          ? (Date.now() - new Date(tnReceivedAt).getTime()) > 30 * 60 * 1000
+          : false;
+
         result.push({
           name: displayName,
           balance,
           expense3: avg3,
           expense7: avg7,
-          daysLeft
+          daysLeft,
+          tnReceivedAt,
+          isStale,
+          isTatneft: supplier.key === 'ТН'
         });
       }
     }
@@ -384,8 +402,10 @@ const loadForecast = async () => {
 // ==================== ОБЩЕЕ ====================
 const refreshAll = async () => {
   loading.value = true;
-  await loadExpenses();
-  await refreshTatneft();
+  await Promise.all([
+    loadExpenses(),
+    refreshTatneft(true)
+  ]);
   await loadForecast();
   loading.value = false;
 };
@@ -398,13 +418,33 @@ watch(() => props.theme, () => {
   if (expensesInstance) initExpensesChart();
 });
 
+let tatneftInterval: ReturnType<typeof setInterval> | null = null;
+
+const handleVisibilityChange = () => {
+  if (!document.hidden && showForecast.value) {
+    refreshTatneft().then(() => loadForecast());
+  }
+};
+
 onMounted(() => {
   if (showExpenses.value) initExpensesChart();
-  if (showForecast.value) loadForecast();
+  if (showForecast.value) {
+    loadForecast();
+    refreshTatneft().then(() => loadForecast());
+    // Автообновление каждые 5 минут
+    tatneftInterval = setInterval(async () => {
+      await refreshTatneft(true);
+      await loadForecast();
+    }, 5 * 60 * 1000);
+    // Обновление при возвращении на вкладку
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
 });
 
 onBeforeUnmount(() => {
   if (expensesInstance) expensesInstance.destroy();
+  if (tatneftInterval) clearInterval(tatneftInterval);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 
@@ -434,5 +474,8 @@ onBeforeUnmount(() => {
 .expenses-chart { 
   width: 100%; 
   height: clamp(30rem, 50vh, 50rem); 
+}
+.stale-row {
+  background-color: rgba(255, 193, 7, 0.08);
 }
 </style>
