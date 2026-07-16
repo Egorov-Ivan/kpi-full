@@ -170,6 +170,10 @@ let expensesInstance: any = null;
 
 const forecastData = ref<any[]>([]);
 
+// ==================== ТАТНЕФТЬ FTP ====================
+const tatneftLoading = ref(false);
+const tatneftStatus = ref('');
+
 const clients = ['Монблан', 'Фаэтон'];
 const selectedClients = ref(['Монблан', 'Фаэтон']);
 const allClientsSelected = computed(() => selectedClients.value.length === clients.length);
@@ -214,6 +218,25 @@ const formatMoney = (amount: number): string => {
     currency: 'RUB',
     minimumFractionDigits: 2
   }).format(amount);
+};
+
+// ==================== ТАТНЕФТЬ FTP ====================
+const tatneftRefreshing = ref(false);
+
+const refreshTatneft = async (): Promise<void> => {
+  tatneftRefreshing.value = true;
+  try {
+    await fetch('/api/proxy/tatneft-balance.php?action=cron');
+  } catch (e) {
+    console.error('Ошибка обновления Татнефти:', e);
+  } finally {
+    tatneftRefreshing.value = false;
+  }
+};
+
+const formatTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  return '↻ ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 };
 
 // ==================== ГРАФИК РАСХОДОВ ====================
@@ -302,18 +325,34 @@ const loadForecast = async () => {
     const respBalances = await fetch('/api/proxy/balances.php');
     const balancesData = await respBalances.json();
 
-    const daily7 = await fetchDailyExpenses(7);
+    // Загружаем кэшированные данные Татнефти
+    let tnCache: Record<string, any> = {};
+    try {
+      const tnResp = await fetch('/api/proxy/tatneft-balance.php');
+      tnCache = await tnResp.json();
+    } catch (e) {
+      console.error('Ошибка загрузки кэша Татнефти:', e);
+    }
 
+    const daily7 = await fetchDailyExpenses(7);
     const result: any[] = [];
 
     for (const supplier of suppliers) {
       for (const client of selectedClients.value) {
         const suffix = client === 'Фаэтон' ? ' (Фаэтон)' : '';
         const displayName = supplier.label + suffix;
-        const balanceKey = client === 'Фаэтон' ? supplier.key + ' ( Фаэтон )' : supplier.key;
 
-        const balanceItem = balancesData.find((b: any) => b.agregator === balanceKey);
-        const balance = balanceItem ? parseFloat(balanceItem.balance) || 0 : 0;
+        let balance: number;
+
+        // Для Татнефти берём баланс из кэша FTP
+        if (supplier.key === 'ТН') {
+          const tnKey = client === 'Фаэтон' ? 'faeton' : 'montblanc';
+          balance = tnCache[tnKey]?.balance ?? 0;
+        } else {
+          const balanceKey = client === 'Фаэтон' ? supplier.key + ' ( Фаэтон )' : supplier.key;
+          const balanceItem = balancesData.find((b: any) => b.agregator === balanceKey);
+          balance = balanceItem ? parseFloat(balanceItem.balance) || 0 : 0;
+        }
 
         const expData = daily7.find(e => e.name === displayName);
         const dailyTotals = expData ? expData.dailyTotals : [];
@@ -346,6 +385,7 @@ const loadForecast = async () => {
 const refreshAll = async () => {
   loading.value = true;
   await loadExpenses();
+  await refreshTatneft();
   await loadForecast();
   loading.value = false;
 };
