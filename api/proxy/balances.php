@@ -30,6 +30,12 @@ if ($httpCode !== 200) {
 }
 
 $data = json_decode($response, true);
+$balances = $data['balances'] ?? $data;
+
+$result = [
+    'updated_at' => date('c'),
+    'balances'   => $balances
+];
 
 http_response_code(200);
-echo json_encode($data, JSON_UNESCAPED_UNICODE);
+echo json_encode($result, JSON_UNESCAPED_UNICODE);
