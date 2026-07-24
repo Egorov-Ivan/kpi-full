@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $selectedYear = $settings['selectedYear'] ?? date('Y');
     $selectedMonth = $settings['selectedMonth'] ?? date('m');
     
+    // approvedManagers
     $approvedManagers = [];
     $result = $mysqli->query("SELECT manager_id, year, month, approved FROM kpi_approvals");
     while ($row = $result->fetch_assoc()) {
@@ -34,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $settings['approvedManagers'] = $approvedManagers;
     }
     
+    // customBonusStatus
     $customBonusStatus = [];
     $result = $mysqli->query("SELECT client_name, manager_name, year, month, status, bonus_month FROM kpi_client_statuses");
     while ($row = $result->fetch_assoc()) {
@@ -49,7 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $settings['customBonusStatus'] = $customBonusStatus;
     }
     
-    $result = $mysqli->query("SELECT * FROM kpi_manager_settings WHERE year = '$selectedYear' AND month = '$selectedMonth'");
+    // Загружаем ВСЕ записи из kpi_manager_settings
+    $result = $mysqli->query("SELECT * FROM kpi_manager_settings ORDER BY year, month");
+    
     $selectedRate = [];
     $selectedKpiRate = [];
     $manualKpiVat = [];
@@ -59,10 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $mid = $row['manager_id'];
         $monthKey = "{$row['year']}-{$row['month']}";
         
-        $selectedRate[$mid] = (float)$row['rate_maintenance'];
-        $selectedKpiRate[$mid] = (float)$row['rate_kpi'];
-        $managerKpiValues[$mid] = (float)$row['kpi_no_vat'];
-        $manualKpiVat[$mid] = (float)$row['kpi_vat'];
+        if (!isset($selectedRate[$monthKey])) $selectedRate[$monthKey] = [];
+        $selectedRate[$monthKey][$mid] = (float)$row['rate_maintenance'];
+        
+        if (!isset($selectedKpiRate[$monthKey])) $selectedKpiRate[$monthKey] = [];
+        $selectedKpiRate[$monthKey][$mid] = (float)$row['rate_kpi'];
+        
+        if (!isset($managerKpiValues[$monthKey])) $managerKpiValues[$monthKey] = [];
+        $managerKpiValues[$monthKey][$mid] = (float)$row['kpi_no_vat'];
         
         if (!isset($manualKpiVat[$monthKey])) $manualKpiVat[$monthKey] = [];
         $manualKpiVat[$monthKey][$mid] = (float)$row['kpi_vat'];
@@ -84,19 +92,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 // PUT — пакетное сохранение
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $data = json_decode(file_get_contents('php://input'), true);
-    if (!$data || !isset($data['settings']) || !is_array($data['settings'])) {
+    
+    $settings = [];
+    if (isset($data['settings']) && is_array($data['settings'])) {
+        $settings = $data['settings'];
+    } else {
+        $settings = $data;
+    }
+    
+    if (empty($settings)) {
         http_response_code(400);
         echo json_encode(['error' => 'settings object is required']);
         exit;
     }
     
     $success = true;
-    $settings = $data['settings'];
     $currentYear = $settings['selectedYear'] ?? date('Y');
     $currentMonth = $settings['selectedMonth'] ?? date('m');
     
     foreach ($settings as $key => $value) {
-        // 1. approvedManagers → kpi_approvals
+        // 1. approvedManagers → kpi_approvals (всегда разрешено)
         if ($key === 'approvedManagers') {
             foreach ($value as $monthKey => $managers) {
                 if (is_array($managers)) {
@@ -137,44 +152,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             continue;
         }
         
-        // 3. manualKpiVat → kpi_manager_settings
-        if ($key === 'manualKpiVat') {
-            foreach ($value as $managerId => $val) {
-                // Если вложенный объект за текущий месяц — берём значения оттуда
-                if (is_array($val) && $managerId === "$currentYear-$currentMonth") {
-                    foreach ($val as $mid => $v) {
-                        if (!is_array($v) && is_numeric($v)) {
-                            if (!saveManagerSetting($mysqli, $mid, $currentYear, $currentMonth, 'kpi_vat', (float)$v)) {
-                                $success = false;
-                            }
-                        }
-                    }
-                    continue;
-                }
-                
-                // Обычное числовое значение
-                if (!is_array($val) && is_numeric($val)) {
-                    if (!saveManagerSetting($mysqli, $managerId, $currentYear, $currentMonth, 'kpi_vat', (float)$val)) {
-                        $success = false;
-                    }
-                }
-            }
+        // 3. selectedYear, selectedMonth → kpi_settings
+        if (in_array($key, ['selectedYear', 'selectedMonth'])) {
+            $stmt = $mysqli->prepare("INSERT INTO kpi_settings (`key`, `value`) VALUES (?, ?) 
+                                      ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)");
+            $stmt->bind_param("ss", $key, $value);
+            if (!$stmt->execute()) $success = false;
             continue;
         }
         
-        // 4. selectedRate, selectedKpiRate, managerKpiValues → kpi_manager_settings
-        if (in_array($key, ['selectedRate', 'selectedKpiRate', 'managerKpiValues'])) {
+        // 4. Все поля kpi_manager_settings (с проверкой утверждения)
+        if (in_array($key, ['selectedRate', 'selectedKpiRate', 'managerKpiValues', 'manualKpiVat'])) {
             $fieldMap = [
                 'selectedRate' => 'rate_maintenance',
                 'selectedKpiRate' => 'rate_kpi',
-                'managerKpiValues' => 'kpi_no_vat'
+                'managerKpiValues' => 'kpi_no_vat',
+                'manualKpiVat' => 'kpi_vat'
             ];
             $field = $fieldMap[$key];
             
-            foreach ($value as $managerId => $val) {
-                if (is_array($val)) continue;
-                if (!saveManagerSetting($mysqli, $managerId, $currentYear, $currentMonth, $field, (float)$val)) {
-                    $success = false;
+            foreach ($value as $monthKey => $managers) {
+                if (!is_array($managers)) continue;
+                [$year, $month] = explode('-', $monthKey);
+                
+                foreach ($managers as $managerId => $val) {
+                    if (!is_numeric($val)) continue;
+                    
+                    if (!saveManagerSetting($mysqli, $managerId, $year, $month, $field, (float)$val)) {
+                        $success = false;
+                    }
                 }
             }
             continue;
@@ -199,22 +205,36 @@ http_response_code(405);
 echo json_encode(['error' => 'Method not allowed']);
 
 function saveManagerSetting($mysqli, $managerId, $year, $month, $field, $value) {
-    $check = $mysqli->query("SELECT * FROM kpi_manager_settings WHERE manager_id = '$managerId' AND year = '$year' AND month = '$month'");
-    $exists = $check->fetch_assoc();
+    $allowedFields = ['rate_maintenance', 'rate_kpi', 'kpi_vat', 'kpi_no_vat'];
+    if (!in_array($field, $allowedFields)) {
+        return false;
+    }
     
-    $rate_m = $exists['rate_maintenance'] ?? 0.0015;
-    $rate_k = $exists['rate_kpi'] ?? 0.015;
-    $vat = $exists['kpi_vat'] ?? 0;
-    $no_vat = $exists['kpi_no_vat'] ?? 0;
+    // ✅ Проверяем, утверждён ли ЭТОТ КОНКРЕТНЫЙ менеджер
+    $mId = $mysqli->real_escape_string($managerId);
+    $y = $mysqli->real_escape_string($year);
+    $m = $mysqli->real_escape_string($month);
     
-    if ($field === 'kpi_vat') $vat = $value;
-    if ($field === 'kpi_no_vat') $no_vat = $value;
-    if ($field === 'rate_maintenance') $rate_m = $value;
-    if ($field === 'rate_kpi') $rate_k = $value;
+    $checkApproved = $mysqli->query("SELECT COUNT(*) as cnt FROM kpi_approvals 
+                                     WHERE manager_id = '$mId' 
+                                     AND year = '$y' 
+                                     AND month = '$m' 
+                                     AND approved = 1");
+    if ($checkApproved && $checkApproved->fetch_assoc()['cnt'] > 0) {
+        return false; // Этот менеджер утверждён — не сохраняем
+    }
     
-    $stmt = $mysqli->prepare("INSERT INTO kpi_manager_settings (manager_id, year, month, rate_maintenance, rate_kpi, kpi_vat, kpi_no_vat) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?) 
-                              ON DUPLICATE KEY UPDATE {$field} = VALUES({$field})");
-    $stmt->bind_param("sssdddd", $managerId, $year, $month, $rate_m, $rate_k, $vat, $no_vat);
-    return $stmt->execute();
+    // Сохраняем
+    $v = (float)$value;
+    
+    $rate_m = ($field === 'rate_maintenance') ? $v : 0.0015;
+    $rate_k = ($field === 'rate_kpi') ? $v : 0.015;
+    $kpi_v = ($field === 'kpi_vat') ? $v : 0;
+    $kpi_nv = ($field === 'kpi_no_vat') ? $v : 0;
+    
+    $sql = "INSERT INTO kpi_manager_settings (manager_id, year, month, rate_maintenance, rate_kpi, kpi_vat, kpi_no_vat) 
+            VALUES ('$mId', '$y', '$m', $rate_m, $rate_k, $kpi_v, $kpi_nv) 
+            ON DUPLICATE KEY UPDATE $field = $v";
+    
+    return $mysqli->query($sql);
 }

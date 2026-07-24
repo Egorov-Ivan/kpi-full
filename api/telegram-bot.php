@@ -24,27 +24,6 @@ if (!$chatId || !str_starts_with($text, '/start')) {
 $botToken = getenv('TELEGRAM_BOT_TOKEN');
 $benzigToken = '166505488e486efa91e411cb05f7886a';
 
-// Роснефть
-$rnConfig = [
-    'faeton' => [
-        'login'    => getenv('RNCARD_FAETON_LOGIN'),
-        'password' => getenv('RNCARD_FAETON_PASSWORD'),
-        'contract' => 'ISS238084'
-    ],
-    'monblan' => [
-        'login'    => getenv('RNCARD_MONBLAN_LOGIN'),
-        'password' => getenv('RNCARD_MONBLAN_PASSWORD'),
-        'contract' => 'ISS218557'
-    ]
-];
-
-// Соответствие ключей поставщиков и названий
-$suppliersMap = [
-    'Лукойл'      => 'Ликард',
-    'Мультикарта' => 'ППР',
-    '1'           => 'Natcar'
-];
-
 // ==================== ФУНКЦИИ ====================
 function sendMessage($chatId, $text) {
     global $botToken;
@@ -66,24 +45,8 @@ function sendMessage($chatId, $text) {
 }
 
 function formatMoney($amount) {
-    if ($amount === null) return '—';
+    if ($amount === null || $amount === 0) return '—';
     return number_format($amount, 2, ',', ' ') . ' ₽';
-}
-
-function getRnBalance($login, $password, $contract) {
-    $encodedPass = base64_encode($password);
-    $url = "https://lkapi.rn-card.ru/api/emv/v1/GetContractBalance?u={$login}&contract={$contract}&type=json";
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "RnCard-Identity-Account-Pass: {$encodedPass}"
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    $data = json_decode($response, true);
-    return $data['Available'] ?? 0;
 }
 
 function getBenzigoBalances() {
@@ -103,17 +66,7 @@ function getBenzigoBalances() {
     curl_close($ch);
     
     if ($httpCode !== 200) return [];
-    
     return json_decode($response, true) ?: [];
-}
-
-function getTatneftBalance($client) {
-    $cacheFile = __DIR__ . '/../../cache/tatneft_' . $client . '.json';
-    if (file_exists($cacheFile)) {
-        $cache = json_decode(file_get_contents($cacheFile), true);
-        return $cache['current']['balance'] ?? null;
-    }
-    return null;
 }
 
 function findBalance($balances, $key) {
@@ -122,48 +75,53 @@ function findBalance($balances, $key) {
             return (float) ($item['balance'] ?? 0);
         }
     }
+    return 0;
+}
+
+function getTatneftBalance($client) {
+    $cacheFile = __DIR__ . '/../cache/tatneft_' . $client . '.json';
+    if (file_exists($cacheFile)) {
+        $cache = json_decode(file_get_contents($cacheFile), true);
+        return $cache['current']['balance'] ?? null;
+    }
     return null;
 }
 
 // ==================== СБОР ДАННЫХ ====================
 $time = date('H:i');
 
-// Роснефть
-try {
-    $rnFaeton = getRnBalance($rnConfig['faeton']['login'], $rnConfig['faeton']['password'], $rnConfig['faeton']['contract']);
-    $rnMonblan = getRnBalance($rnConfig['monblan']['login'], $rnConfig['monblan']['password'], $rnConfig['monblan']['contract']);
-    $rnMsg = "*Роснефть*\n" .
-             "Фаэтон: " . formatMoney($rnFaeton) . "\n" .
-             "Монблан: " . formatMoney($rnMonblan);
-} catch (Exception $e) {
-    $rnMsg = "*Роснефть*\nФаэтон: —\nМонблан: —";
-}
+// Все поставщики из Benzigo API
+$balances = getBenzigoBalances();
 
-// Лукойл, Natcar, ППР — из Benzigo API
-$benzigoBalances = getBenzigoBalances();
+// Роснефть
+$rnFaeton = findBalance($balances, 'РН ( Фаэтон )');
+$rnMonblan = findBalance($balances, 'РН');
+$rnMsg = "*Роснефть*\n" .
+         "Фаэтон: " . formatMoney($rnFaeton) . "\n" .
+         "Монблан: " . formatMoney($rnMonblan);
 
 // Лукойл
-$lukoilFaeton = findBalance($benzigoBalances, 'Лукойл ( Фаэтон )');
-$lukoilMonblan = findBalance($benzigoBalances, 'Лукойл');
+$lukoilFaeton = findBalance($balances, 'Лукойл ( Фаэтон )');
+$lukoilMonblan = findBalance($balances, 'Лукойл');
 $lukoilMsg = "*Лукойл*\n" .
              "Фаэтон: " . formatMoney($lukoilFaeton) . "\n" .
              "Монблан: " . formatMoney($lukoilMonblan);
 
 // Natcar
-$natcarFaeton = findBalance($benzigoBalances, '1 ( Фаэтон )');
-$natcarMonblan = findBalance($benzigoBalances, '1');
+$natcarFaeton = findBalance($balances, '1 ( Фаэтон )');
+$natcarMonblan = findBalance($balances, '1');
 $natcarMsg = "*Natcar*\n" .
              "Фаэтон: " . formatMoney($natcarFaeton) . "\n" .
              "Монблан: " . formatMoney($natcarMonblan);
 
 // ППР (Мультикарта)
-$pprFaeton = findBalance($benzigoBalances, 'Мультикарта ( Фаэтон )');
-$pprMonblan = findBalance($benzigoBalances, 'Мультикарта');
+$pprFaeton = findBalance($balances, 'Мультикарта ( Фаэтон )');
+$pprMonblan = findBalance($balances, 'Мультикарта');
 $pprMsg = "*ППР*\n" .
           "Фаэтон: " . formatMoney($pprFaeton) . "\n" .
           "Монблан: " . formatMoney($pprMonblan);
 
-// Татнефть (из кэша FTP)
+// Татнефть (из кэша)
 $tnFaeton = getTatneftBalance('faeton');
 $tnMonblan = getTatneftBalance('montblanc');
 $tnMsg = "*Татнефть*\n" .

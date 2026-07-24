@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-$mysqli = new mysqli("localhost", "u2192811_workbenzigo", "Правильный", "u2192811_workbenzigo");
+$mysqli = new mysqli("localhost", "u2192811_workbenzigo", "aO7xM3vR5shY8lL6", "u2192811_workbenzigo");
 
 $sql = "ALTER TABLE kpi_received_clients ADD UNIQUE KEY unique_client (client)";
 if ($mysqli->query($sql)) {

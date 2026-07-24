@@ -178,7 +178,12 @@ const loadForecast = async () => {
   } catch (e) { console.error(e); }
 };
 
-const refreshAll = async () => { loading.value = true; await loadExpenses(); await fetch('/api/proxy/tatneft-balance.php?action=cron'); await loadForecast(); loading.value = false; };
+const refreshAll = async () => {
+  loading.value = true;
+  await loadExpenses();
+  await loadForecast();
+  loading.value = false;
+};
 
 let tatneftInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -189,13 +194,15 @@ onMounted(() => {
   if (showExpenses.value) initExpensesChart();
   if (showForecast.value) {
     loadForecast();
-    tatneftInterval = setInterval(() => { refreshAll(); }, 25 * 60 * 1000);
+    // Автообновление каждые 5 минут (только чтение кэша, без FTP)
+    setInterval(() => {
+      loadForecast();
+    }, 5 * 60 * 1000);
   }
 });
 
 onBeforeUnmount(() => {
   if (expensesInstance) expensesInstance.destroy();
-  if (tatneftInterval) clearInterval(tatneftInterval);
 });
 </script>
 

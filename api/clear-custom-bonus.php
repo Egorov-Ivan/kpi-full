@@ -8,4 +8,4 @@ $mysqli->query("DELETE FROM kpi_settings WHERE `key` = 'customBonusStatus'");
 // Очищаем kpi_client_statuses
 $mysqli->query("TRUNCATE TABLE kpi_client_statuses");
 
-echo json_encode(['success' => true, 'message' => 'customBonusStatus очищен, таблица kpi_client_statuses очищена']);ы
+echo json_encode(['success' => true, 'message' => 'customBonusStatus очищен, таблица kpi_client_statuses очищена']);

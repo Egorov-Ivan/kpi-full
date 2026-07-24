@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$mysqli = new mysqli("localhost", "u2192811_workbenzigo", "Правильный", "u2192811_workbenzigo");
+$mysqli = new mysqli("localhost", "u2192811_workbenzigo", "aO7xM3vR5shY8lL6", "u2192811_workbenzigo");
 
 $data = json_decode(file_get_contents('php://input'), true);
 if (!$data || !isset($data['client'])) {

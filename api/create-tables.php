@@ -3,17 +3,19 @@ header('Content-Type: application/json');
 $mysqli = new mysqli("localhost", "u2192811_workbenzigo", "aO7xM3vR5shY8lL6", "u2192811_workbenzigo");
 
 $sqls = [
+    // Таблица утверждений
     "CREATE TABLE IF NOT EXISTS kpi_approvals (
         id INT AUTO_INCREMENT PRIMARY KEY,
         manager_id VARCHAR(50) NOT NULL,
         year VARCHAR(4) NOT NULL,
         month VARCHAR(2) NOT NULL,
-        approved TINYINT(1) DEFAULT 0,ы
+        approved TINYINT(1) DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY unique_approval (manager_id, year, month)
     )",
     
+    // Таблица статусов клиентов (без UNIQUE на длинные поля)
     "CREATE TABLE IF NOT EXISTS kpi_client_statuses (
         id INT AUTO_INCREMENT PRIMARY KEY,
         client_name VARCHAR(500) NOT NULL,
@@ -23,10 +25,10 @@ $sqls = [
         status ENUM('ДА', 'БЫЛ', 'НЕТ') NOT NULL DEFAULT 'ДА',
         bonus_month VARCHAR(7),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_client_status (client_name, manager_name, year, month)
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )",
     
+    // Таблица ставок менеджеров
     "CREATE TABLE IF NOT EXISTS kpi_manager_settings (
         id INT AUTO_INCREMENT PRIMARY KEY,
         manager_id VARCHAR(50) NOT NULL,
@@ -43,11 +45,11 @@ $sqls = [
 ];
 
 $results = [];
-foreach ($sqls as $sql) {
+foreach ($sqls as $i => $sql) {
     if ($mysqli->query($sql)) {
-        $results[] = "OK";
+        $results[] = "Таблица $i создана";
     } else {
-        $results[] = $mysqli->error;
+        $results[] = "Ошибка: " . $mysqli->error;
     }
 }
 

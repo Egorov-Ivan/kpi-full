@@ -16,19 +16,16 @@ if (!$supplier) {
     exit;
 }
 
-// supplier → agregator
-$supplierMap = [
-    'rncard' => 'РН',
-    'licard' => 'ЛК',
-    'natcar' => 'НК',
-];
-
-$agregator = $supplierMap[$supplier] ?? $supplier;
+$dateStart = $_GET['dateStart'] ?? date('d-m-Y', strtotime('-30 days'));
+$dateEnd = $_GET['dateEnd'] ?? null;
+$field = $_GET['field'] ?? 'sumPos';
 $token = '166505488e486efa91e411cb05f7886a';
+
+$postBody = ['dateStart' => $dateStart];
 
 $ch = curl_init('https://api.benzigo.ru/transactions/listADR/');
 curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([]));
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postBody));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
     'accessToken: ' . $token
@@ -46,47 +43,61 @@ if ($httpCode !== 200) {
 }
 
 $data = json_decode($response, true);
-$transactions = is_array($data) ? $data : ($data['data'] ?? $data['transactions'] ?? []);
+$transactions = $data['transactions'] ?? [];
 
-// Фильтруем по агрегатору
-$filtered = array_filter($transactions, function ($tx) use ($agregator) {
-    return ($tx['agregator'] ?? '') === $agregator;
-});
+if ($supplier !== 'all') {
+    $transactions = array_filter($transactions, function ($tx) use ($supplier) {
+        if (!is_array($tx)) return false;
+        return ($tx['agregator'] ?? '') === $supplier;
+    });
+}
 
-// Группируем расходы (sumforclient) по дням
-$dailyExpenses = [];
-$totalExpenses = 0;
+if ($dateEnd) {
+    $endParts = explode('-', $dateEnd);
+    $endDate = $endParts[2] . '-' . $endParts[1] . '-' . $endParts[0];
+    
+    $transactions = array_filter($transactions, function ($tx) use ($endDate) {
+        if (!is_array($tx)) return false;
+        $txDate = substr($tx['date'] ?? '', 0, 10);
+        return $txDate <= $endDate;
+    });
+}
+
+// Группировка по дням
+$dailyValues = [];
+$totalValue = 0;
 $lastDate = null;
 
-foreach ($filtered as $tx) {
-    $date = substr($tx['date'] ?? '', 0, 10);
-    $expense = floatval($tx['sumforclient'] ?? 0);
+foreach ($transactions as $tx) {
+    if (!is_array($tx)) continue;
 
-    if (!isset($dailyExpenses[$date])) {
-        $dailyExpenses[$date] = 0;
+    $date = substr($tx['date'] ?? '', 0, 10);
+    $value = floatval($tx[$field] ?? 0);
+
+    if (!isset($dailyValues[$date])) {
+        $dailyValues[$date] = 0;
     }
-    $dailyExpenses[$date] += $expense;
-    $totalExpenses += $expense;
+    $dailyValues[$date] += $value;
+    $totalValue += $value;
 
     if (!$lastDate || ($tx['date'] ?? '') > $lastDate) {
         $lastDate = $tx['date'];
     }
 }
 
-ksort($dailyExpenses);
+ksort($dailyValues);
 
-// Формируем для Highcharts: [[date, amount], ...]
 $chartData = [];
-foreach ($dailyExpenses as $date => $expense) {
-    $chartData[] = [$date, round($expense, 2)];
+foreach ($dailyValues as $date => $value) {
+    $chartData[] = [$date, round($value, 2)];
 }
 
 http_response_code(200);
 echo json_encode([
-    'supplier'      => $supplier,
-    'agregator'     => $agregator,
-    'totalExpenses' => round($totalExpenses, 2),
-    'lastUpdated'   => $lastDate,
-    'count'         => count($filtered),
-    'chartData'     => $chartData
+    'supplier'    => $supplier,
+    'field'       => $field,
+    'totalValue'  => round($totalValue, 2),
+    'lastUpdated' => $lastDate,
+    'count'       => count($transactions),
+    'chartData'   => $chartData
 ], JSON_UNESCAPED_UNICODE);

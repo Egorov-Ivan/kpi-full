@@ -4,7 +4,7 @@ header('Content-Type: text/html; charset=utf-8');
 
 $mysqli = new mysqli("localhost", "u2192811_workbenzigo", "aO7xM3vR5shY8lL6", "u2192811_workbenzigo");
 $mysqli->set_charset("utf8mb4");
-$mysqli->query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+$mysqli->query("SET NAMES utf8mb4");
 
 // Получаем список таблиц
 $tables_result = $mysqli->query("SHOW TABLES");
@@ -51,7 +51,7 @@ foreach ($tables as $table) {
         echo "<tr>";
         $fields = $result->fetch_fields();
         foreach ($fields as $field) {
-            echo "<th>" . htmlspecialchars($field->name) . "</th>";
+            echo "<th>" . htmlspecialchars($field->name, ENT_QUOTES, 'UTF-8') . "</th>";
         }
         echo "</tr>";
         
@@ -59,8 +59,14 @@ foreach ($tables as $table) {
         while ($row = $result->fetch_assoc()) {
             echo "<tr>";
             foreach ($row as $value) {
-                $display = $value !== null ? htmlspecialchars($value) : '<i>NULL</i>';
-                echo "<td>$display</td>";
+                if ($value === null) {
+                    echo "<td><i>NULL</i></td>";
+                } elseif (is_string($value)) {
+                    // Просто выводим как есть с htmlspecialchars
+                    echo "<td>" . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "</td>";
+                } else {
+                    echo "<td>" . htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8') . "</td>";
+                }
             }
             echo "</tr>";
         }
