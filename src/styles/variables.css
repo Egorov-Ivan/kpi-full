@@ -1,0 +1,34 @@
+/* src/styles/variables.css */
+:root {
+  --v-global-theme-primary: 230,4,16;
+}
+
+.v-application {
+  --v-global-theme-primary: 230,4,16;
+}
+
+/* Используем переменную для основных элементов */
+.v-application .bg-primary {
+  background-color: rgb(var(--v-global-theme-primary)) !important;
+}
+
+.v-application .text-primary {
+  color: rgb(var(--v-global-theme-primary)) !important;
+}
+
+.v-application .v-btn--color-primary {
+  background-color: rgb(var(--v-global-theme-primary)) !important;
+  border-color: rgb(var(--v-global-theme-primary)) !important;
+}
+
+.v-application .v-switch__track {
+  background-color: rgba(var(--v-global-theme-primary), 0.6) !important;
+}
+
+.v-application .v-switch__thumb {
+  background-color: rgb(var(--v-global-theme-primary)) !important;
+}
+
+.v-application .v-checkbox .v-selection-control__input {
+  color: rgb(var(--v-global-theme-primary)) !important;
+}
