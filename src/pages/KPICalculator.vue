@@ -1388,7 +1388,7 @@ const nonKpiClientHeaders = [
   { title: 'Действия', key: 'actions', sortable: false, align: 'center' as const }
 ];
 
-const allowedRoles = ['Менеджер', 'Старший Менеджер', 'Ведущий Менеджер'];
+const allowedRoles = ['Менеджер', 'Старший Менеджер', 'Ведущий Менеджер','Агент'];
 
 const filteredManagers = computed(() => store.managers.filter(manager => manager.role && allowedRoles.includes(manager.role)));
 
@@ -1853,10 +1853,10 @@ const selectedMonthName = computed(() => months.find(m => m.value === selectedMo
 const totalPlan = computed(() => filteredManagers.value.reduce((sum, m) => sum + (m.plan || 80000), 0));
 
 const getRoleIcon = (role?: string): string => {
-  switch(role) { case 'Старший Менеджер': return 'ri-computer-line'; case 'Руководитель ОП': return 'ri-team-line'; default: return 'ri-user-line'; }
+  switch(role) { case 'Старший Менеджер': return 'ri-computer-line'; case 'Руководитель ОП': return 'ri-team-line'; case 'Агент': return 'ri-sofa-line'; default: return 'ri-user-line'; }
 };
 const getRoleColor = (role?: string): string => {
-  switch(role) { case 'Старший Менеджер': return 'error'; case 'Руководитель ОП': return 'primary'; case 'Менеджер': return 'success'; default: return 'grey'; }
+  switch(role) { case 'Старший Менеджер': return 'error'; case 'Руководитель ОП': return 'primary'; case 'Менеджер': return 'success'; case 'Агент': return 'warning'; default: return 'grey'; }
 };
 const getPercentColor = (percent: number): string => percent >= 100 ? 'success' : percent >= 50 ? 'warning' : 'error';
 const getPercentTextColor = (percent: number): string => percent >= 100 ? 'text-success' : percent >= 50 ? 'text-warning' : 'text-error';

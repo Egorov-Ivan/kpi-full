@@ -15,7 +15,8 @@ export default defineConfig({
       input: resolve(__dirname, 'index.html'),
       output: {
         manualChunks: {
-          xlsx: ['xlsx']
+          xlsx: ['xlsx'],
+          exceljs: ['exceljs']
         }
       }
     }

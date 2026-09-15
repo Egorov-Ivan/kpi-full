@@ -1,30 +1,49 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-// Читаем входящий запрос от Telegram
-$input = json_decode(file_get_contents('php://input'), true);
+// ==================== НАСТРОЙКА ПРОКСИ ====================
+// ВСТАВЬТЕ СВОИ ДАННЫЕ ПРОКСИ СЮДА:
+$proxyHost = '82.146.55.167';
+$proxyPort = 31267;
+$proxyUser = '';      // Если без логина - оставьте ''
+$proxyPass = '';      // Если без пароля - оставьте ''
+$proxyType = 'http';  // 'http' или 'socks5' (НЕ 'https'!)
 
-if (!$input || !isset($input['message']['text'])) {
-    http_response_code(200);
-    echo json_encode(['ok' => true]);
-    exit;
-}
-
-$message = $input['message'];
-$text = $message['text'] ?? '';
-$chatId = $message['chat']['id'] ?? null;
-
-if (!$chatId || !str_starts_with($text, '/start')) {
-    http_response_code(200);
-    echo json_encode(['ok' => true]);
-    exit;
-}
+// Собираем URL прокси (без авторизации в URL, так правильнее для cURL)
+$proxyUrl = $proxyHost . ':' . $proxyPort;
 
 // ==================== КОНФИГУРАЦИЯ ====================
-$botToken = getenv('TELEGRAM_BOT_TOKEN');
+$botToken ='8541381384:AAHWdSH5kiGB3fxXjTftAL-14o38Pu4kfrU';
 $benzigToken = '166505488e486efa91e411cb05f7886a';
 
 // ==================== ФУНКЦИИ ====================
+
+// Функция для создания сессии cURL с прокси
+function getCurlWithProxy($url) {
+    global $proxyHost, $proxyPort, $proxyUser, $proxyPass, $proxyType, $proxyUrl;
+    
+    $ch = curl_init($url);
+    
+    // Настройка прокси
+    if (!empty($proxyHost) && !empty($proxyPort)) {
+        curl_setopt($ch, CURLOPT_PROXY, $proxyUrl);
+        
+        // Тип прокси
+        if ($proxyType === 'socks5') {
+            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+        } else {
+            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+        }
+        
+        // Если есть логин/пароль
+        if (!empty($proxyUser) && !empty($proxyPass)) {
+            curl_setopt($ch, CURLOPT_PROXYUSERPWD, $proxyUser . ':' . $proxyPass);
+        }
+    }
+    
+    return $ch;
+}
+
 function sendMessage($chatId, $text) {
     global $botToken;
     $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
@@ -35,13 +54,29 @@ function sendMessage($chatId, $text) {
         'parse_mode' => 'Markdown'
     ];
     
-    $ch = curl_init($url);
+    $ch = getCurlWithProxy($url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_exec($ch);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+    
+    // Логирование ошибок
+    if ($error) {
+        error_log("cURL ошибка при отправке в Telegram: " . $error);
+    }
+    if ($httpCode !== 200) {
+        error_log("Telegram вернул код: " . $httpCode . " Ответ: " . $response);
+    }
+    
+    return $response;
 }
 
 function formatMoney($amount) {
@@ -52,7 +87,7 @@ function formatMoney($amount) {
 function getBenzigoBalances() {
     global $benzigToken;
     
-    $ch = curl_init('https://api.benzigo.ru/agregators/balance/');
+    $ch = getCurlWithProxy('https://api.benzigo.ru/agregators/balance/');
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([]));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -60,12 +95,18 @@ function getBenzigoBalances() {
         'accessToken: ' . $benzigToken
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    if ($httpCode !== 200) return [];
+    if ($httpCode !== 200) {
+        error_log("Benzigo API ошибка. Код: " . $httpCode);
+        return [];
+    }
     return json_decode($response, true) ?: [];
 }
 
@@ -85,6 +126,27 @@ function getTatneftBalance($client) {
         return $cache['current']['balance'] ?? null;
     }
     return null;
+}
+
+// ==================== ОБРАБОТКА ВХОДЯЩЕГО ЗАПРОСА ====================
+
+// Читаем входящий запрос от Telegram
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (!$input || !isset($input['message']['text'])) {
+    http_response_code(200);
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
+$message = $input['message'];
+$text = $message['text'] ?? '';
+$chatId = $message['chat']['id'] ?? null;
+
+if (!$chatId || !str_starts_with($text, '/start')) {
+    http_response_code(200);
+    echo json_encode(['ok' => true]);
+    exit;
 }
 
 // ==================== СБОР ДАННЫХ ====================

@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban — Управление заявками</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1E1E1E; --paper: #F4F5F7; --surface: #FFFFFF; --surface-2: #EDEEF1;
+    --border: #E2E4E9; --muted: #6B7280;
+    --accent: #E60410; --accent-tint: #FDEBEC; --accent-contrast: #FFFFFF;
+    --priority-high: #D64545; --priority-medium: #C98A1F; --priority-low: #0D9394;
+    --danger: #C23B3B; --success: #2E9E6D; --warning: #E67E22;
+    --shadow-card: 0 1px 2px rgba(30,35,51,.06);
+    --shadow-card-hover: 0 4px 12px rgba(30,35,51,.10);
+    --radius-card: 8px; --radius-column: 10px; --radius-control: 6px;
+    --font-display: 'Roboto', sans-serif; --font-body: 'Roboto', sans-serif;
+  }
+  [data-theme="dark"] {
+    --ink: #EDEFF5; --paper: #14161F; --surface: #1C1F2B; --surface-2: #232735;
+    --border: #2E3245; --muted: #9096AA;
+    --accent: #FF5252; --accent-tint: #3A1418; --accent-contrast: #FFFFFF;
+    --priority-high: #FF7A7A; --priority-medium: #F0B429; --priority-low: #4FD1D2;
+    --danger: #FF7A7A; --success: #3FC98A; --warning: #F0B429;
+    --shadow-card: 0 1px 2px rgba(0,0,0,.3);
+    --shadow-card-hover: 0 6px 16px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); transition: background .2s,color .2s; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; }
+
+  body { padding-top: 64px; }
+  .appbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 64px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 24px; z-index: 40;
+    gap: 12px;
+  }
+  .appbar-brand { font-weight: 600; font-size: 18px; }
+  .appbar-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--accent);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+  .role-toggle {
+    display: flex; gap: 4px; background: var(--paper); border-radius: 999px;
+    padding: 3px; border: 1px solid var(--border);
+  }
+  .role-toggle button {
+    border: none; background: transparent; padding: 5px 14px;
+    border-radius: 999px; font-size: 13px; font-weight: 500;
+    color: var(--muted); transition: all .15s;
+  }
+  .role-toggle button.active {
+    background: var(--accent); color: var(--accent-contrast);
+  }
+  .role-toggle button:hover:not(.active) { background: var(--surface-2); }
+
+  .page { max-width: 1440px; margin: 0 auto; padding: 24px; }
+  .page-header {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+  }
+  .page-icon {
+    width: 48px; height: 48px; border-radius: var(--radius-control);
+    background: var(--accent); color: #fff; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .page-icon .icon { width: 26px; height: 26px; opacity: 1; }
+  .page-header h1 { font-size: 26px; font-weight: 500; margin: 0 0 2px; }
+  .page-header p { font-size: 14px; color: var(--muted); margin: 0; }
+
+  /* Менеджер — мои заявки */
+  .my-requests {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-card); margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .my-requests-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+  }
+  .my-requests-header h2 {
+    font-size: 16px; font-weight: 500; margin: 0;
+  }
+  .my-requests-header .badge {
+    background: var(--accent-tint); color: var(--accent);
+    padding: 2px 10px; border-radius: 999px; font-size: 12px;
+    font-weight: 600; margin-left: 8px;
+  }
+  .my-requests-list { padding: 12px 20px; }
+  .request-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .1s;
+  }
+  .request-item:last-child { border-bottom: none; }
+  .request-item:hover { background: var(--surface-2); margin: 0 -8px; padding: 10px 8px; border-radius: 6px; }
+  .request-status {
+    font-size: 11px; font-weight: 600; padding: 2px 10px;
+    border-radius: 999px; flex-shrink: 0;
+  }
+  .status-pending { background: #FFF3CD; color: #856404; }
+  .status-in-progress { background: #CCE5FF; color: #004085; }
+  .status-review { background: #D4EDDA; color: #155724; }
+  .status-rework { background: #F8D7DA; color: #721C24; }
+  .status-done { background: #E2E3E5; color: #383D41; }
+  .request-title { flex: 1; font-size: 14px; font-weight: 500; }
+  .request-meta { font-size: 12px; color: var(--muted); }
+  .request-toggle {
+    background: none; border: none; color: var(--muted);
+    font-size: 13px; padding: 4px 8px; border-radius: 4px;
+  }
+  .request-toggle:hover { background: var(--surface-2); }
+
+  .board-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; }
+  .card-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 16px 20px;
+  }
+  .field {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--paper); border: 1px solid var(--border);
+    border-radius: var(--radius-control); padding: 7px 10px;
+  }
+  .field input, .field select {
+    border: none; outline: none; background: transparent;
+    color: var(--ink); font-size: 13.5px;
+  }
+  .search-field { min-width: 180px; flex: 1 1 180px; max-width: 260px; }
+  .search-field input { width: 100%; }
+  .icon { width: 16px; height: 16px; flex-shrink: 0; opacity: .6; }
+  .toggle-chip {
+    display: flex; align-items: center; gap: 6px; border: none;
+    background: var(--surface-2); border-radius: 999px; padding: 6px 12px;
+    font-size: 13px; color: var(--muted);
+  }
+  .toggle-chip.active { background: var(--accent-tint); color: var(--accent); }
+  .spacer { flex: 1; }
+  .btn {
+    border-radius: var(--radius-control); border: none;
+    background: var(--surface-2); color: var(--ink);
+    padding: 8px 14px; font-size: 13.5px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: var(--accent-tint); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: var(--accent-contrast); }
+  .btn-primary:hover { opacity: .92; background: var(--accent); color: var(--accent-contrast); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { opacity: .9; color: #fff; }
+  .btn-warning { background: var(--warning); color: #fff; }
+  .btn-warning:hover { opacity: .9; color: #fff; }
+  .btn-danger { color: var(--danger); background: var(--accent-tint); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-icon { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 50%; background: transparent; }
+  .btn-icon:hover { background: var(--surface-2); color: var(--ink); }
+
+  .board {
+    display: flex; gap: 16px; overflow-x: auto;
+    padding: 4px 20px 20px; align-items: flex-start;
+  }
+  .column {
+    flex: 1 1 260px; min-width: 260px; max-width: 320px;
+    background: var(--paper); border-radius: var(--radius-column);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 300px);
+  }
+  .column.drop-hover { box-shadow: 0 0 0 2px var(--accent) inset; }
+  .col-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 14px 10px;
+  }
+  .col-title { font-weight: 600; font-size: 14.5px; }
+  .col-count {
+    font-size: 12px; color: var(--muted); background: var(--surface-2);
+    padding: 0 8px; border-radius: 999px;
+  }
+  .wip-badge {
+    margin-left: auto; font-size: 11.5px; padding: 2px 8px;
+    border-radius: 999px; color: var(--muted); border: 1px solid var(--border);
+  }
+  .wip-badge.warn { color: var(--warning); border-color: var(--warning); }
+  .col-body {
+    flex: 1; overflow-y: auto; padding: 2px 10px 10px;
+    display: flex; flex-direction: column; gap: 8px; min-height: 80px;
+  }
+  .col-footer { padding: 8px 14px 12px; }
+
+  .empty-state {
+    border: 1.5px dashed var(--border); border-radius: var(--radius-card);
+    padding: 22px 12px; text-align: center; color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-card); padding: 12px;
+    box-shadow: var(--shadow-card); cursor: default;
+    transition: box-shadow .15s, transform .15s, border-color .15s;
+    position: relative;
+  }
+  .card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-1px); border-color: var(--accent); }
+  .card.dragging { opacity: .4; }
+  .card-top {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  }
+  .chip-high { background: color-mix(in srgb, var(--priority-high) 15%, var(--surface)); color: var(--priority-high); }
+  .chip-medium { background: color-mix(in srgb, var(--priority-medium) 15%, var(--surface)); color: var(--priority-medium); }
+  .chip-low { background: color-mix(in srgb, var(--priority-low) 15%, var(--surface)); color: var(--priority-low); }
+  .request-id {
+    font-size: 11px; color: var(--muted); background: var(--surface-2);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .card-title { font-weight: 600; font-size: 13.5px; margin: 0 0 4px; line-height: 1.3; }
+  .card-desc {
+    font-size: 12.5px; color: var(--muted); margin: 0 0 10px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; line-height: 1.4;
+  }
+  .card-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; flex-wrap: wrap;
+  }
+  .assignee {
+    display: flex; align-items: center; gap: 6px; min-width: 0;
+  }
+  .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .assignee-name { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .due { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .card-actions {
+    display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .card-actions .btn { font-size: 11px; padding: 3px 10px; }
+  .comment-badge {
+    font-size: 11px; color: var(--muted); display: flex; align-items: center;
+    gap: 4px; background: var(--surface-2); padding: 0 8px; border-radius: 999px;
+  }
+  .file-badge {
+    font-size: 11px; color: var(--muted); display: flex; align-items: center;
+    gap: 4px;
+  }
+  .tags-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .tag {
+    font-size: 10.5px; color: var(--muted); background: var(--surface-2);
+    border-radius: 5px; padding: 1px 6px;
+  }
+
+  .comment-bubble {
+    background: var(--surface-2); border-radius: 8px;
+    padding: 8px 12px; margin-top: 8px; font-size: 12.5px;
+  }
+  .comment-bubble .author { font-weight: 600; color: var(--accent); }
+  .comment-bubble .text { color: var(--ink); }
+  .comment-bubble .time { font-size: 11px; color: var(--muted); }
+
+  .popover {
+    position: fixed; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-card-hover);
+    z-index: 60; min-width: 170px; overflow: hidden;
+  }
+  .popover-item {
+    display: block; width: 100%; text-align: left; background: none;
+    border: none; padding: 9px 12px; font-size: 13px; color: var(--ink);
+  }
+  .popover-item:hover { background: var(--surface-2); }
+  .popover-item.destructive { color: var(--danger); border-top: 1px solid var(--border); }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,12,20,.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 80; padding: 16px;
+  }
+  .dialog {
+    background: var(--surface); border-radius: 14px; width: 100%;
+    max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 24px;
+  }
+  .dialog-title {
+    font-weight: 600; font-size: 18px; margin: 0 0 16px;
+    display: flex; align-items: center;
+  }
+  .dialog-title .btn-icon { margin-left: auto; }
+  .form-row { display: flex; gap: 12px; }
+  .form-row .form-group { flex: 1; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 12px; color: var(--muted);
+    margin-bottom: 5px; font-weight: 500;
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; border: 1px solid var(--border);
+    border-radius: var(--radius-control); padding: 9px 10px;
+    font-size: 13.5px; background: var(--paper); color: var(--ink);
+  }
+  .form-group textarea { resize: vertical; min-height: 64px; }
+  .form-error { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
+  .dialog-actions {
+    display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;
+  }
+  .file-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius-control);
+    padding: 20px; text-align: center; color: var(--muted);
+    font-size: 13px; transition: border-color .2s;
+    cursor: pointer;
+  }
+  .file-zone:hover { border-color: var(--accent); }
+  .file-zone.has-files { border-color: var(--success); background: color-mix(in srgb, var(--success) 5%, var(--surface)); }
+  .file-list { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .file-tag {
+    background: var(--surface-2); padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .file-tag .remove { cursor: pointer; color: var(--danger); }
+
+  @media (max-width: 760px) {
+    .board { flex-direction: column; }
+    .column { max-width: 100%; min-width: 100%; max-height: none; }
+    .col-body { max-height: 300px; }
+    .topbar { padding: 12px 14px; }
+    .search-field { max-width: none; }
+    .page { padding: 16px; }
+    .appbar { padding: 0 12px; flex-wrap: wrap; height: auto; min-height: 64px; gap: 6px; }
+    body { padding-top: 80px; }
+    .appbar-brand { font-size: 15px; }
+    .role-toggle button { padding: 4px 10px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <span class="appbar-brand">📋 Управление заявками</span>
+  <div class="role-toggle" id="roleToggle">
+    <button class="active" data-role="manager">👔 Менеджер</button>
+    <button data-role="operator">🔧 Операционист</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-primary" id="newRequestBtn">➕ Новая заявка</button>
+  <div class="appbar-avatar" id="userAvatar">М</div>
+</header>
+
+<main class="page">
+  <div class="page-header">
+    <div class="page-icon">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="7" height="16" rx="1.5"/>
+        <rect x="14" y="4" width="7" height="10" rx="1.5"/>
+      </svg>
+    </div>
+    <div>
+      <h1 id="pageTitle">Доска заявок</h1>
+      <p id="pageSubtitle">Управление задачами и заявками</p>
+    </div>
+  </div>
+
+  <!-- Мои заявки (только для менеджера) -->
+  <div class="my-requests" id="myRequests" style="display:none;">
+    <div class="my-requests-header">
+      <h2>📌 Мои заявки <span class="badge" id="requestsCount">0</span></h2>
+      <button class="request-toggle" id="toggleRequests">Показать все →</button>
+    </div>
+    <div class="my-requests-list" id="requestsList"></div>
+  </div>
+
+  <div class="board-card">
+    <div class="topbar" id="topbar"></div>
+    <hr class="card-divider">
+    <div class="board" id="board"></div>
+  </div>
+</main>
+
+<div id="modals"></div>
+
+<script>
+const COLUMNS = [
+  { id: 'pending', title: '🕐 Ожидает приёма' },
+  { id: 'in_progress', title: '⚙️ В работе', wip: 3 },
+  { id: 'review', title: '👀 На проверке' },
+  { id: 'rework', title: '🔄 На доработке' },
+  { id: 'done', title: '✅ Готово' },
+];
+const PRIORITIES = [
+  { id: 'high', label: '🔴 Высокий' },
+  { id: 'medium', label: '🟡 Средний' },
+  { id: 'low', label: '🟢 Низкий' },
+];
+const STATUS_LABEL = Object.fromEntries(COLUMNS.map(c => [c.id, c.title]));
+const PRIORITY_LABEL = Object.fromEntries(PRIORITIES.map(p => [p.id, p.label]));
+
+const USERS = {
+  manager: { name: 'Алексей Менеджеров', role: 'manager', avatar: 'АМ' },
+  operator: { name: 'Ирина Операторова', role: 'operator', avatar: 'ИО' },
+};
+
+let currentRole = 'manager';
+let showAllRequests = false;
+
+function uid() { return 'R' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase(); }
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+
+// Данные: заявки (они же задачи)
+let requests = [
+  {
+    id: uid(),
+    title: 'Разработать дизайн главной страницы',
+    description: 'Собрать макет главной страницы и провести ревью с командой.',
+    status: 'pending',
+    priority: 'high',
+    requester: 'Алексей Менеджеров',
+    assignee: '',
+    dueDate: addDays(5),
+    tags: ['design', 'ui/ux'],
+    files: ['макет.fig', 'референсы.pdf'],
+    comments: [],
+    createdAt: addDays(-2),
+  },
+  {
+    id: uid(),
+    title: 'Настроить CI/CD пайплайн',
+    description: 'Прогон тестов и линта на каждый PR, автоматический деплой на стейдж.',
+    status: 'in_progress',
+    priority: 'medium',
+    requester: 'Алексей Менеджеров',
+    assignee: 'Ирина Операторова',
+    dueDate: addDays(3),
+    tags: ['devops', 'ci/cd'],
+    files: ['конфиг.yml'],
+    comments: [{ author: 'Ирина Операторова', text: 'Настраиваю GitHub Actions', time: addDays(-1) }],
+    createdAt: addDays(-4),
+  },
+  {
+    id: uid(),
+    title: 'Проверить аналитику событий',
+    description: 'Проверить корректность отправки событий в Amplitude.',
+    status: 'review',
+    priority: 'high',
+    requester: 'Алексей Менеджеров',
+    assignee: 'Ирина Операторова',
+    dueDate: addDays(1),
+    tags: ['analytics'],
+    files: [],
+    comments: [],
+    createdAt: addDays(-3),
+  },
+  {
+    id: uid(),
+    title: 'Обновить дизайн-токены',
+    description: 'Актуализировать цветовую палитру согласно новому брендбуку.',
+    status: 'rework',
+    priority: 'low',
+    requester: 'Алексей Менеджеров',
+    assignee: 'Ирина Операторова',
+    dueDate: addDays(7),
+    tags: ['design'],
+    files: ['токены.json'],
+    comments: [
+      { author: 'Алексей Менеджеров', text: 'Цвет акцента должен быть #E60410, а не #FF0000', time: addDays(-1) },
+    ],
+    createdAt: addDays(-5),
+  },
+  {
+    id: uid(),
+    title: 'Настроить мониторинг серверов',
+    description: 'Подключить Grafana + Prometheus для всех сервисов.',
+    status: 'done',
+    priority: 'medium',
+    requester: 'Алексей Менеджеров',
+    assignee: 'Ирина Операторова',
+    dueDate: addDays(-2),
+    tags: ['devops', 'monitoring'],
+    files: ['дашборд.json'],
+    comments: [
+      { author: 'Ирина Операторова', text: 'Готово, все дашборды настроены', time: addDays(-3) },
+      { author: 'Алексей Менеджеров', text: 'Отлично! Принято.', time: addDays(-2) },
+    ],
+    createdAt: addDays(-7),
+  },
+  {
+    id: uid(),
+    title: 'Создать форму обратной связи',
+    description: 'Форма на сайте для сбора отзывов пользователей.',
+    status: 'in_progress',
+    priority: 'high',
+    requester: 'Алексей Менеджеров',
+    assignee: 'Ирина Операторова',
+    dueDate: addDays(2),
+    tags: ['frontend', 'forms'],
+    files: ['макет.fig'],
+    comments: [],
+    createdAt: addDays(-1),
+  },
+];
+
+// Состояние фильтров
+let state = {
+  search: '',
+  priority: 'all',
+  overdueOnly: false,
+  sortBy: 'priority',
+  theme: 'light',
+  dialog: null,
+  popover: null,
+};
+
+function getCurrentUser() {
+  return currentRole === 'manager' ? USERS.manager : USERS.operator;
+}
+
+function getRequestsByStatus(status) {
+  return requests.filter(r => r.status === status);
+}
+
+function getFilteredRequests(status) {
+  let list = requests.filter(r => r.status === status);
+  const q = state.search.trim().toLowerCase();
+  if (q) {
+    list = list.filter(r =>
+      r.title.toLowerCase().includes(q) ||
+      r.description.toLowerCase().includes(q) ||
+      r.requester.toLowerCase().includes(q) ||
+      r.assignee.toLowerCase().includes(q) ||
+      r.tags.some(t => t.toLowerCase().includes(q))
+    );
+  }
+  if (state.priority !== 'all') list = list.filter(r => r.priority === state.priority);
+  if (state.overdueOnly) list = list.filter(r => r.dueDate && r.dueDate < todayISO() && r.status !== 'done');
+  list.sort((a, b) => {
+    if (state.sortBy === 'priority') {
+      const rank = { high: 0, medium: 1, low: 2 };
+      return rank[a.priority] - rank[b.priority];
+    }
+    if (state.sortBy === 'due') {
+      return (a.dueDate || '9999').localeCompare(b.dueDate || '9999');
+    }
+    return 0;
+  });
+  return list;
+}
+
+function getManagerRequests() {
+  const user = getCurrentUser();
+  return requests.filter(r => r.requester === user.name);
+}
+
+function isOverdue(r) {
+  return r.dueDate && r.dueDate < todayISO() && r.status !== 'done';
+}
+
+function getStatusClass(status) {
+  const map = {
+    pending: 'status-pending',
+    in_progress: 'status-in-progress',
+    review: 'status-review',
+    rework: 'status-rework',
+    done: 'status-done',
+  };
+  return map[status] || '';
+}
+
+function getStatusLabel(status) {
+  const map = {
+    pending: 'Ожидает',
+    in_progress: 'В работе',
+    review: 'На проверке',
+    rework: 'Доработка',
+    done: 'Готово',
+  };
+  return map[status] || status;
+}
+
+function initials(name) {
+  if (!name) return '??';
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+function avatarColor(name) {
+  const palette = ['#4A47E0', '#2E9E6D', '#C98A1F', '#D64545', '#4C6E96', '#8659D6', '#E67E22', '#1ABC9C'];
+  let h = 0;
+  for (const c of name) h += c.charCodeAt(0);
+  return palette[h % palette.length];
+}
+function fmtDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}.${m}`;
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+}
+function escapeAttr(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// -------------------- Рендеринг --------------------
+function render() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+  renderTopbar();
+  renderMyRequests();
+  renderBoard();
+  renderModals();
+  updateAppBar();
+}
+
+function updateAppBar() {
+  const user = getCurrentUser();
+  document.getElementById('userAvatar').textContent = user.avatar;
+  document.querySelectorAll('.role-toggle button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.role === currentRole);
+  });
+  document.getElementById('pageTitle').textContent = currentRole === 'manager' ? '📋 Мои заявки' : '🔧 Доска заявок';
+  document.getElementById('pageSubtitle').textContent = currentRole === 'manager'
+    ? 'Управление созданными заявками'
+    : 'Приём и выполнение заявок';
+  document.getElementById('newRequestBtn').style.display = currentRole === 'manager' ? 'flex' : 'none';
+}
+
+function renderTopbar() {
+  const topbar = document.getElementById('topbar');
+  topbar.innerHTML = `
+    <div class="field search-field">
+      ${ICONS.search}
+      <input id="searchInput" placeholder="Поиск заявок..." value="${escapeAttr(state.search)}">
+    </div>
+    <div class="field">
+      <select id="prioritySelect">
+        <option value="all">Любой приоритет</option>
+        ${PRIORITIES.map(p => `<option value="${p.id}" ${state.priority === p.id ? 'selected' : ''}>${p.label}</option>`).join('')}
+      </select>
+    </div>
+    <button class="toggle-chip ${state.overdueOnly ? 'active' : ''}" id="overdueToggle">⏰ Просроченные</button>
+    <div class="field">
+      <select id="sortSelect">
+        <option value="priority" ${state.sortBy === 'priority' ? 'selected' : ''}>Сортировка: приоритет</option>
+        <option value="due" ${state.sortBy === 'due' ? 'selected' : ''}>Сортировка: срок</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-icon" id="themeToggle" title="Тема">${state.theme === 'light' ? ICONS.moon : ICONS.sun}</button>
+  `;
+
+  document.getElementById('searchInput').oninput = e => { state.search = e.target.value; render(); };
+  document.getElementById('prioritySelect').onchange = e => { state.priority = e.target.value; render(); };
+  document.getElementById('sortSelect').onchange = e => { state.sortBy = e.target.value; render(); };
+  document.getElementById('overdueToggle').onclick = () => { state.overdueOnly = !state.overdueOnly; render(); };
+  document.getElementById('themeToggle').onclick = () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; render(); };
+}
+
+function renderMyRequests() {
+  const container = document.getElementById('myRequests');
+  const list = document.getElementById('requestsList');
+  const count = document.getElementById('requestsCount');
+
+  if (currentRole === 'manager') {
+    container.style.display = 'block';
+    const userRequests = getManagerRequests();
+    count.textContent = userRequests.length;
+
+    const display = showAllRequests ? userRequests : userRequests.slice(0, 5);
+    list.innerHTML = display.length ? display.map(r => `
+      <div class="request-item" data-id="${r.id}">
+        <span class="request-status ${getStatusClass(r.status)}">${getStatusLabel(r.status)}</span>
+        <span class="request-title">${escapeHtml(r.title)}</span>
+        <span class="request-meta">${r.assignee ? '👤 ' + escapeHtml(r.assignee) : '⏳ ожидает'}</span>
+        <span class="request-meta">${r.dueDate ? '📅 ' + fmtDate(r.dueDate) : ''}</span>
+        <span class="request-id">${r.id}</span>
+      </div>
+    `).join('') : '<div class="empty-state" style="padding:16px;">У вас пока нет заявок</div>';
+
+    list.querySelectorAll('.request-item').forEach(el => {
+      el.onclick = () => {
+        const req = requests.find(r => r.id === el.dataset.id);
+        if (req) { state.dialog = { type: 'view', request: req }; render(); }
+      };
+    });
+
+    document.getElementById('toggleRequests').textContent = showAllRequests ? 'Скрыть ↑' : 'Показать все →';
+  } else {
+    container.style.display = 'none';
+  }
+}
+
+function cardHTML(r) {
+  const overdue = isOverdue(r);
+  const canAccept = currentRole === 'operator' && r.status === 'pending';
+  const canStart = currentRole === 'operator' && r.status === 'pending';
+  const canComplete = currentRole === 'operator' && (r.status === 'in_progress' || r.status === 'review');
+  const canRework = currentRole === 'manager' && r.status === 'review';
+  const isDone = r.status === 'done';
+
+  return `
+  <div class="card" data-id="${r.id}">
+    <div class="card-top">
+      <span class="chip chip-${r.priority}">${PRIORITY_LABEL[r.priority]}</span>
+      ${overdue ? `<span class="chip" style="background:var(--accent-tint);color:var(--danger);">⏰ просрочено</span>` : ''}
+      <span class="request-id">${r.id}</span>
+      ${r.files && r.files.length ? `<span class="file-badge">📎 ${r.files.length}</span>` : ''}
+      ${r.comments && r.comments.length ? `<span class="comment-badge">💬 ${r.comments.length}</span>` : ''}
+    </div>
+    <p class="card-title">${escapeHtml(r.title)}</p>
+    ${r.description ? `<p class="card-desc">${escapeHtml(r.description)}</p>` : ''}
+    <div class="card-bottom">
+      <div class="assignee">
+        <span class="avatar" style="background:${r.assignee ? avatarColor(r.assignee) : '#999'}">${r.assignee ? initials(r.assignee) : '?'}</span>
+        <span class="assignee-name">${r.assignee ? escapeHtml(r.assignee) : 'Не назначен'}</span>
+      </div>
+      ${r.dueDate ? `<span class="due ${overdue ? 'overdue' : ''}" style="${overdue ? 'color:var(--danger);font-weight:600;' : ''}">📅 ${fmtDate(r.dueDate)}</span>` : ''}
+    </div>
+    ${r.tags && r.tags.length ? `<div class="tags-row">${r.tags.map(t => `<span class="tag">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+
+    <!-- Комментарии -->
+    ${r.comments && r.comments.length ? r.comments.slice(-2).map(c => `
+      <div class="comment-bubble">
+        <span class="author">${escapeHtml(c.author)}</span>
+        <span class="text">${escapeHtml(c.text)}</span>
+        <span class="time">${c.time ? ' ' + fmtDate(c.time) : ''}</span>
+      </div>
+    `).join('') : ''}
+
+    <!-- Действия -->
+    <div class="card-actions">
+      ${canStart ? `<button class="btn btn-success btn-sm" data-action="accept">✅ Принять</button>` : ''}
+      ${canComplete ? `<button class="btn btn-success btn-sm" data-action="complete">✅ Выполнено</button>` : ''}
+      ${canRework ? `<button class="btn btn-warning btn-sm" data-action="rework">🔄 На доработку</button>` : ''}
+      ${isDone && currentRole === 'manager' ? `<button class="btn btn-sm" data-action="view">👁️ Просмотр</button>` : ''}
+      ${currentRole === 'manager' ? `<button class="btn btn-sm" data-action="comment">💬 Комментарий</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = COLUMNS.map(col => {
+    const list = getFilteredRequests(col.id);
+    const total = requests.filter(r => r.status === col.id).length;
+    const wipWarn = col.wip && total > col.wip;
+    const emptyText = state.search || state.priority !== 'all' || state.overdueOnly ? 'Ничего не найдено' : 'Нет заявок';
+
+    return `
+    <div class="column" data-status="${col.id}">
+      <div class="col-header">
+        <span class="col-title">${col.title}</span>
+        <span class="col-count">${total}</span>
+        ${col.wip ? `<span class="wip-badge ${wipWarn ? 'warn' : ''}">${total}/${col.wip}</span>` : ''}
+      </div>
+      <div class="col-body" data-drop="${col.id}">
+        ${list.length ? list.map(cardHTML).join('') : `<div class="empty-state">${emptyText}</div>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Обработчики действий
+  board.querySelectorAll('.card').forEach(card => {
+    const id = card.dataset.id;
+
+    card.querySelectorAll('[data-action]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        const req = requests.find(r => r.id === id);
+        if (!req) return;
+
+        switch (action) {
+          case 'accept':
+            req.status = 'in_progress';
+            req.assignee = getCurrentUser().name;
+            req.comments.push({ author: getCurrentUser().name, text: 'Принял(а) заявку в работу', time: todayISO() });
+            render();
+            break;
+          case 'complete':
+            req.status = 'review';
+            req.comments.push({ author: getCurrentUser().name, text: 'Заявка выполнена, отправлена на проверку', time: todayISO() });
+            render();
+            break;
+          case 'rework':
+            req.status = 'rework';
+            const comment = prompt('Укажите причину отправки на доработку:');
+            if (comment) {
+              req.comments.push({ author: getCurrentUser().name, text: '🔁 На доработку: ' + comment, time: todayISO() });
+            }
+            render();
+            break;
+          case 'view':
+            state.dialog = { type: 'view', request: req };
+            render();
+            break;
+          case 'comment':
+            const text = prompt('Введите комментарий:');
+            if (text) {
+              req.comments.push({ author: getCurrentUser().name, text: text, time: todayISO() });
+              render();
+            }
+            break;
+        }
+      };
+    });
+
+    // Клик по карточке для просмотра
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action]')) return;
+      const req = requests.find(r => r.id === id);
+      if (req) { state.dialog = { type: 'view', request: req }; render(); }
+    });
+
+    // Drag & drop
+    card.draggable = true;
+    card.addEventListener('dragstart', e => {
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', id);
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  });
+
+  // Drop зоны
+  board.querySelectorAll('.col-body').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.closest('.column').classList.add('drop-hover'); });
+    zone.addEventListener('dragleave', () => zone.closest('.column').classList.remove('drop-hover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.closest('.column').classList.remove('drop-hover');
+      const id = e.dataTransfer.getData('text/plain');
+      const req = requests.find(r => r.id === id);
+      const targetStatus = zone.dataset.drop;
+      if (req && req.status !== targetStatus) {
+        // Операционист не может двигать в pending
+        if (currentRole === 'operator' && targetStatus === 'pending') return;
+        // Менеджер не может двигать в in_progress (кроме как из rework?)
+        if (currentRole === 'manager' && targetStatus === 'in_progress' && req.status !== 'rework') return;
+        req.status = targetStatus;
+        if (targetStatus === 'done') {
+          req.comments.push({ author: getCurrentUser().name, text: '✅ Заявка завершена', time: todayISO() });
+        }
+        render();
+      }
+    });
+  });
+}
+
+// -------------------- Модалки --------------------
+const ICONS = {
+  search: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  plus: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+  sun: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  moon: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>',
+  close: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+};
+
+let filesList = [];
+
+function renderModals() {
+  const root = document.getElementById('modals');
+  let html = '';
+
+  // Создание заявки
+  if (state.dialog?.type === 'create') {
+    html = `
+    <div class="overlay" id="overlay">
+      <div class="dialog">
+        <h3 class="dialog-title">📝 Новая заявка<button class="btn btn-icon" id="closeDialog">${ICONS.close}</button></h3>
+        <div class="form-group">
+          <label>Название заявки *</label>
+          <input id="fTitle" placeholder="Краткое описание задачи">
+          <div class="form-error" id="titleError">Название обязательно</div>
+        </div>
+        <div class="form-group">
+          <label>Описание</label>
+          <textarea id="fDesc" placeholder="Подробное описание задачи" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Приоритет</label>
+            <select id="fPriority">
+              ${PRIORITIES.map(p => `<option value="${p.id}" ${p.id === 'medium' ? 'selected' : ''}>${p.label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Срок выполнения</label>
+            <input id="fDue" type="date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Теги (через запятую)</label>
+          <input id="fTags" placeholder="Например: frontend, backend, дизайн">
+        </div>
+        <div class="form-group">
+          <label>📎 Файлы</label>
+          <div class="file-zone" id="fileZone">
+            <div>Нажмите или перетащите файлы сюда</div>
+          </div>
+          <div class="file-list" id="fileList"></div>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn" id="cancelDialog">Отмена</button>
+          <button class="btn btn-primary" id="saveRequest">✅ Создать заявку</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Просмотр заявки
+  if (state.dialog?.type === 'view') {
+    const r = state.dialog.request;
+    html = `
+    <div class="overlay" id="overlay">
+      <div class="dialog">
+        <h3 class="dialog-title">📋 ${escapeHtml(r.title)}<button class="btn btn-icon" id="closeDialog">${ICONS.close}</button></h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <span class="chip chip-${r.priority}">${PRIORITY_LABEL[r.priority]}</span>
+          <span class="request-status ${getStatusClass(r.status)}">${getStatusLabel(r.status)}</span>
+          <span class="request-id">${r.id}</span>
+        </div>
+        ${r.description ? `<p style="font-size:14px;color:var(--muted);margin:0 0 12px;">${escapeHtml(r.description)}</p>` : ''}
+        <div style="font-size:13px;margin-bottom:12px;">
+          <div>👤 Заявитель: <strong>${escapeHtml(r.requester)}</strong></div>
+          <div>🔧 Исполнитель: <strong>${r.assignee ? escapeHtml(r.assignee) : 'Не назначен'}</strong></div>
+          ${r.dueDate ? `<div>📅 Срок: <strong>${fmtDate(r.dueDate)}</strong> ${isOverdue(r) ? '⏰ просрочено' : ''}</div>` : ''}
+          ${r.tags && r.tags.length ? `<div>🏷️ ${r.tags.map(t => '#' + escapeHtml(t)).join(' ')}</div>` : ''}
+          ${r.files && r.files.length ? `<div>📎 Файлы: ${r.files.map(f => `<span class="file-tag">${escapeHtml(f)}</span>`).join(' ')}</div>` : ''}
+        </div>
+        ${r.comments && r.comments.length ? `
+          <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px;">
+            <strong style="font-size:13px;">💬 Комментарии (${r.comments.length})</strong>
+            ${r.comments.map(c => `
+              <div class="comment-bubble">
+                <span class="author">${escapeHtml(c.author)}</span>
+                <span class="text">${escapeHtml(c.text)}</span>
+                <span class="time">${c.time ? ' ' + fmtDate(c.time) : ''}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div class="dialog-actions">
+          ${currentRole === 'manager' && r.status !== 'done' ? `<button class="btn btn-sm" id="addCommentView">💬 Добавить комментарий</button>` : ''}
+          <button class="btn" id="closeDialog">Закрыть</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  root.innerHTML = html;
+
+  // Обработчики
+  const overlay = document.getElementById('overlay');
+  if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) { state.dialog = null; render(); } });
+
+  document.querySelectorAll('#closeDialog').forEach(el => el.onclick = () => { state.dialog = null; render(); });
+  document.querySelectorAll('#cancelDialog').forEach(el => el.onclick = () => { state.dialog = null; render(); });
+
+  // Создание заявки
+  const saveBtn = document.getElementById('saveRequest');
+  if (saveBtn) {
+    saveBtn.onclick = () => {
+      const title = document.getElementById('fTitle').value.trim();
+      if (!title) { document.getElementById('titleError').style.display = 'block'; return; }
+      document.getElementById('titleError').style.display = 'none';
+
+      const newRequest = {
+        id: uid(),
+        title: title,
+        description: document.getElementById('fDesc').value.trim(),
+        priority: document.getElementById('fPriority').value,
+        status: 'pending',
+        requester: getCurrentUser().name,
+        assignee: '',
+        dueDate: document.getElementById('fDue').value || '',
+        tags: document.getElementById('fTags').value.split(',').map(s => s.trim()).filter(Boolean),
+        files: [...filesList],
+        comments: [{ author: getCurrentUser().name, text: '📝 Заявка создана', time: todayISO() }],
+        createdAt: todayISO(),
+      };
+      requests.unshift(newRequest);
+      filesList = [];
+      state.dialog = null;
+      render();
+    };
+  }
+
+  // Файлы
+  const fileZone = document.getElementById('fileZone');
+  if (fileZone) {
+    fileZone.onclick = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.onchange = (e) => {
+        for (const file of e.target.files) {
+          filesList.push(file.name);
+        }
+        updateFileList();
+      };
+      input.click();
+    };
+    fileZone.ondragover = e => { e.preventDefault(); fileZone.style.borderColor = 'var(--accent)'; };
+    fileZone.ondragleave = () => { fileZone.style.borderColor = ''; };
+    fileZone.ondrop = e => {
+      e.preventDefault();
+      fileZone.style.borderColor = '';
+      for (const file of e.dataTransfer.files) {
+        filesList.push(file.name);
+      }
+      updateFileList();
+    };
+  }
+  updateFileList();
+
+  // Просмотр — добавление комментария
+  const addCommentBtn = document.getElementById('addCommentView');
+  if (addCommentBtn) {
+    addCommentBtn.onclick = () => {
+      const text = prompt('Введите комментарий:');
+      if (text && state.dialog?.request) {
+        state.dialog.request.comments.push({
+          author: getCurrentUser().name,
+          text: text,
+          time: todayISO(),
+        });
+        render();
+      }
+    };
+  }
+}
+
+function updateFileList() {
+  const container = document.getElementById('fileList');
+  const zone = document.getElementById('fileZone');
+  if (!container) return;
+  if (filesList.length) {
+    container.innerHTML = filesList.map((f, i) =>
+      `<span class="file-tag">📎 ${escapeHtml(f)} <span class="remove" data-idx="${i}">✕</span></span>`
+    ).join('');
+    container.querySelectorAll('.remove').forEach(el => {
+      el.onclick = () => {
+        filesList.splice(parseInt(el.dataset.idx), 1);
+        updateFileList();
+      };
+    });
+    if (zone) zone.classList.add('has-files');
+  } else {
+    container.innerHTML = '';
+    if (zone) zone.classList.remove('has-files');
+  }
+}
+
+// -------------------- Инициализация --------------------
+document.getElementById('roleToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-role]');
+  if (btn) {
+    currentRole = btn.dataset.role;
+    showAllRequests = false;
+    render();
+  }
+});
+
+document.getElementById('newRequestBtn').onclick = () => {
+  if (currentRole === 'manager') {
+    filesList = [];
+    state.dialog = { type: 'create' };
+    render();
+  }
+};
+
+// Закрытие по Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    state.dialog = null;
+    state.popover = null;
+    render();
+  }
+});
+
+// Переключение показа заявок
+document.getElementById('toggleRequests').addEventListener('click', () => {
+  showAllRequests = !showAllRequests;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
