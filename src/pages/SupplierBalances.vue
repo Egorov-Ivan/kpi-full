@@ -479,7 +479,7 @@ const suppliers: SupplierDef[] = [
     labels: {
       montblanc: 'Лукойл Монблан',
       faeton: 'Лукойл Фаэтон',
-      as: 'Лукойл АС',
+      // as: 'Лукойл АС', Рано
     },
   },
   {
@@ -488,7 +488,7 @@ const suppliers: SupplierDef[] = [
     labels: {
       montblanc: 'Роснефть Монблан',
       faeton: 'Роснефть Фаэтон',
-      as: 'Роснефть АС',
+     // as: 'Роснефть АС', Рано
     },
   },
   {
