@@ -104,7 +104,12 @@
                       Расход (7 дн.)
                     </th>
                     <th class="text-right">
-                      Пополнение
+                      Пополнение<br>
+                      <small class="text-grey">(Google Sheets)</small>
+                    </th>
+                    <th class="text-right">
+                      Доп.<br>
+                      пополнение
                     </th>
                   </tr>
                 </thead>
@@ -163,12 +168,20 @@
                       {{ formatMoney(item.expense7) }}
                     </td>
 
+                    <!-- Пополнение из Google Sheets (только чтение) -->
+                    <td class="text-right">
+                      <span class="font-weight-bold">
+                        {{ formatMoney(item.sheetReplenishment || 0) }}
+                      </span>
+                    </td>
+
+                    <!-- Доп. пополнение (ручной ввод) -->
                     <td class="text-right">
                       <template
                         v-if="editingReplenishment === item.key"
                       >
                         <v-text-field
-                          v-model="replenishments[item.key]"
+                          v-model="manualReplenishments[item.key]"
                           type="number"
                           density="compact"
                           variant="outlined"
@@ -185,7 +198,7 @@
                           class="replenishment-value"
                           @click="startEditReplenishment(item.key)"
                         >
-                          {{ formatMoney(replenishments[item.key] || 0) }}
+                          {{ formatMoney(item.manualReplenishment || 0) }}
 
                           <v-icon
                             size="14"
@@ -407,12 +420,6 @@ const exporting = ref(false);
 
 /* =========================================================
    РЕЕСТР ЮР. ЛИЦ
-   ---------------------------------------------------------
-   Чтобы добавить новое юрлицо:
-     1. Добавить запись сюда.
-     2. У каждого поставщика (см. suppliers) добавить label
-        для этого client.id.
-   Всё остальное подтянется автоматически.
    ========================================================= */
 
 interface ClientDef {
@@ -445,15 +452,6 @@ const CLIENT_BY_ID = new Map(CLIENTS.map(c => [c.id, c]));
 
 /* =========================================================
    ПОСТАВЩИКИ
-   ---------------------------------------------------------
-   labels: { clientId: 'Отображаемое имя' }
-     - Если для client.id нет ключа в labels —
-       пара (supplier, client) НЕ существует и не выводится.
-     - Именно так реализовано «у АС нет Татнефти»:
-       у поставщика ТН нет ключа as.
-
-   tnKeys (опционально): { clientId: 'ключ в tatneft-balance' }
-     - Только для поставщиков с отдельным источником.
    ========================================================= */
 
 interface SupplierDef {
@@ -479,7 +477,6 @@ const suppliers: SupplierDef[] = [
     labels: {
       montblanc: 'Лукойл Монблан',
       faeton: 'Лукойл Фаэтон',
-      // as: 'Лукойл АС', Рано
     },
   },
   {
@@ -488,7 +485,6 @@ const suppliers: SupplierDef[] = [
     labels: {
       montblanc: 'Роснефть Монблан',
       faeton: 'Роснефть Фаэтон',
-     // as: 'Роснефть АС', Рано
     },
   },
   {
@@ -497,12 +493,10 @@ const suppliers: SupplierDef[] = [
     labels: {
       montblanc: 'Татнефть Монблан',
       faeton: 'Татнефть Фаэтон',
-      // as: 'Татнефть АС',   ← нет, потому что у АС нет карт Татнефти
     },
     tnKeys: {
       montblanc: 'montblanc',
       faeton: 'faeton',
-      // as: 'as',            ← нет, потому что у АС нет карт Татнефти
     },
   },
   {
@@ -523,20 +517,12 @@ const suppliers: SupplierDef[] = [
 const getClientName = (id: string) =>
   CLIENT_BY_ID.get(id)?.name ?? id;
 
-/**
- * Возвращает отображаемое имя пары, либо null,
- * если пара не существует (нет ключа в labels).
- */
 const getSupplierLabel = (
   supplier: SupplierDef,
   clientId: string
 ): string | null =>
   supplier.labels[clientId] ?? null;
 
-/**
- * Возвращает ключ для balances.php / expenses.php,
- * например: "1", "1 ( Фаэтон )", "1 ( АС )".
- */
 const buildApiKey = (supplier: SupplierDef, clientId: string) => {
   const client = CLIENT_BY_ID.get(clientId);
   return supplier.key + (client?.suffix ?? '');
@@ -622,10 +608,17 @@ const dailyExpenseTable = ref<{
   series: [],
 });
 
-/* Пополнения — это ВРЕМЕННЫЙ ввод пользователя, никуда не сохраняется.
-   Ключ — pairKey вида "1::montblanc", чтобы не зависеть от отображаемого имени. */
-const replenishments = ref<Record<string, number>>({});
+/* Пополнения из Google Sheets (только чтение). */
+const sheetReplenishments = ref<Record<string, number>>({});
+
+/* Доп. пополнения — ручной ввод оператора. */
+const manualReplenishments = ref<Record<string, number>>({});
 const editingReplenishment = ref<string | null>(null);
+
+/* Сумма пополнений для пары. */
+const getTotalReplenishment = (pairKey: string): number =>
+  (sheetReplenishments.value[pairKey] ?? 0) +
+  (parseFloat(manualReplenishments.value[pairKey] as any) || 0);
 
 /* =========================================================
    SELECTED CLIENTS
@@ -860,9 +853,6 @@ const applyBorder = (cell: ExcelJS.Cell) => {
 
 /* =========================================================
    ПОСТРОЕНИЕ QUERIES ДЛЯ РАСХОДОВ
-   ---------------------------------------------------------
-   Единая функция для графика и прогноза.
-   Пропускает пары, для которых нет label (нет данных).
    ========================================================= */
 
 interface ExpenseQuery {
@@ -965,6 +955,30 @@ const fetchExpensesForForecast = () => {
   const range = getForecastDateRange();
   const allDates = getForecastDateList();
   return fetchExpensesForRange(range, allDates, 'прогноз');
+};
+
+/* =========================================================
+   ЗАГРУЗКА ПОПОЛНЕНИЙ ИЗ GOOGLE SHEETS
+   ========================================================= */
+
+const loadSheetReplenishments = async () => {
+  try {
+    const resp = await fetch('/api/proxy/replenishments.php');
+    if (!resp.ok) {
+      throw new Error(`replenishments API: ${resp.status}`);
+    }
+    const data = await resp.json();
+
+    const totals: Record<string, number> = {};
+    for (const item of data.items ?? []) {
+      totals[item.pairKey] = Number(item.total) || 0;
+    }
+    sheetReplenishments.value = totals;
+
+    console.log('Пополнения из Google Sheets:', totals);
+  } catch (e) {
+    console.error('Ошибка загрузки пополнений из Google Sheets:', e);
+  }
 };
 
 /* =========================================================
@@ -1107,8 +1121,6 @@ const loadForecast = async () => {
           const tnKey = supplier.tnKeys[clientId];
 
           if (!tnKey) {
-            // Нет ключа в tatneft-balance — пара не должна была сюда попасть,
-            // но на всякий случай пропускаем.
             continue;
           }
 
@@ -1160,8 +1172,11 @@ const loadForecast = async () => {
                 ? 99
                 : 0;
 
-        const extra =
-          parseFloat(replenishments.value[pairKey] as any) || 0;
+        /* ПОПОЛНЕНИЯ: из Google Sheets + ручные */
+        const sheetExtra = sheetReplenishments.value[pairKey] ?? 0;
+        const manualExtra =
+          parseFloat(manualReplenishments.value[pairKey] as any) || 0;
+        const extra = sheetExtra + manualExtra;
 
         const daysLeftWithReplenishment =
           typeof balance === 'string'
@@ -1181,6 +1196,8 @@ const loadForecast = async () => {
           daysLeft,
           daysLeftWithReplenishment,
           receivedAt,
+          sheetReplenishment: sheetExtra,
+          manualReplenishment: manualExtra,
         });
       }
     }
@@ -1192,45 +1209,44 @@ const loadForecast = async () => {
 };
 
 /* =========================================================
-   РЕДАКТИРОВАНИЕ ПОПОЛНЕНИЯ (временный UI-ввод)
+   РЕДАКТИРОВАНИЕ ДОП. ПОПОЛНЕНИЯ (ручной ввод)
    ========================================================= */
 
 const startEditReplenishment = (key: string) => {
   editingReplenishment.value = key;
 
-  if (!replenishments.value[key]) {
-    replenishments.value[key] = 0;
+  if (!(key in manualReplenishments.value)) {
+    manualReplenishments.value[key] = 0;
   }
-
-  replenishments.value[key] =
-    parseFloat(replenishments.value[key] as any) || 0;
 };
 
 const saveReplenishment = (key: string) => {
   editingReplenishment.value = null;
 
-  const extra = parseFloat(replenishments.value[key] as any) || 0;
-  replenishments.value[key] = extra;
+  const manual = parseFloat(manualReplenishments.value[key] as any) || 0;
+  manualReplenishments.value[key] = manual;
+
+  const sheet = sheetReplenishments.value[key] ?? 0;
+  const totalExtra = sheet + manual;
 
   forecastData.value = forecastData.value.map(item => {
-    if (item.key === key) {
-      const totalBalance =
-        typeof item.balance === 'string' ? 0 : item.balance + extra;
+    if (item.key !== key) return item;
 
-      const daysLeft =
-        item.expense7 > 0
-          ? Math.floor(totalBalance / item.expense7)
-          : totalBalance > 0
-            ? 99
-            : 0;
+    const totalBalance =
+      typeof item.balance === 'string' ? 0 : item.balance + totalExtra;
 
-      return {
-        ...item,
-        daysLeftWithReplenishment: daysLeft,
-      };
-    }
+    const daysLeft =
+      item.expense7 > 0
+        ? Math.floor(totalBalance / item.expense7)
+        : totalBalance > 0
+          ? 99
+          : 0;
 
-    return item;
+    return {
+      ...item,
+      manualReplenishment: manual,
+      daysLeftWithReplenishment: daysLeft,
+    };
   });
 };
 
@@ -1290,12 +1306,13 @@ const exportToExcel = async () => {
     });
 
     // Сортировка: сначала «главное» юрлицо (Монблан), затем остальные.
-    // Признак isPrimary берём из реестра, а не из строки имени.
+    // В Excel идёт ОДНА суммарная колонка: sheetReplenishment + manualReplenishment.
     const exportItems = forecastData.value
       .map(item => ({
         ...item,
         planReplenishment:
-          parseFloat(replenishments.value[item.key] as any) || 0,
+          (item.sheetReplenishment || 0) +
+          (item.manualReplenishment || 0),
       }))
       .sort((a, b) => {
         const aClientId = a.key.split('::')[1];
@@ -1577,6 +1594,7 @@ const refreshAll = async () => {
   loading.value = true;
 
   try {
+    await loadSheetReplenishments();          // ← добавили
     if (showExpenses.value) {
       await loadExpensesForChart();
     }
@@ -1624,7 +1642,9 @@ let refreshInterval: ReturnType<typeof setInterval> | null = null;
    MOUNT / UNMOUNT
    ========================================================= */
 
-onMounted(() => {
+onMounted(async () => {
+  await loadSheetReplenishments();            // ← добавили
+
   if (showExpenses.value) {
     initExpensesChart();
   }

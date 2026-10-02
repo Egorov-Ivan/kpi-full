@@ -599,12 +599,25 @@
                           
                           <v-data-table
                             :headers="kpiVatDetailHeaders"
-                            :items="currentManagerKpiVatDetails"
+                            :items="currentManagerKpiVatGrouped"
                             items-per-page="-1"
                             density="compact"
                             class="client-table"
                             hover
+                            show-expand
+                            item-value="client_name"
                           >
+                            <!-- Раскрывающий слот -->
+                            <template v-slot:item.data-table-expand="{ internalItem, isExpanded, toggleExpand }">
+                              <v-btn
+                                :icon="isExpanded(internalItem) ? 'ri-subtract-line' : 'ri-add-line'"
+                                size="x-small"
+                                variant="text"
+                                color="primary"
+                                @click="toggleExpand(internalItem)"
+                              ></v-btn>
+                            </template>
+
                             <template v-slot:item.client_name="{ item }">
                               <div class="font-weight-medium">{{ item.client_name }}</div>
                             </template>
@@ -640,6 +653,65 @@
                             
                             <template v-slot:item.share="{ item }">
                               <div class="text-right">{{ getCurrentManagerKpiVatShare(item).toFixed(1) }}%</div>
+                            </template>
+
+                            <!-- Раскрытый контент: разбивка по эмитентам -->
+                            <template v-slot:expanded-row="{ columns, item }">
+                              <tr>
+                                <td :colspan="columns.length" class="pa-0">
+                                  <v-card variant="tonal" color="info-light" class="ma-2">
+                                    <v-card-text class="pa-3">
+                                      <div class="text-caption font-weight-medium mb-2 text-info">
+                                        <v-icon size="small" start>ri-bank-line</v-icon>
+                                        Разбивка по эмитентам ({{ item.issuers.length }})
+                                      </div>
+                                      <v-table density="compact" class="issuer-table">
+                                        <thead>
+                                          <tr>
+                                            <th class="text-left">Эмитент</th>
+                                            <th class="text-right">Прибыль</th>
+                                            <th class="text-right">KPI НДС</th>
+                                            <th class="text-right">Ставка</th>
+                                            <th class="text-center">Пополнений</th>
+                                            <th class="text-right">Доля</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr v-for="issuer in item.issuers" :key="issuer.issuer_name">
+                                            <td class="font-weight-medium">
+                                              <span v-if="issuer.issuer_name === '—'" class="text-grey">
+                                                <i>не детализировано</i>
+                                              </span>
+                                              <span v-else>{{ issuer.issuer_name }}</span>
+                                            </td>
+                                            <td class="text-right">{{ formatMoney(issuer.profit) }}</td>
+                                            <td class="text-right text-primary font-weight-medium">
+                                              {{ formatMoney(issuer.kpi_vat) }}
+                                            </td>
+                                            <td class="text-right text-caption">
+                                              {{ (Number(issuer.rate) * 100).toFixed(1) }}%
+                                              <span class="text-grey">({{ issuer.client_age_months }} мес.)</span>
+                                            </td>
+                                            <td class="text-center">
+                                              <v-chip size="x-small" variant="tonal">{{ issuer.transactions_count }}</v-chip>
+                                            </td>
+                                            <td class="text-right">
+                                              {{ item.total_profit > 0 
+                                                  ? ((issuer.profit / item.total_profit) * 100).toFixed(1) 
+                                                  : 0 }}%
+                                            </td>
+                                          </tr>
+                                          <tr v-if="item.issuers.length === 0">
+                                            <td colspan="6" class="text-center text-grey pa-3">
+                                              Нет данных по эмитентам
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </v-table>
+                                    </v-card-text>
+                                  </v-card>
+                                </td>
+                              </tr>
                             </template>
                           </v-data-table>
                           
@@ -702,7 +774,7 @@
                 :disabled="kpiVatUploading"
                 @update:model-value="handleKpiVatFileSelect"
                 persistent-hint
-                hint="Колонки: Менеджер, Юр.лицо клиента, Сумма для нас, Сумма для клиента"
+                hint="Колонки: Менеджер, Юр.лицо клиента, Эмитент, Сумма для нас, Сумма для клиента"
               ></v-file-input>
               
               <v-progress-linear
@@ -955,6 +1027,7 @@ const kpiVatSuccess = ref('');
 
 interface KpiVatDetail {
   client_name: string;
+  issuer_name?: string | null;
   total_profit: number;
   transactions_count: number;
   kpi_vat: number;
@@ -1037,6 +1110,71 @@ const currentManagerKpiVatDetails = computed(() => {
   return result;
 });
 
+// Группировка данных по клиентам с разбивкой по эмитентам
+const currentManagerKpiVatGrouped = computed(() => {
+  const grouped = new Map<string, {
+    client_name: string;
+    total_profit: number;
+    transactions_count: number;
+    kpi_vat: number;
+    rate: number;
+    client_age_months: number;
+    issuers: Array<{
+      issuer_name: string;
+      profit: number;
+      transactions_count: number;
+      kpi_vat: number;
+      rate: number;
+      client_age_months: number;
+    }>;
+  }>();
+
+  currentManagerKpiVatDetails.value.forEach(item => {
+    const key = item.client_name;
+    
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        client_name: item.client_name,
+        total_profit: 0,
+        transactions_count: 0,
+        kpi_vat: 0,
+        rate: item.rate,
+        client_age_months: item.client_age_months,
+        issuers: []
+      });
+    }
+    
+    const group = grouped.get(key)!;
+    group.total_profit += Number(item.total_profit || 0);
+    group.transactions_count += Number(item.transactions_count || 0);
+    group.kpi_vat += Number(item.kpi_vat || 0);
+    
+    const issuerName = (item.issuer_name ?? '').trim() || '—';
+    const existing = group.issuers.find(i => i.issuer_name === issuerName);
+    
+    if (existing) {
+      existing.profit += Number(item.total_profit || 0);
+      existing.transactions_count += Number(item.transactions_count || 0);
+      existing.kpi_vat += Number(item.kpi_vat || 0);
+    } else {
+      group.issuers.push({
+        issuer_name: issuerName,
+        profit: Number(item.total_profit || 0),
+        transactions_count: Number(item.transactions_count || 0),
+        kpi_vat: Number(item.kpi_vat || 0),
+        rate: item.rate,
+        client_age_months: item.client_age_months
+      });
+    }
+  });
+
+  // Сортируем эмитентов внутри клиента по убыванию прибыли
+  return Array.from(grouped.values()).map(g => ({
+    ...g,
+    issuers: g.issuers.sort((a, b) => b.profit - a.profit)
+  }));
+});
+
 const currentManagerKpiVatTotal = computed(() => {
   return currentManagerKpiVatDetails.value.reduce((sum, item) => sum + Number(item.kpi_vat || 0), 0);
 });
@@ -1116,6 +1254,7 @@ const uploadKpiVatFile = async () => {
 const kpiVatTotal = computed(() => kpiVatDetails.value.reduce((sum, item) => sum + (item.kpi_vat || 0), 0));
 
 const kpiVatDetailHeaders = [
+  { title: '', key: 'data-table-expand', sortable: false, width: '50' },
   { title: 'Клиент', key: 'client_name', sortable: true },
   { title: 'Прибыль', key: 'total_profit', sortable: true, align: 'end' as const },
   { title: 'KPI НДС', key: 'kpi_vat', sortable: true, align: 'end' as const },
@@ -2070,6 +2209,23 @@ onMounted(async () => {
   padding: 6px 8px !important;
   font-size: 0.8rem !important;
   white-space: nowrap;
+}
+
+/* ========== Стили для таблицы эмитентов ========== */
+.issuer-table {
+  background: transparent !important;
+}
+
+.issuer-table :deep(th) {
+  font-size: 0.75rem !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+  font-weight: 600 !important;
+  height: 32px !important;
+}
+
+.issuer-table :deep(td) {
+  font-size: 0.8rem !important;
+  height: 32px !important;
 }
 
 @media (max-width: 600px) {

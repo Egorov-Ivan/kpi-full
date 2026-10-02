@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $types .= "s";
     }
     
-    $sql .= " ORDER BY manager_name, total_profit DESC";
+    $sql .= " ORDER BY manager_name, client_name, total_profit DESC";
     
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param($types, ...$params);
@@ -243,6 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $col_sumForClient = false;
     $col_date = false;
     $col_ourEntity = false;
+    $col_issuer = false;
     
     foreach ($headers as $index => $header) {
         if (!$header) continue;
@@ -254,13 +255,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($hl === 'сумма для клиента' && $col_sumForClient === false) $col_sumForClient = $index;
         if ($hl === 'дата' && $col_date === false) $col_date = $index;
         if ($hl === 'наше юр.лицо' && $col_ourEntity === false) $col_ourEntity = $index;
-    }
-    
-    if ($col_date === false) {
-        foreach ($headers as $index => $header) {
-            if (!$header) continue;
-            $hl = mb_strtolower(trim($header), 'UTF-8');
-            if ($hl === 'дата' && $col_date === false) $col_date = $index;
+        
+        // Эмитент — пробуем несколько вариантов названия
+        if ($col_issuer === false && (
+            $hl === 'эмитент' ||
+            $hl === 'банк-эмитент' ||
+            $hl === 'эмитент карты' ||
+            $hl === 'issuer' ||
+            $hl === 'эмитент карты/счет'
+        )) {
+            $col_issuer = $index;
         }
     }
     
@@ -281,8 +285,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $insert_sql = "INSERT INTO kpi_vat_details 
-                   (manager_name, client_name, total_profit, transactions_count, kpi_vat, rate, client_age_months, first_transaction_date, year, month) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                   (manager_name, client_name, issuer_name, total_profit, transactions_count, kpi_vat, rate, client_age_months, first_transaction_date, year, month) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $insert_stmt = $mysqli->prepare($insert_sql);
     
     $inserted = 0;
@@ -291,6 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $seenClients = [];
     $firstDates = [];
     
+    // ========== ПЕРВЫЙ ПРОХОД: собираем первые даты по клиентам+эмитентам ==========
     foreach ($lines as $row) {
         $ourEntity = $col_ourEntity !== false ? trim($row[$col_ourEntity] ?? '') : '';
         $ourEntityClean = str_replace('"', '', $ourEntity);
@@ -302,6 +307,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $managerName = trim($row[$col_manager] ?? '', '"\' ');
         $clientName = trim($row[$col_client] ?? '', '"\' ');
         $clientName = str_replace('"', '', $clientName);
+        
+        // Читаем эмитента
+        $issuerName = $col_issuer !== false ? trim($row[$col_issuer] ?? '', '"\' ') : '';
+        $issuerName = str_replace('"', '', $issuerName);
         
         if (empty($managerName) || empty($clientName)) continue;
         if ($manager && $managerName !== $manager) continue;
@@ -319,12 +328,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($rowYear != $year || $rowMonth != $month) continue;
         
-        $clientKey = $managerName . '|' . $clientName;
+        // Ключ теперь с эмитентом
+        $clientKey = $managerName . '|' . $clientName . '|' . $issuerName;
         if (!isset($firstDates[$clientKey]) || $date < $firstDates[$clientKey]) {
             $firstDates[$clientKey] = $date;
         }
     }
     
+    // ========== ВТОРОЙ ПРОХОД: агрегируем суммы ==========
     foreach ($lines as $row) {
         $ourEntity = $col_ourEntity !== false ? trim($row[$col_ourEntity] ?? '') : '';
         $ourEntityClean = str_replace('"', '', $ourEntity);
@@ -333,6 +344,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $managerName = trim($row[$col_manager] ?? '', '"\' ');
         $clientName = trim($row[$col_client] ?? '', '"\' ');
         $clientName = str_replace('"', '', $clientName);
+        
+        // Читаем эмитента
+        $issuerName = $col_issuer !== false ? trim($row[$col_issuer] ?? '', '"\' ') : '';
+        $issuerName = str_replace('"', '', $issuerName);
         
         if (empty($managerName) || empty($clientName)) continue;
         if ($manager && $managerName !== $manager) continue;
@@ -349,12 +364,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sumForClient = parseFloatVal($row[$col_sumForClient] ?? '0');
         $totalProfit = $sumForClient - $sumForUs;
         
-        $clientKey = $managerName . '|' . $clientName;
+        // Ключ теперь с эмитентом
+        $clientKey = $managerName . '|' . $clientName . '|' . $issuerName;
         if (!isset($seenClients[$clientKey])) {
             $seenClients[$clientKey] = [
-                'totalProfit' => 0,
-                'count' => 0,
-                'firstDate' => $firstDates[$clientKey] ?? null
+                'managerName'  => $managerName,
+                'clientName'   => $clientName,
+                'issuerName'   => $issuerName,
+                'totalProfit'  => 0,
+                'count'        => 0,
+                'firstDate'    => $firstDates[$clientKey] ?? null
             ];
         }
         
@@ -364,8 +383,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $calcDate = new DateTime("$year-$month-01");
     
-    foreach ($seenClients as $clientKey => $data) {
-        [$managerName, $clientName] = explode('|', $clientKey, 2);
+    foreach ($seenClients as $key => $data) {
+        $managerName = $data['managerName'];
+        $clientName  = $data['clientName'];
+        $issuerName  = $data['issuerName'];
         
         $totalProfit = $data['totalProfit'];
         $transactionsCount = $data['count'];
@@ -381,8 +402,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kpiVat = $totalProfit * $rate;
         $firstDateStr = $firstDate ? $firstDate->format('Y-m-d') : null;
         
-        $insert_stmt->bind_param("ssdiddisss",
-            $managerName, $clientName, $totalProfit, $transactionsCount,
+        // Формат: manager(s), client(s), issuer(s), totalProfit(d), count(i), kpiVat(d), rate(d), ageMonths(i), firstDate(s), year(s), month(s)
+        $insert_stmt->bind_param("sssdiddisss",
+            $managerName, $clientName, $issuerName, $totalProfit, $transactionsCount,
             $kpiVat, $rate, $ageMonths, $firstDateStr, $year, $month
         );
         
