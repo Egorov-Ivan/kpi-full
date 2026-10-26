@@ -632,7 +632,9 @@
                             
                             <template v-slot:item.kpi_vat="{ item }">
                               <div class="text-right">
-                                <div class="font-weight-bold text-primary">{{ formatMoney(item.kpi_vat) }}</div>
+                                <div class="font-weight-bold" :class="Number(item.kpi_vat) >= 0 ? 'text-primary' : 'text-error'">
+                                  {{ formatMoney(item.kpi_vat) }}
+                                </div>
                                 <div class="text-caption text-grey">
                                   {{ (Number(item.rate) * 100).toFixed(1) }}% ({{ item.client_age_months }} мес.)
                                 </div>
@@ -684,8 +686,11 @@
                                               </span>
                                               <span v-else>{{ issuer.issuer_name }}</span>
                                             </td>
-                                            <td class="text-right">{{ formatMoney(issuer.profit) }}</td>
-                                            <td class="text-right text-primary font-weight-medium">
+                                            <td class="text-right" :class="Number(issuer.profit) >= 0 ? '' : 'text-error'">
+                                              {{ formatMoney(issuer.profit) }}
+                                            </td>
+                                            <td class="text-right font-weight-medium"
+                                                :class="Number(issuer.kpi_vat) >= 0 ? 'text-primary' : 'text-error'">
                                               {{ formatMoney(issuer.kpi_vat) }}
                                             </td>
                                             <td class="text-right text-caption">
@@ -874,18 +879,15 @@ const convertExcelToCsv = async (file: File): Promise<File> => {
       strip: true
     });
     
-    // Конвертируем из Windows-1251 в UTF-8
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('windows-1251');
     
-    // Перекодируем каждый символ
     const bytes = new Uint8Array(csv.length);
     for (let i = 0; i < csv.length; i++) {
       bytes[i] = csv.charCodeAt(i);
     }
     const utf8 = decoder.decode(bytes);
     
-    // Добавляем BOM
     const BOM = '\uFEFF';
     
     return new File([BOM + utf8], file.name.replace(/\.xlsx?$/, '.csv'), { 
@@ -943,7 +945,6 @@ const loadManualFirstDates = async () => {
         const dates: Record<string, string> = {};
         result.clients.forEach((c: any) => {
           if (c.clientName && c.firstTransactionDate) {
-            // Только убираем кавычки, без toLowerCase
             const cleanName = c.clientName
               .replace(/"/g, '')
               .trim();
@@ -982,7 +983,7 @@ const uploadManagerKpiVatFile = async () => {
   
   try {
     const formData = new FormData();
-    formData.append('file', managerKpiVatFile.value);  // ← XLSX напрямую
+    formData.append('file', managerKpiVatFile.value);
     formData.append('year', selectedYear.value);
     formData.append('month', selectedMonth.value);
     formData.append('manager', selectedManagerDetails.value.name);
@@ -1091,6 +1092,9 @@ const currentManagerKpiVatDetails = computed(() => {
   
   const result = filtered.map(item => {
     const manualDate = manualFirstTransactionDate.value[item.client_name];
+    let rate = item.rate;
+    let clientAge = item.client_age_months;
+
     if (manualDate) {
       const parts = manualDate.split('.');
       if (parts.length === 3) {
@@ -1098,12 +1102,21 @@ const currentManagerKpiVatDetails = computed(() => {
         const calcDate = new Date(year, month - 1, 1);
         let ageMonths = (calcDate.getFullYear() - firstDate.getFullYear()) * 12;
         ageMonths += calcDate.getMonth() - firstDate.getMonth();
-        const age = Math.max(0, ageMonths);
-        const rate = age < 3 ? 0.25 : 0.025;
-        return { ...item, client_age_months: age, rate: rate, kpi_vat: item.total_profit * rate };
+        clientAge = Math.max(0, ageMonths);
+        rate = clientAge < 3 ? 0.25 : 0.025;
       }
     }
-    return item;
+
+    const profit = Number(item.total_profit || 0);
+    // ⚠️ KPI НДС: прибыль × ставка, убыток — в полном объёме (100%)
+    const kpiVat = profit >= 0 ? profit * rate : profit;
+
+    return {
+      ...item,
+      client_age_months: clientAge,
+      rate: rate,
+      kpi_vat: kpiVat,
+    };
   });
   
   console.log('📊 result KPI VAT:', result.length);
@@ -1111,6 +1124,7 @@ const currentManagerKpiVatDetails = computed(() => {
 });
 
 // Группировка данных по клиентам с разбивкой по эмитентам
+// ⚠️ KPI НДС: прибыль × ставка, убыток вычитается в полном объёме (100%)
 const currentManagerKpiVatGrouped = computed(() => {
   const grouped = new Map<string, {
     client_name: string;
@@ -1147,7 +1161,6 @@ const currentManagerKpiVatGrouped = computed(() => {
     const group = grouped.get(key)!;
     group.total_profit += Number(item.total_profit || 0);
     group.transactions_count += Number(item.transactions_count || 0);
-    group.kpi_vat += Number(item.kpi_vat || 0);
     
     const issuerName = (item.issuer_name ?? '').trim() || '—';
     const existing = group.issuers.find(i => i.issuer_name === issuerName);
@@ -1155,18 +1168,33 @@ const currentManagerKpiVatGrouped = computed(() => {
     if (existing) {
       existing.profit += Number(item.total_profit || 0);
       existing.transactions_count += Number(item.transactions_count || 0);
-      existing.kpi_vat += Number(item.kpi_vat || 0);
     } else {
       group.issuers.push({
         issuer_name: issuerName,
         profit: Number(item.total_profit || 0),
         transactions_count: Number(item.transactions_count || 0),
-        kpi_vat: Number(item.kpi_vat || 0),
+        kpi_vat: 0,
         rate: item.rate,
         client_age_months: item.client_age_months
       });
     }
   });
+
+  // ⚠️ ГЛАВНАЯ ПРАВКА:
+  // KPI по клиенту = прибыль × ставка, НО убыток вычитается в полном объёме.
+  //   прибыль >= 0  →  kpi_vat = прибыль × ставка
+  //   прибыль <  0  →  kpi_vat = прибыль (полный убыток, отрицательное число)
+  for (const group of grouped.values()) {
+    group.kpi_vat = group.total_profit >= 0
+      ? group.total_profit * group.rate
+      : group.total_profit;  // убыток вычитается на 100%
+
+    group.issuers.forEach(issuer => {
+      issuer.kpi_vat = issuer.profit >= 0
+        ? issuer.profit * issuer.rate
+        : issuer.profit;  // убыток вычитается на 100%
+    });
+  }
 
   // Сортируем эмитентов внутри клиента по убыванию прибыли
   return Array.from(grouped.values()).map(g => ({
@@ -1175,8 +1203,12 @@ const currentManagerKpiVatGrouped = computed(() => {
   }));
 });
 
+// ⚠️ Итог по менеджеру считаем по группам (с учётом полного убытка)
 const currentManagerKpiVatTotal = computed(() => {
-  return currentManagerKpiVatDetails.value.reduce((sum, item) => sum + Number(item.kpi_vat || 0), 0);
+  return currentManagerKpiVatGrouped.value.reduce(
+    (sum, group) => sum + Number(group.kpi_vat || 0),
+    0
+  );
 });
 
 const getCurrentManagerKpiVatShare = (item: any) => {
@@ -1218,7 +1250,7 @@ const uploadKpiVatFile = async () => {
     }, 800);
     
     const formData = new FormData();
-    formData.append('file', kpiVatFile.value);  // ← XLSX напрямую
+    formData.append('file', kpiVatFile.value);
     formData.append('year', selectedYear.value);
     formData.append('month', selectedMonth.value);
     
@@ -1321,7 +1353,6 @@ const updateSelectedRate = (managerId: string, value: number) => {
   if (!selectedRate.value[monthKey]) {
     selectedRate.value[monthKey] = {};
   }
-  // Создаём новый объект, чтобы триггерить реактивность
   selectedRate.value[monthKey] = {
     ...selectedRate.value[monthKey],
     [managerId]: value
@@ -1334,7 +1365,6 @@ const updateSelectedKpiRate = (managerId: string, value: number) => {
   if (!selectedKpiRate.value[monthKey]) {
     selectedKpiRate.value[monthKey] = {};
   }
-  // Создаём новый объект, чтобы триггерить реактивность
   selectedKpiRate.value[monthKey] = {
     ...selectedKpiRate.value[monthKey],
     [managerId]: value
@@ -1581,7 +1611,7 @@ const managersStats = computed(() => {
       if (mapping && op.manager === 'Морева Кристина Олеговна') {
         const [day, opMonth, opYear] = op.date.split('-');
         const opDate = new Date(parseInt(opYear), parseInt(opMonth) - 1, parseInt(day));
-        const cutoffDate = new Date(2026, 5, 1); // 01.06.2026
+        const cutoffDate = new Date(2026, 5, 1);
         
         if (opDate >= cutoffDate) {
           return {
@@ -1758,24 +1788,18 @@ const setBonusStatus = async (clientName: string, status: string) => {
   }
   
   if (status === 'НЕТ') {
-    // Отмена KPI
     customBonusStatus.value[currentMonthKey][customKey] = { status: 'НЕТ', bonusMonth: null };
-    // ✅ Удаляем клиента из глобального списка получивших KPI
     await store.removeKpiReceivedClient(clientName);
   } else if (status === 'ДА') {
-    // Выдаём KPI
     customBonusStatus.value[currentMonthKey][customKey] = { status: 'ДА', bonusMonth: currentMonthKey };
-    // ✅ Добавляем клиента в глобальный список получивших KPI
     await store.markKpiReceived(clientName, managerName, currentMonthKey);
   } else if (status === 'БЫЛ') {
-    // Помечаем как "было ранее"
     customBonusStatus.value[currentMonthKey][customKey] = { status: 'БЫЛ', bonusMonth: currentMonthKey };
   }
   
   await saveStateToServer();
   await store.loadKpiReceivedClients();
   
-  // Принудительно обновляем интерфейс
   updateTrigger.value++;
   forceUpdate.value = Date.now();
   recalculateAllKpiNoVat();
@@ -1800,7 +1824,6 @@ const recalculateAllKpiNoVat = () => {
   const month = parseInt(selectedMonth.value);
   const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
   
-  // Инициализируем managerKpiValues для текущего месяца
   if (!managerKpiValues.value[monthKey]) {
     managerKpiValues.value[monthKey] = {};
   }
@@ -2007,13 +2030,11 @@ const openManagerDetails = (item: any) => {
   selectedManagerDetails.value = item;
   const monthKey = `${selectedYear.value}-${selectedMonth.value}`;
   
-  // Инициализируем selectedRate для текущего месяца
   if (!selectedRate.value[monthKey]) selectedRate.value[monthKey] = {};
   if (selectedRate.value[monthKey][item.id] === undefined) {
     selectedRate.value[monthKey][item.id] = getSelectedRate(item);
   }
   
-  // Инициализируем selectedKpiRate для текущего месяца
   if (!selectedKpiRate.value[monthKey]) selectedKpiRate.value[monthKey] = {};
   if (selectedKpiRate.value[monthKey][item.id] === undefined) {
     selectedKpiRate.value[monthKey][item.id] = 0.015;

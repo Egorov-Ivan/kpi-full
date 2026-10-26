@@ -19,7 +19,6 @@ function parseXlsx($file) {
         throw new Exception('Не удалось открыть XLSX (не ZIP-архив)');
     }
     
-    // Читаем Shared Strings
     $sharedStrings = [];
     $ssPaths = ['xl/sharedStrings.xml', 'xl/SharedStrings.xml'];
     foreach ($ssPaths as $path) {
@@ -40,7 +39,6 @@ function parseXlsx($file) {
         }
     }
     
-    // Ищем лист
     $sheetXml = null;
     $sheetPaths = [
         'xl/worksheets/sheet1.xml',
@@ -78,7 +76,6 @@ function parseXlsx($file) {
             $type = (string)$cell['t'];
             $ref = (string)$cell['r'];
             
-            // Определяем номер колонки
             $col = 0;
             if ($ref) {
                 $colLetter = preg_replace('/[0-9]/', '', $ref);
@@ -89,7 +86,6 @@ function parseXlsx($file) {
                 $col--;
             }
             
-            // Заполняем пропущенные колонки
             while (count($rowData) < $col) {
                 $rowData[] = '';
             }
@@ -146,7 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $data[] = $row;
     }
     
-    // Считаем summary по менеджерам
     $summaryMap = [];
     foreach ($data as $row) {
         $mgr = $row['manager_name'];
@@ -195,11 +190,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fileName = $_FILES['file']['name'];
     $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
     
-    // Парсим файл в зависимости от расширения
+    // Парсим файл
     try {
         if ($ext === 'xlsx') {
             $rows = parseXlsx($tmpFile);
-            // Первая строка — заголовки
             $headers = $rows[0];
             $lines = array_slice($rows, 1);
         } elseif ($ext === 'csv') {
@@ -213,7 +207,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $firstLine = $lines[0];
             $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
             $headers = str_getcsv(array_shift($lines), $delimiter);
-            // Переводим строки в массив
             $lines = array_map(function($line) use ($delimiter) {
                 return str_getcsv($line, $delimiter);
             }, $lines);
@@ -241,6 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $col_client = false;
     $col_sumForUs = false;
     $col_sumForClient = false;
+    $col_sumStella = false;
     $col_date = false;
     $col_ourEntity = false;
     $col_issuer = false;
@@ -253,10 +247,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (($hl === 'юр.лицо клиента' || $hl === 'юридическое лицо клиента') && $col_client === false) $col_client = $index;
         if ($hl === 'сумма для нас' && $col_sumForUs === false) $col_sumForUs = $index;
         if ($hl === 'сумма для клиента' && $col_sumForClient === false) $col_sumForClient = $index;
+        if ($hl === 'сумма стеллы' && $col_sumStella === false) $col_sumStella = $index;
         if ($hl === 'дата' && $col_date === false) $col_date = $index;
         if ($hl === 'наше юр.лицо' && $col_ourEntity === false) $col_ourEntity = $index;
         
-        // Эмитент — пробуем несколько вариантов названия
         if ($col_issuer === false && (
             $hl === 'эмитент' ||
             $hl === 'банк-эмитент' ||
@@ -284,9 +278,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
     }
     
+    // INSERT с новыми полями
     $insert_sql = "INSERT INTO kpi_vat_details 
-                   (manager_name, client_name, issuer_name, total_profit, transactions_count, kpi_vat, rate, client_age_months, first_transaction_date, year, month) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                   (manager_name, client_name, issuer_name, total_profit, sum_for_client, sum_stella, sum_for_us, 
+                    average_incoming_discount, average_outgoing_discount,
+                    transactions_count, kpi_vat, rate, client_age_months, first_transaction_date, year, month) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $insert_stmt = $mysqli->prepare($insert_sql);
     
     $inserted = 0;
@@ -295,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $seenClients = [];
     $firstDates = [];
     
-    // ========== ПЕРВЫЙ ПРОХОД: собираем первые даты по клиентам+эмитентам ==========
+    // ========== ПЕРВЫЙ ПРОХОД: первые даты ==========
     foreach ($lines as $row) {
         $ourEntity = $col_ourEntity !== false ? trim($row[$col_ourEntity] ?? '') : '';
         $ourEntityClean = str_replace('"', '', $ourEntity);
@@ -308,7 +305,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientName = trim($row[$col_client] ?? '', '"\' ');
         $clientName = str_replace('"', '', $clientName);
         
-        // Читаем эмитента
         $issuerName = $col_issuer !== false ? trim($row[$col_issuer] ?? '', '"\' ') : '';
         $issuerName = str_replace('"', '', $issuerName);
         
@@ -328,14 +324,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($rowYear != $year || $rowMonth != $month) continue;
         
-        // Ключ теперь с эмитентом
         $clientKey = $managerName . '|' . $clientName . '|' . $issuerName;
         if (!isset($firstDates[$clientKey]) || $date < $firstDates[$clientKey]) {
             $firstDates[$clientKey] = $date;
         }
     }
     
-    // ========== ВТОРОЙ ПРОХОД: агрегируем суммы ==========
+    // ========== ВТОРОЙ ПРОХОД: агрегация ==========
     foreach ($lines as $row) {
         $ourEntity = $col_ourEntity !== false ? trim($row[$col_ourEntity] ?? '') : '';
         $ourEntityClean = str_replace('"', '', $ourEntity);
@@ -345,7 +340,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientName = trim($row[$col_client] ?? '', '"\' ');
         $clientName = str_replace('"', '', $clientName);
         
-        // Читаем эмитента
         $issuerName = $col_issuer !== false ? trim($row[$col_issuer] ?? '', '"\' ') : '';
         $issuerName = str_replace('"', '', $issuerName);
         
@@ -360,24 +354,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rowMonth = $date->format('m');
         if ($rowYear != $year || $rowMonth != $month) continue;
         
+        // Читаем суммы
         $sumForUs = parseFloatVal($row[$col_sumForUs] ?? '0');
         $sumForClient = parseFloatVal($row[$col_sumForClient] ?? '0');
+        $sumStella = $col_sumStella !== false ? parseFloatVal($row[$col_sumStella] ?? '0') : 0;
         $totalProfit = $sumForClient - $sumForUs;
         
-        // Ключ теперь с эмитентом
         $clientKey = $managerName . '|' . $clientName . '|' . $issuerName;
         if (!isset($seenClients[$clientKey])) {
             $seenClients[$clientKey] = [
-                'managerName'  => $managerName,
-                'clientName'   => $clientName,
-                'issuerName'   => $issuerName,
-                'totalProfit'  => 0,
-                'count'        => 0,
-                'firstDate'    => $firstDates[$clientKey] ?? null
+                'managerName'   => $managerName,
+                'clientName'    => $clientName,
+                'issuerName'    => $issuerName,
+                'totalProfit'   => 0,
+                'sumForClient'  => 0,
+                'sumStella'     => 0,
+                'sumForUs'      => 0,
+                'count'         => 0,
+                'firstDate'     => $firstDates[$clientKey] ?? null
             ];
         }
         
-        $seenClients[$clientKey]['totalProfit'] += $totalProfit;
+        $seenClients[$clientKey]['totalProfit']  += $totalProfit;
+        $seenClients[$clientKey]['sumForClient'] += $sumForClient;
+        $seenClients[$clientKey]['sumStella']    += $sumStella;
+        $seenClients[$clientKey]['sumForUs']     += $sumForUs;
         $seenClients[$clientKey]['count']++;
     }
     
@@ -388,7 +389,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientName  = $data['clientName'];
         $issuerName  = $data['issuerName'];
         
-        $totalProfit = $data['totalProfit'];
+        $totalProfit     = $data['totalProfit'];
+        $sumForClient    = $data['sumForClient'];
+        $sumStella       = $data['sumStella'];
+        $sumForUs        = $data['sumForUs'];
         $transactionsCount = $data['count'];
         $firstDate = $data['firstDate'];
         
@@ -402,9 +406,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kpiVat = $totalProfit * $rate;
         $firstDateStr = $firstDate ? $firstDate->format('Y-m-d') : null;
         
-        // Формат: manager(s), client(s), issuer(s), totalProfit(d), count(i), kpiVat(d), rate(d), ageMonths(i), firstDate(s), year(s), month(s)
-        $insert_stmt->bind_param("sssdiddisss",
-            $managerName, $clientName, $issuerName, $totalProfit, $transactionsCount,
+        // Считаем средневзвешенные скидки (от суммы стеллы)
+        $avgIncomingDiscount = null;
+        $avgOutgoingDiscount = null;
+        if ($sumStella > 0) {
+            $avgIncomingDiscount = round(($sumForUs - $sumStella) / $sumStella * 100, 4);
+            $avgOutgoingDiscount = round(($sumForClient - $sumStella) / $sumStella * 100, 4);
+        }
+        
+        // Формат: 
+        // s manager_name
+        // s client_name
+        // s issuer_name
+        // d total_profit
+        // d sum_for_client
+        // d sum_stella
+        // d sum_for_us
+        // d average_incoming_discount
+        // d average_outgoing_discount
+        // i transactions_count
+        // d kpi_vat
+        // d rate
+        // i client_age_months
+        // s first_transaction_date
+        // s year
+        // s month
+        // Итого: "sssdddddddisdsss" — 16 символов
+        $insert_stmt->bind_param("sssdddddddisdsss",
+            $managerName, $clientName, $issuerName,
+            $totalProfit, $sumForClient, $sumStella, $sumForUs,
+            $avgIncomingDiscount, $avgOutgoingDiscount,
+            $transactionsCount,
             $kpiVat, $rate, $ageMonths, $firstDateStr, $year, $month
         );
         
@@ -462,7 +494,6 @@ function parseDate($dateStr) {
     if (empty($dateStr)) return null;
     $clean = trim($dateStr);
     
-    // Excel serial number
     if (is_numeric($clean) && $clean > 40000 && $clean < 100000) {
         return new DateTime('@' . (($clean - 25569) * 86400));
     }

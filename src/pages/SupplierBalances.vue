@@ -40,31 +40,19 @@
     </div>
 
     <v-row>
+      <!-- ВИДЖЕТ: ПРОГНОЗ ОСТАТКА -->
       <v-expand-transition>
         <v-col
           v-if="showForecast"
           cols="12"
-          :md="showExpenses ? 6 : 12"
+          :md="(showExpenses || showMargin) ? 6 : 12"
           class="order-first"
         >
-          <v-card
-            elevation="0"
-            class="widget-card"
-          >
+          <v-card elevation="0" class="widget-card">
             <div class="widget-header d-flex align-center pa-3">
-              <v-icon
-                color="warning"
-                class="mr-2"
-              >
-                ri-timer-line
-              </v-icon>
-
-              <span class="text-subtitle-1 font-weight-medium">
-                Прогноз остатка
-              </span>
-
+              <v-icon color="warning" class="mr-2">ri-timer-line</v-icon>
+              <span class="text-subtitle-1 font-weight-medium">Прогноз остатка</span>
               <v-spacer></v-spacer>
-
               <v-btn
                 icon="ri-file-excel-line"
                 color="success"
@@ -73,11 +61,11 @@
                 :loading="exporting"
                 @click="exportToExcel"
               ></v-btn>
-
               <v-btn
                 icon="ri-close-line"
                 variant="text"
                 size="small"
+                class="close-btn"
                 @click="showForecast = false"
               ></v-btn>
             </div>
@@ -95,91 +83,38 @@
                     <th>Поставщик</th>
                     <th class="text-right">Баланс</th>
                     <th class="text-center">Осталось</th>
-                    <th class="text-right">
-                      Средний<br>
-                      Расход (3 дн.)
-                    </th>
-                    <th class="text-right">
-                      Средний<br>
-                      Расход (7 дн.)
-                    </th>
-                    <th class="text-right">
-                      Пополнение<br>
-                      <small class="text-grey">(Google Sheets)</small>
-                    </th>
-                    <th class="text-right">
-                      Доп.<br>
-                      пополнение
-                    </th>
+                    <th class="text-right">Средний<br>Расход (3 дн.)</th>
+                    <th class="text-right">Средний<br>Расход (7 дн.)</th>
+                    <th class="text-right">Пополнение<br><small class="text-grey">(Google Sheets)</small></th>
+                    <th class="text-right">Доп.<br>пополнение</th>
                   </tr>
                 </thead>
-
                 <tbody>
-                  <tr
-                    v-for="item in forecastData"
-                    :key="item.key"
-                  >
+                  <tr v-for="item in forecastData" :key="item.key">
                     <td class="font-weight-bold">
                       {{ item.name }}
-
                       <template v-if="item.receivedAt">
-                        <br>
-                        <small class="text-grey">
-                          {{ formatTime(item.receivedAt) }}
-                        </small>
+                        <br><small class="text-grey">{{ formatTime(item.receivedAt) }}</small>
                       </template>
                     </td>
-
                     <td class="text-right font-weight-bold">
-                      <span
-                        v-if="typeof item.balance === 'string'"
-                        class="text-error"
-                      >
-                        {{ item.balance }}
-                      </span>
-                      <span
-                        v-else
-                        :class="
-                          item.balance >= 0
-                            ? 'text-success'
-                            : 'text-error'
-                        "
-                      >
+                      <span v-if="typeof item.balance === 'string'" class="text-error">{{ item.balance }}</span>
+                      <span v-else :class="item.balance >= 0 ? 'text-success' : 'text-error'">
                         {{ formatMoney(item.balance) }}
                       </span>
                     </td>
-
                     <td class="text-center">
-                      <v-chip
-                        color="grey-darken-1"
-                        size="small"
-                        variant="flat"
-                        class="text-white font-weight-bold"
-                      >
-                        ~{{ item.daysLeftWithReplenishment }} дн.
+                      <v-chip color="grey-darken-1" size="small" variant="flat" class="text-white font-weight-bold">
+                        ~{{ item.daysLeft}} дн.
                       </v-chip>
                     </td>
-
-                    <td class="text-right text-error font-weight-bold">
-                      {{ formatMoney(item.expense3) }}
-                    </td>
-
-                    <td class="text-right text-error font-weight-bold">
-                      {{ formatMoney(item.expense7) }}
-                    </td>
-
-                    <!-- Пополнение из Google Sheets (только чтение) -->
+                    <td class="text-right text-error font-weight-bold">{{ formatMoney(item.expense3) }}</td>
+                    <td class="text-right text-error font-weight-bold">{{ formatMoney(item.expense7) }}</td>
                     <td class="text-right">
-                      <span class="font-weight-bold">
-                        {{ formatMoney(item.sheetReplenishment || 0) }}
-                      </span>
+                      <span class="font-weight-bold">{{ formatMoney(item.sheetReplenishment || 0) }}</span>
                     </td>
-
-                    <!-- Доп. пополнение (ручной ввод) -->
                     <td class="text-right">
-                      <template
-                        v-if="editingReplenishment === item.key"
-                      >
+                      <template v-if="editingReplenishment === item.key">
                         <v-text-field
                           v-model="manualReplenishments[item.key]"
                           type="number"
@@ -192,62 +127,34 @@
                           @keyup.enter="saveReplenishment(item.key)"
                         ></v-text-field>
                       </template>
-
                       <template v-else>
-                        <span
-                          class="replenishment-value"
-                          @click="startEditReplenishment(item.key)"
-                        >
+                        <span class="replenishment-value" @click="startEditReplenishment(item.key)">
                           {{ formatMoney(item.manualReplenishment || 0) }}
-
-                          <v-icon
-                            size="14"
-                            class="ml-1 edit-icon"
-                          >
-                            ri-pencil-line
-                          </v-icon>
+                          <v-icon size="14" class="ml-1 edit-icon">ri-pencil-line</v-icon>
                         </span>
                       </template>
                     </td>
                   </tr>
                 </tbody>
               </v-table>
-
-              <div
-                v-else
-                class="text-center py-4 text-grey"
-              >
-                Загрузка...
-              </div>
+              <div v-else class="text-center py-4 text-grey">Загрузка...</div>
             </div>
           </v-card>
         </v-col>
       </v-expand-transition>
 
+      <!-- ВИДЖЕТ: РАСХОДЫ -->
       <v-expand-transition>
         <v-col
           v-if="showExpenses"
           cols="12"
-          :md="showForecast ? 6 : 12"
+          :md="(showForecast || showMargin) ? 6 : 12"
         >
-          <v-card
-            elevation="0"
-            class="widget-card"
-          >
+          <v-card elevation="0" class="widget-card">
             <div class="widget-header d-flex align-center pa-3">
-              <v-icon
-                color="primary"
-                class="mr-2"
-              >
-                ri-bar-chart-line
-              </v-icon>
-
-              <span class="text-subtitle-1 font-weight-medium">
-                Расходы по поставщикам
-              </span>
-
+              <v-icon color="primary" class="mr-2">ri-bar-chart-line</v-icon>
+              <span class="text-subtitle-1 font-weight-medium">Расходы по поставщикам</span>
               <v-spacer></v-spacer>
-
               <v-select
                 v-model="expensePeriod"
                 :items="periodOptions"
@@ -257,7 +164,6 @@
                 hide-details
                 style="width: 12rem; margin-right: 0.5rem;"
               ></v-select>
-
               <template v-if="expensePeriod === 'custom'">
                 <v-menu
                   v-model="dateMenu"
@@ -281,70 +187,190 @@
                   </template>
                   <v-card>
                     <v-card-text class="pa-4">
-                      <v-date-picker
-                        v-model="dateRange"
-                        range
-                        hide-header
-                        color="primary"
-                      ></v-date-picker>
+                      <v-date-picker v-model="dateRange" range hide-header color="primary"></v-date-picker>
                     </v-card-text>
                     <v-card-actions>
                       <v-spacer></v-spacer>
-                      <v-btn
-                        color="primary"
-                        variant="text"
-                        @click="dateMenu = false"
-                      >
-                        Применить
-                      </v-btn>
+                      <v-btn color="primary" variant="text" @click="dateMenu = false">Применить</v-btn>
                     </v-card-actions>
                   </v-card>
                 </v-menu>
               </template>
+              <v-btn icon="ri-close-line" variant="text" size="small" class="close-btn" @click="showExpenses = false"></v-btn>
+            </div>
+
+            <v-divider></v-divider>
+
+            <div class="pa-4">
+              <div ref="expensesChart" class="expenses-chart"></div>
+            </div>
+          </v-card>
+        </v-col>
+      </v-expand-transition>
+
+      <!-- ВИДЖЕТ: ГРЯЗНАЯ МАРЖА -->
+      <v-expand-transition>
+        <v-col
+          v-if="showMargin"
+          cols="12"
+          :md="(showForecast || showExpenses) ? 6 : 12"
+        >
+          <v-card elevation="0" class="widget-card">
+            <div class="widget-header d-flex align-center pa-3 flex-wrap" style="gap: 0.5rem;">
+              <v-icon color="success" class="mr-2">ri-bank-line</v-icon>
+
+              <span class="text-subtitle-1 font-weight-medium">
+                Грязная маржа по эмитентам (ТЕСТ)
+              </span>
+
+              <v-spacer></v-spacer>
+
+              <v-select
+                v-model="marginYear"
+                :items="marginYears"
+                label="Год"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="width: 6.5rem;"
+              ></v-select>
+
+              <v-select
+                v-model="marginMonth"
+                :items="marginMonths"
+                item-title="title"
+                item-value="value"
+                label="Месяц"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="width: 9rem;"
+              ></v-select>
+
+              <v-chip size="small" variant="tonal" color="primary" class="ml-1">
+                {{ emissaryRows.length }} эмитентов
+              </v-chip>
 
               <v-btn
                 icon="ri-close-line"
                 variant="text"
                 size="small"
-                @click="showExpenses = false"
+                class="close-btn ml-1"
+                @click="showMargin = false"
               ></v-btn>
             </div>
 
             <v-divider></v-divider>
 
             <div class="pa-4">
-              <div
-                ref="expensesChart"
-                class="expenses-chart"
-              ></div>
+              <!-- Сводка: 4 карточки -->
+              <div class="d-flex flex-wrap ga-3 mb-3">
+                <v-card elevation="0" variant="tonal" color="success-light"
+                        style="flex: 1; min-width: 150px;">
+                  <div class="pa-3">
+                    <div class="text-caption text-grey mb-1">Общая прибыль</div>
+                    <div class="text-h6 font-weight-bold"
+                         :class="summary.totalProfit >= 0 ? 'text-success' : 'text-error'">
+                      {{ formatMoney(summary.totalProfit) }}
+                    </div>
+                  </div>
+                </v-card>
+                <v-card elevation="0" variant="tonal" color="primary-light"
+                        style="flex: 1; min-width: 150px;">
+                  <div class="pa-3">
+                    <div class="text-caption text-grey mb-1">Средняя маржа</div>
+                    <div class="text-h6 font-weight-bold" :class="getMarginColor(summary.avgMargin)">
+                      {{ summary.avgMargin.toFixed(2) }}%
+                    </div>
+                  </div>
+                </v-card>
+                <v-card elevation="0" variant="tonal" style="flex: 1; min-width: 150px;">
+                  <div class="pa-3">
+                    <div class="text-caption text-grey mb-1">Скидка для нас</div>
+                    <div class="text-h6 font-weight-bold text-info">
+                      {{ summary.avgIncoming.toFixed(2) }}%
+                    </div>
+                  </div>
+                </v-card>
+                <v-card elevation="0" variant="tonal" style="flex: 1; min-width: 150px;">
+                  <div class="pa-3">
+                    <div class="text-caption text-grey mb-1">Скидка для клиента</div>
+                    <div class="text-h6 font-weight-bold text-orange">
+                      {{ summary.avgOutgoing.toFixed(2) }}%
+                    </div>
+                  </div>
+                </v-card>
+              </div>
+
+              <!-- Таблица эмитентов -->
+              <div class="table-responsive">
+                <v-data-table
+                  :headers="emissaryHeaders"
+                  :items="emissaryRows"
+                  items-per-page="-1"
+                  density="comfortable"
+                  hover
+                  hide-default-footer
+                  :loading="marginLoading"
+                  loading-text="Загрузка данных..."
+                >
+                  <template #item.emissary="{ item }">
+                    <span class="font-weight-bold">{{ item.emissary }}</span>
+                  </template>
+
+                  <template #item.profit="{ item }">
+                    <div class="text-right font-weight-medium"
+                         :class="item.profit >= 0 ? 'text-success' : 'text-error'">
+                      {{ formatMoney(item.profit) }}
+                    </div>
+                  </template>
+
+                  <template #item.margin="{ item }">
+                    <div class="text-right font-weight-bold" :class="getMarginColor(item.margin)">
+                      {{ item.margin.toFixed(2) }}%
+                    </div>
+                  </template>
+
+                  <template #item.incomingDiscount="{ item }">
+                    <div class="text-right font-weight-medium text-info">
+                      {{ item.incomingDiscount !== null ? item.incomingDiscount.toFixed(2) + '%' : '—' }}
+                    </div>
+                  </template>
+
+                  <template #item.outgoingDiscount="{ item }">
+                    <div class="text-right font-weight-medium text-orange">
+                      {{ item.outgoingDiscount !== null ? item.outgoingDiscount.toFixed(2) + '%' : '—' }}
+                    </div>
+                  </template>
+
+                  <template #no-data>
+                    <div class="text-center pa-6 text-grey">
+                      <v-icon size="48" color="grey-lighten-1" class="mb-2">ri-bank-line</v-icon>
+                      <div class="text-body-2">Нет данных по эмитентам</div>
+                      <div class="text-caption">
+                        За {{ marginMonthName }} {{ marginYear }} данные не загружены
+                      </div>
+                    </div>
+                  </template>
+                </v-data-table>
+              </div>
             </div>
           </v-card>
         </v-col>
       </v-expand-transition>
     </v-row>
 
-    <v-row
-      v-if="!showExpenses || !showForecast"
-      class="mt-2"
-    >
+    <!-- ЧИПЫ ЗАКРЫТЫХ ВИДЖЕТОВ -->
+    <v-row v-if="!showExpenses || !showForecast || !showMargin" class="mt-2">
       <v-col cols="12">
         <div class="d-flex ga-2">
           <v-chip
             v-if="!showForecast"
             color="warning"
             variant="tonal"
-            @click="
-              showForecast = true;
-              loadForecast();
-            "
+            @click="showForecast = true; loadForecast();"
           >
-            <v-icon
-              size="16"
-              class="mr-1"
-            >
-              ri-timer-line
-            </v-icon>
-
+            <v-icon size="16" class="mr-1">ri-timer-line</v-icon>
             Прогноз
           </v-chip>
 
@@ -352,19 +378,20 @@
             v-if="!showExpenses"
             color="primary"
             variant="tonal"
-            @click="
-              showExpenses = true;
-              initExpensesChart();
-            "
+            @click="showExpenses = true; initExpensesChart();"
           >
-            <v-icon
-              size="16"
-              class="mr-1"
-            >
-              ri-bar-chart-line
-            </v-icon>
-
+            <v-icon size="16" class="mr-1">ri-bar-chart-line</v-icon>
             Расходы
+          </v-chip>
+
+          <v-chip
+            v-if="!showMargin"
+            color="success"
+            variant="tonal"
+            @click="showMargin = true; loadMargin();"
+          >
+            <v-icon size="16" class="mr-1">ri-bank-line</v-icon>
+            Грязная маржа (ТЕСТ)
           </v-chip>
         </div>
       </v-col>
@@ -390,30 +417,11 @@ const props = defineProps<{
   primaryColor?: string;
 }>();
 
-const isDark = computed(
-  () => props.theme === 'dark'
-);
+const isDark = computed(() => props.theme === 'dark');
 
-const chartColor = computed(
-  () =>
-    isDark.value
-      ? '#FF5252'
-      : '#F44336'
-);
-
-const chartBgColor = computed(
-  () =>
-    isDark.value
-      ? '#1E1E2D'
-      : 'transparent'
-);
-
-const chartTextColor = computed(
-  () =>
-    isDark.value
-      ? '#FFFFFF'
-      : '#333333'
-);
+const chartColor = computed(() => isDark.value ? '#FF5252' : '#F44336');
+const chartBgColor = computed(() => isDark.value ? '#1E1E2D' : 'transparent');
+const chartTextColor = computed(() => isDark.value ? '#FFFFFF' : '#333333');
 
 const loading = ref(false);
 const exporting = ref(false);
@@ -430,25 +438,18 @@ interface ClientDef {
 }
 
 const CLIENTS: ClientDef[] = [
-  {
-    id: 'montblanc',
-    name: 'Монблан',
-    suffix: '',
-    isPrimary: true,
-  },
-  {
-    id: 'faeton',
-    name: 'Фаэтон',
-    suffix: ' ( Фаэтон )',
-  },
-  {
-    id: 'as',
-    name: 'АС',
-    suffix: ' ( АС )',
-  },
+  { id: 'montblanc', name: 'Монблан', suffix: '',           isPrimary: true },
+  { id: 'faeton',    name: 'Фаэтон',  suffix: ' ( Фаэтон )' },
+  { id: 'as',        name: 'АС',      suffix: ' ( АС )'     },
 ];
 
 const CLIENT_BY_ID = new Map(CLIENTS.map(c => [c.id, c]));
+
+const ENTITY_NAME_TO_ID: Record<string, string> = {
+  'фаэтон':  'faeton',
+  'монблан': 'montblanc',
+  'ас':      'as',
+};
 
 /* =========================================================
    ПОСТАВЩИКИ
@@ -511,16 +512,12 @@ const suppliers: SupplierDef[] = [
 ];
 
 /* =========================================================
-   ХЕЛПЕРЫ ДЛЯ ПАР (supplier × client)
+   ХЕЛПЕРЫ
    ========================================================= */
 
-const getClientName = (id: string) =>
-  CLIENT_BY_ID.get(id)?.name ?? id;
+const getClientName = (id: string) => CLIENT_BY_ID.get(id)?.name ?? id;
 
-const getSupplierLabel = (
-  supplier: SupplierDef,
-  clientId: string
-): string | null =>
+const getSupplierLabel = (supplier: SupplierDef, clientId: string): string | null =>
   supplier.labels[clientId] ?? null;
 
 const buildApiKey = (supplier: SupplierDef, clientId: string) => {
@@ -536,24 +533,28 @@ const savedWidgets = localStorage.getItem('widgets_visible');
 
 let ie = true;
 let iF = true;
+let iM = true;
 
 if (savedWidgets) {
   try {
     const s = JSON.parse(savedWidgets);
     ie = s.expenses ?? true;
     iF = s.forecast ?? true;
+    iM = s.margin ?? true;
   } catch {}
 }
 
 const showExpenses = ref(ie);
 const showForecast = ref(iF);
+const showMargin = ref(iM);
 
-watch([showExpenses, showForecast], () => {
+watch([showExpenses, showForecast, showMargin], () => {
   localStorage.setItem(
     'widgets_visible',
     JSON.stringify({
       expenses: showExpenses.value,
       forecast: showForecast.value,
+      margin: showMargin.value,
     })
   );
 });
@@ -585,15 +586,11 @@ const formatDateForDisplay = (dateStr: string) => {
 };
 
 /* =========================================================
-   CHART
+   CHART / FORECAST
    ========================================================= */
 
 const expensesChart = ref<HTMLElement | null>(null);
 let expensesInstance: any = null;
-
-/* =========================================================
-   FORECAST
-   ========================================================= */
 
 const forecastData = ref<any[]>([]);
 
@@ -608,14 +605,10 @@ const dailyExpenseTable = ref<{
   series: [],
 });
 
-/* Пополнения из Google Sheets (только чтение). */
 const sheetReplenishments = ref<Record<string, number>>({});
-
-/* Доп. пополнения — ручной ввод оператора. */
 const manualReplenishments = ref<Record<string, number>>({});
 const editingReplenishment = ref<string | null>(null);
 
-/* Сумма пополнений для пары. */
 const getTotalReplenishment = (pairKey: string): number =>
   (sheetReplenishments.value[pairKey] ?? 0) +
   (parseFloat(manualReplenishments.value[pairKey] as any) || 0);
@@ -633,9 +626,7 @@ const allClientsSelected = computed(
 );
 
 const toggleAllClients = () => {
-  selectedClients.value = allClientsSelected.value
-    ? []
-    : [...clients];
+  selectedClients.value = allClientsSelected.value ? [] : [...clients];
 };
 
 /* =========================================================
@@ -689,21 +680,18 @@ const getExpensesDateRange = () => {
       dateStart = new Date(today);
       dateEnd = new Date(today);
       break;
-
     case '3days':
       dateEnd = new Date(today);
       dateEnd.setUTCDate(dateEnd.getUTCDate() - 1);
       dateStart = new Date(dateEnd);
       dateStart.setUTCDate(dateStart.getUTCDate() - 2);
       break;
-
     case '7days':
       dateEnd = new Date(today);
       dateEnd.setUTCDate(dateEnd.getUTCDate() - 1);
       dateStart = new Date(dateEnd);
       dateStart.setUTCDate(dateStart.getUTCDate() - 6);
       break;
-
     case 'custom':
       if (dateRange.value && dateRange.value.length === 2) {
         const [startStr, endStr] = dateRange.value;
@@ -718,7 +706,6 @@ const getExpensesDateRange = () => {
         dateStart.setUTCDate(dateStart.getUTCDate() - 6);
       }
       break;
-
     default:
       dateEnd = new Date(today);
       dateEnd.setUTCDate(dateEnd.getUTCDate() - 1);
@@ -743,7 +730,6 @@ const getExpensesDateList = () => {
     result.push(formatDateISO(current));
     current.setUTCDate(current.getUTCDate() + 1);
   }
-
   return result;
 };
 
@@ -754,7 +740,6 @@ const getForecastDateRange = () => {
 
   const dateStart = new Date(yesterday);
   dateStart.setUTCDate(dateStart.getUTCDate() - 6);
-
   const dateEnd = new Date(yesterday);
 
   return {
@@ -774,7 +759,6 @@ const getForecastDateList = () => {
     result.push(formatDateISO(current));
     current.setUTCDate(current.getUTCDate() + 1);
   }
-
   return result;
 };
 
@@ -784,7 +768,6 @@ const getForecastDateList = () => {
 
 const formatMoney = (a: number | string) => {
   if (typeof a === 'string') return a;
-
   return new Intl.NumberFormat('ru-RU', {
     style: 'currency',
     currency: 'RUB',
@@ -793,8 +776,7 @@ const formatMoney = (a: number | string) => {
 };
 
 const formatTime = (iso: string) =>
-  '↻ ' +
-  new Date(iso).toLocaleTimeString('ru-RU', {
+  '↻ ' + new Date(iso).toLocaleTimeString('ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -825,34 +807,17 @@ const applyFill = (
   bold = false,
   color = 'FF000000'
 ) => {
-  cell.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb },
-  };
-  cell.font = {
-    name: 'Calibri',
-    size: 11,
-    bold,
-    color: { argb: color },
-  };
+  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } };
+  cell.font = { name: 'Calibri', size: 11, bold, color: { argb: color } };
 };
 
 const applyBorder = (cell: ExcelJS.Cell) => {
-  const thin = {
-    style: 'thin' as const,
-    color: { argb: 'FFB0B0B0' },
-  };
-  cell.border = {
-    top: thin,
-    left: thin,
-    bottom: thin,
-    right: thin,
-  };
+  const thin = { style: 'thin' as const, color: { argb: 'FFB0B0B0' } };
+  cell.border = { top: thin, left: thin, bottom: thin, right: thin };
 };
 
 /* =========================================================
-   ПОСТРОЕНИЕ QUERIES ДЛЯ РАСХОДОВ
+   QUERIES ДЛЯ РАСХОДОВ
    ========================================================= */
 
 interface ExpenseQuery {
@@ -876,13 +841,8 @@ const buildExpenseQueries = (): ExpenseQuery[] => {
       });
     }
   }
-
   return queries;
 };
-
-/* =========================================================
-   ЗАГРУЗКА РАСХОДОВ (общая для графика и прогноза)
-   ========================================================= */
 
 const fetchExpensesForRange = async (
   range: {
@@ -896,13 +856,6 @@ const fetchExpensesForRange = async (
 ) => {
   const queries = buildExpenseQueries();
 
-  console.log(
-    `Диапазон расходов (${scope}):`,
-    range.dateStartString,
-    '→',
-    range.dateEndString
-  );
-
   const series = await Promise.all(
     queries.map(async q => {
       const params = new URLSearchParams();
@@ -912,9 +865,6 @@ const fetchExpensesForRange = async (
       params.set('field', 'sumPos');
 
       const requestUrl = `/api/proxy/expenses.php?${params.toString()}`;
-
-      console.log(`Запрос расходов (${scope}):`, requestUrl);
-
       const response = await fetch(requestUrl);
       if (!response.ok) {
         throw new Error(`Ошибка API расходов: ${response.status}`);
@@ -938,11 +888,7 @@ const fetchExpensesForRange = async (
     })
   );
 
-  return {
-    dates: allDates,
-    series,
-    ...range,
-  };
+  return { dates: allDates, series, ...range };
 };
 
 const fetchExpensesForChart = () => {
@@ -958,26 +904,22 @@ const fetchExpensesForForecast = () => {
 };
 
 /* =========================================================
-   ЗАГРУЗКА ПОПОЛНЕНИЙ ИЗ GOOGLE SHEETS
+   ЗАГРУЗКА ПОПОЛНЕНИЙ
    ========================================================= */
 
 const loadSheetReplenishments = async () => {
   try {
     const resp = await fetch('/api/proxy/replenishments.php');
-    if (!resp.ok) {
-      throw new Error(`replenishments API: ${resp.status}`);
-    }
-    const data = await resp.json();
+    if (!resp.ok) throw new Error(`replenishments API: ${resp.status}`);
 
+    const data = await resp.json();
     const totals: Record<string, number> = {};
     for (const item of data.items ?? []) {
       totals[item.pairKey] = Number(item.total) || 0;
     }
     sheetReplenishments.value = totals;
-
-    console.log('Пополнения из Google Sheets:', totals);
   } catch (e) {
-    console.error('Ошибка загрузки пополнений из Google Sheets:', e);
+    console.error('Ошибка загрузки пополнений:', e);
   }
 };
 
@@ -988,10 +930,7 @@ const loadSheetReplenishments = async () => {
 const initExpensesChart = () => {
   nextTick(() => {
     if (!expensesChart.value) return;
-
-    if (expensesInstance) {
-      expensesInstance.destroy();
-    }
+    if (expensesInstance) expensesInstance.destroy();
 
     expensesInstance = Highcharts.chart(expensesChart.value, {
       chart: {
@@ -1004,17 +943,11 @@ const initExpensesChart = () => {
       xAxis: {
         type: 'category',
         labels: {
-          style: {
-            fontSize: '1.2rem',
-            color: chartTextColor.value,
-          },
+          style: { fontSize: '1.2rem', color: chartTextColor.value },
         },
       },
       yAxis: {
-        title: {
-          text: 'Расход (₽)',
-          style: { color: chartTextColor.value },
-        },
+        title: { text: 'Расход (₽)', style: { color: chartTextColor.value } },
         min: 0,
         tickAmount: 6,
         gridLineColor: isDark.value ? '#333' : '#E0E0E0',
@@ -1022,32 +955,18 @@ const initExpensesChart = () => {
           style: { color: chartTextColor.value },
           formatter: function (this: any) {
             return new Intl.NumberFormat('ru-RU', {
-              style: 'currency',
-              currency: 'RUB',
-              minimumFractionDigits: 0,
+              style: 'currency', currency: 'RUB', minimumFractionDigits: 0,
             }).format(this.value);
           },
         },
       },
-      tooltip: {
-        pointFormat: 'Расход: <b>{point.y:,.2f} ₽</b>',
-      },
+      tooltip: { pointFormat: 'Расход: <b>{point.y:,.2f} ₽</b>' },
       plotOptions: {
-        bar: {
-          borderRadius: 4,
-          pointPadding: 0.1,
-          groupPadding: 0.1,
-        },
+        bar: { borderRadius: 4, pointPadding: 0.1, groupPadding: 0.1 },
       },
       legend: { enabled: false },
       credits: { enabled: false },
-      series: [
-        {
-          name: 'Расход',
-          data: [],
-          color: chartColor.value,
-        },
-      ],
+      series: [{ name: 'Расход', data: [], color: chartColor.value }],
     });
 
     loadExpensesForChart();
@@ -1056,17 +975,14 @@ const initExpensesChart = () => {
 
 const loadExpensesForChart = async () => {
   if (!expensesInstance) return;
-
   try {
     const table = await fetchExpensesForChart();
-
     const totalValues = table.series.map(series => ({
       name: series.name,
       totalValue: series.dailyTotals.reduce((a, b) => a + b, 0),
     }));
 
     expensesInstance.series[0].remove(false);
-
     expensesInstance.addSeries(
       {
         name: 'Расход',
@@ -1076,7 +992,6 @@ const loadExpensesForChart = async () => {
       },
       false
     );
-
     expensesInstance.redraw(true);
   } catch (error) {
     console.error('Ошибка загрузки расходов:', error);
@@ -1100,59 +1015,40 @@ const loadForecast = async () => {
     const tnCache = await tnResp.json();
 
     const { dates, series: daily7 } = await fetchExpensesForForecast();
-
     dailyExpenseTable.value = { dates, series: daily7 };
 
     const result: any[] = [];
 
     for (const supplier of suppliers) {
       for (const clientId of selectedClients.value) {
-        // Если у пары нет label — она не существует (например, ТН + АС).
         const displayName = getSupplierLabel(supplier, clientId);
         if (!displayName) continue;
 
         const pairKey = `${supplier.key}::${clientId}`;
-
         let balance: number | string;
         let receivedAt: string | null = null;
 
-        /* ТАТНЕФТЬ — отдельный источник */
         if (supplier.tnKeys) {
           const tnKey = supplier.tnKeys[clientId];
-
-          if (!tnKey) {
-            continue;
-          }
-
+          if (!tnKey) continue;
           const tnBalance = tnCache[tnKey]?.current?.balance;
-          balance =
-            tnBalance !== undefined && tnBalance !== null
-              ? tnBalance
-              : 'Ошибка';
+          balance = tnBalance !== undefined && tnBalance !== null ? tnBalance : 'Ошибка';
           receivedAt = tnCache[tnKey]?.current?.received_at ?? null;
-        }
-        /* ОСТАЛЬНЫЕ — общий источник balances.php */
-        else {
+        } else {
           const apiKey = buildApiKey(supplier, clientId);
-          const balanceItem = balancesData.find(
-            (b: any) => b.agregator === apiKey
-          );
+          const balanceItem = balancesData.find((b: any) => b.agregator === apiKey);
 
-          if (
-            balanceItem &&
-            balanceItem.balance !== undefined &&
-            balanceItem.balance !== null
-          ) {
+          if (balanceItem?.errors) {
+            balance = balanceItem.errors;
+          } else if (balanceItem?.balance != null) {
             const parsedBalance = parseFloat(balanceItem.balance);
             balance = !isNaN(parsedBalance) ? parsedBalance : 'Ошибка';
           } else {
             balance = 'Ошибка';
           }
-
           receivedAt = apiReceivedAt;
         }
 
-        /* РАСХОД */
         const expData = daily7.find(e => e.pairKey === pairKey);
         const dailyTotals = expData ? expData.dailyTotals : [];
 
@@ -1164,28 +1060,18 @@ const loadForecast = async () => {
         const avg7 = dailyTotals.length > 0 ? sum7 / dailyTotals.length : 0;
 
         const daysLeft =
-          typeof balance === 'string'
-            ? 0
-            : avg7 > 0
-              ? Math.floor(balance / avg7)
-              : balance > 0
-                ? 99
-                : 0;
+          typeof balance === 'string' ? 0
+            : avg7 > 0 ? Math.floor(balance / avg7)
+            : balance > 0 ? 99 : 0;
 
-        /* ПОПОЛНЕНИЯ: из Google Sheets + ручные */
         const sheetExtra = sheetReplenishments.value[pairKey] ?? 0;
-        const manualExtra =
-          parseFloat(manualReplenishments.value[pairKey] as any) || 0;
+        const manualExtra = parseFloat(manualReplenishments.value[pairKey] as any) || 0;
         const extra = sheetExtra + manualExtra;
 
         const daysLeftWithReplenishment =
-          typeof balance === 'string'
-            ? 0
-            : avg7 > 0
-              ? Math.floor((balance + extra) / avg7)
-              : balance + extra > 0
-                ? 99
-                : 0;
+          typeof balance === 'string' ? 0
+            : avg7 > 0 ? Math.floor((balance + extra) / avg7)
+            : balance + extra > 0 ? 99 : 0;
 
         result.push({
           key: pairKey,
@@ -1209,12 +1095,11 @@ const loadForecast = async () => {
 };
 
 /* =========================================================
-   РЕДАКТИРОВАНИЕ ДОП. ПОПОЛНЕНИЯ (ручной ввод)
+   РЕДАКТИРОВАНИЕ ДОП. ПОПОЛНЕНИЯ
    ========================================================= */
 
 const startEditReplenishment = (key: string) => {
   editingReplenishment.value = key;
-
   if (!(key in manualReplenishments.value)) {
     manualReplenishments.value[key] = 0;
   }
@@ -1236,11 +1121,8 @@ const saveReplenishment = (key: string) => {
       typeof item.balance === 'string' ? 0 : item.balance + totalExtra;
 
     const daysLeft =
-      item.expense7 > 0
-        ? Math.floor(totalBalance / item.expense7)
-        : totalBalance > 0
-          ? 99
-          : 0;
+      item.expense7 > 0 ? Math.floor(totalBalance / item.expense7)
+        : totalBalance > 0 ? 99 : 0;
 
     return {
       ...item,
@@ -1251,7 +1133,218 @@ const saveReplenishment = (key: string) => {
 };
 
 /* =========================================================
-   EXCEL
+   ГРЯЗНАЯ МАРЖА
+   ========================================================= */
+
+const marginYear = ref(new Date().getFullYear().toString());
+const marginMonth = ref(String(new Date().getMonth() + 1).padStart(2, '0'));
+
+const marginYears = Array.from({ length: 5 }, (_, i) => (2024 + i).toString());
+
+const marginMonths = [
+  { title: 'Январь',   value: '01' },
+  { title: 'Февраль',  value: '02' },
+  { title: 'Март',     value: '03' },
+  { title: 'Апрель',   value: '04' },
+  { title: 'Май',      value: '05' },
+  { title: 'Июнь',     value: '06' },
+  { title: 'Июль',     value: '07' },
+  { title: 'Август',   value: '08' },
+  { title: 'Сентябрь', value: '09' },
+  { title: 'Октябрь',  value: '10' },
+  { title: 'Ноябрь',   value: '11' },
+  { title: 'Декабрь',  value: '12' },
+];
+
+const marginMonthName = computed(() =>
+  marginMonths.find(m => m.value === marginMonth.value)?.title ?? ''
+);
+
+const marginLoading = ref(false);
+
+const allMarginData = ref<Array<{
+  emissary: string;
+  entityId: string;
+  entityName: string;
+  profit: number;
+  margin: number;
+  incomingDiscount: number | null;
+  outgoingDiscount: number | null;
+  forClient: number;
+  stella: number;
+  forUs: number;
+}>>([]);
+
+const emissaryRows = computed(() => {
+  return allMarginData.value
+    .filter(r => selectedClients.value.includes(r.entityId))
+    .map(r => ({
+      emissary: `${r.emissary} ${r.entityName}`,
+      profit: r.profit,
+      margin: r.margin,
+      incomingDiscount: r.incomingDiscount,
+      outgoingDiscount: r.outgoingDiscount,
+    }))
+    .sort((a, b) => b.margin - a.margin);
+});
+
+const emissaryHeaders = [
+  { title: 'Эмитент',             key: 'emissary',         sortable: true },
+  { title: 'Прибыль',             key: 'profit',           sortable: true, align: 'end' as const },
+  { title: 'Грязная маржа',       key: 'margin',           sortable: true, align: 'end' as const },
+  { title: 'Скидка для нас',      key: 'incomingDiscount', sortable: true, align: 'end' as const },
+  { title: 'Скидка для клиента',  key: 'outgoingDiscount', sortable: true, align: 'end' as const },
+];
+
+const summary = computed(() => {
+  const rows = emissaryRows.value;
+  const totalProfit = rows.reduce((s, r) => s + r.profit, 0);
+  const avgMargin = rows.length
+    ? rows.reduce((s, r) => s + r.margin, 0) / rows.length
+    : 0;
+
+  const data = allMarginData.value.filter(r => selectedClients.value.includes(r.entityId));
+  const totalStella = data.reduce((s, r) => s + r.stella, 0);
+
+  const avgIncoming = totalStella > 0
+    ? data.reduce((s, r) => s + (r.incomingDiscount ?? 0) * r.stella, 0) / totalStella
+    : 0;
+
+  const avgOutgoing = totalStella > 0
+    ? data.reduce((s, r) => s + (r.outgoingDiscount ?? 0) * r.stella, 0) / totalStella
+    : 0;
+
+  return { totalProfit, avgMargin, avgIncoming, avgOutgoing };
+});
+
+const getMarginColor = (m: number): string => {
+  if (m >= 5) return 'text-success';
+  if (m >= 3) return 'text-warning';
+  if (m > 0)  return 'text-orange';
+  return 'text-error';
+};
+
+const parseIssuerName = (raw: string): { emissary: string; entityName: string } => {
+  const match = raw.match(/\s*\(\s*(.+?)\s*\)\s*$/);
+  if (match) {
+    return {
+      emissary: raw.replace(match[0], '').trim(),
+      entityName: match[1].trim(),
+    };
+  }
+  return { emissary: raw.trim(), entityName: '' };
+};
+
+const loadMargin = async () => {
+  marginLoading.value = true;
+  try {
+    const year = marginYear.value;
+    const month = marginMonth.value;
+
+    const resp = await fetch(`/api/kpi-vat?year=${year}&month=${month}`);
+    if (!resp.ok) throw new Error(`API вернул ${resp.status}`);
+
+    const result = await resp.json();
+    console.log('📦 API ответ:', result);
+    console.log('📦 data.length:', result?.data?.length);
+
+    if (!result.success || !Array.isArray(result.data)) {
+      console.warn('Нет данных в ответе /api/kpi-vat', result);
+      allMarginData.value = [];
+      return;
+    }
+
+    const map = new Map<string, {
+      emissary: string;
+      entityId: string;
+      entityName: string;
+      profit: number;
+      forClient: number;
+      stella: number;
+      forUs: number;
+      incomingWeighted: number;
+      outgoingWeighted: number;
+    }>();
+
+    for (const row of result.data) {
+      const issuerRaw = String(row.issuer_name ?? '').trim();
+      if (!issuerRaw) continue;
+
+      const { emissary, entityName } = parseIssuerName(issuerRaw);
+
+      if (!map.has(issuerRaw)) {
+        const entityId =
+          ENTITY_NAME_TO_ID[entityName.toLowerCase()] ?? entityName.toLowerCase();
+
+        map.set(issuerRaw, {
+          emissary,
+          entityId,
+          entityName,
+          profit: 0,
+          forClient: 0,
+          stella: 0,
+          forUs: 0,
+          incomingWeighted: 0,
+          outgoingWeighted: 0,
+        });
+      }
+
+      const item = map.get(issuerRaw)!;
+      const stella = Number(row.sum_stella) || 0;
+
+      // ⚠️ ГЛАВНАЯ ПРАВКА:
+      // API отдаёт «скидку для нас» со знаком, обратным смыслу:
+      //   + = наценка (для нас плохо)
+      //   − = скидка  (для нас хорошо)
+      // Инвертируем, чтобы в UI:
+      //   + = скидка для нас, − = наценка.
+      const incomingRaw = row.average_incoming_discount !== null && row.average_incoming_discount !== undefined
+        ? Number(row.average_incoming_discount) : 0;
+      const outgoingRaw = row.average_outgoing_discount !== null && row.average_outgoing_discount !== undefined
+        ? Number(row.average_outgoing_discount) : 0;
+
+      const incoming = -incomingRaw;
+      const outgoing = -outgoingRaw;
+
+      item.profit += Number(row.total_profit) || 0;
+      item.forClient += Number(row.sum_for_client) || 0;
+      item.stella += stella;
+      item.forUs += Number(row.sum_for_us) || 0;
+      item.incomingWeighted += incoming * stella;
+      item.outgoingWeighted += outgoing * stella;
+    }
+
+    allMarginData.value = Array.from(map.values()).map(item => ({
+      emissary: item.emissary,
+      entityId: item.entityId,
+      entityName: item.entityName,
+      profit: item.profit,
+      margin: item.forClient > 0
+        ? (item.profit / item.forClient) * 100
+        : 0,
+      incomingDiscount: item.stella > 0
+        ? item.incomingWeighted / item.stella
+        : null,
+      outgoingDiscount: item.stella > 0
+        ? item.outgoingWeighted / item.stella
+        : null,
+      forClient: item.forClient,
+      stella: item.stella,
+      forUs: item.forUs,
+    }));
+
+    console.log('✅ Загружено эмитентов:', allMarginData.value.length);
+    console.log('📊 Данные:', allMarginData.value);
+  } catch (e) {
+    console.error('Ошибка загрузки маржи:', e);
+    allMarginData.value = [];
+  } finally {
+    marginLoading.value = false;
+  }
+};
+
+/* =========================================================
+   EXCEL EXPORT
    ========================================================= */
 
 const exportToExcel = async () => {
@@ -1262,9 +1355,6 @@ const exportToExcel = async () => {
   try {
     const table = await fetchExpensesForForecast();
     dailyExpenseTable.value = table;
-
-    console.log('Excel диапазон:', table.dateStartString, '→', table.dateEndString);
-    console.log('Excel даты:', table.dates);
 
     const moscow = getMoscowCalendarDate();
     const today = createCalendarDate(moscow.year, moscow.month, moscow.day);
@@ -1291,9 +1381,7 @@ const exportToExcel = async () => {
 
     const formatPlanDate = (date: Date) =>
       date.toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        timeZone: 'UTC',
+        day: '2-digit', month: '2-digit', timeZone: 'UTC',
       });
 
     const planMondayStr = formatPlanDate(nextMonday);
@@ -1301,37 +1389,24 @@ const exportToExcel = async () => {
     const wb = new ExcelJS.Workbook();
     wb.creator = 'KPI';
 
-    const ws = wb.addWorksheet('Лист1', {
-      views: [{ showGridLines: true }],
-    });
+    const ws = wb.addWorksheet('Лист1', { views: [{ showGridLines: true }] });
 
-    // Сортировка: сначала «главное» юрлицо (Монблан), затем остальные.
-    // В Excel идёт ОДНА суммарная колонка: sheetReplenishment + manualReplenishment.
     const exportItems = forecastData.value
       .map(item => ({
         ...item,
         planReplenishment:
-          (item.sheetReplenishment || 0) +
-          (item.manualReplenishment || 0),
+          (item.sheetReplenishment || 0) + (item.manualReplenishment || 0),
       }))
       .sort((a, b) => {
         const aClientId = a.key.split('::')[1];
         const bClientId = b.key.split('::')[1];
-
         const aClient = CLIENT_BY_ID.get(aClientId);
         const bClient = CLIENT_BY_ID.get(bClientId);
-
         const aPrimary = aClient?.isPrimary ? 0 : 1;
         const bPrimary = bClient?.isPrimary ? 0 : 1;
-
         if (aPrimary !== bPrimary) return aPrimary - bPrimary;
-
-        const clientCmp = (aClient?.name ?? '').localeCompare(
-          bClient?.name ?? '',
-          'ru'
-        );
+        const clientCmp = (aClient?.name ?? '').localeCompare(bClient?.name ?? '', 'ru');
         if (clientCmp !== 0) return clientCmp;
-
         return a.name.localeCompare(b.name, 'ru');
       });
 
@@ -1340,9 +1415,7 @@ const exportToExcel = async () => {
     const planEndRow = planStartRow + exportItems.length - 1;
 
     ws.getRow(planHeaderRow).values = [
-      'Винк',
-      'Баланс',
-      'План Поступлений',
+      'Винк', 'Баланс', 'План Поступлений',
       'Средняя сумма трат в сут. за предыдущие 3 дня',
       'Средняя сумма трат в сут. за предыдущие 7 дней',
       'Средняя сумма трат в сут. за предыдущие 7 дней +20%',
@@ -1350,11 +1423,7 @@ const exportToExcel = async () => {
     ];
 
     ws.getRow(planHeaderRow).height = 48;
-    ws.getRow(planHeaderRow).alignment = {
-      wrapText: true,
-      vertical: 'middle',
-      horizontal: 'center',
-    };
+    ws.getRow(planHeaderRow).alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
 
     for (let c = 1; c <= 7; c++) {
       const cell = ws.getRow(planHeaderRow).getCell(c);
@@ -1362,9 +1431,7 @@ const exportToExcel = async () => {
       applyBorder(cell);
     }
 
-    const seriesByPairKey = new Map(
-      table.series.map(s => [s.pairKey, s])
-    );
+    const seriesByPairKey = new Map(table.series.map(s => [s.pairKey, s]));
 
     const dailyHeaderRow = planEndRow + 2;
     const dailyStartRow = dailyHeaderRow + 1;
@@ -1378,12 +1445,8 @@ const exportToExcel = async () => {
       const row = ws.getRow(rowNumber);
 
       row.getCell(1).value = item.name;
-      row.getCell(2).value =
-        typeof item.balance === 'string'
-          ? item.balance
-          : Number(item.balance) || 0;
-      row.getCell(2).numFmt =
-        typeof item.balance === 'string' ? '@' : BALANCE_FMT;
+      row.getCell(2).value = typeof item.balance === 'string' ? item.balance : Number(item.balance) || 0;
+      row.getCell(2).numFmt = typeof item.balance === 'string' ? '@' : BALANCE_FMT;
       row.getCell(3).value = item.planReplenishment;
       row.getCell(3).numFmt = RUB_FMT;
 
@@ -1396,37 +1459,20 @@ const exportToExcel = async () => {
       const dailyTotals = series?.dailyTotals || [];
 
       const last3 = dailyTotals.slice(-3);
-      const avg3Value =
-        last3.length > 0
-          ? last3.reduce((a, b) => a + b, 0) / last3.length
-          : 0;
-
-      const avg7Value =
-        dailyTotals.length > 0
-          ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length
-          : 0;
-
+      const avg3Value = last3.length > 0 ? last3.reduce((a, b) => a + b, 0) / last3.length : 0;
+      const avg7Value = dailyTotals.length > 0 ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length : 0;
       const avg7Plus20Value = avg7Value * 1.2;
 
-      const forecastValue =
-        typeof item.balance === 'string'
-          ? 0
-          : item.balance +
-            item.planReplenishment -
-            avg7Plus20Value * dayMultiplier;
+      const forecastValue = typeof item.balance === 'string'
+        ? 0
+        : item.balance + item.planReplenishment - avg7Plus20Value * dayMultiplier;
 
       row.getCell(4).value = { formula: avg3Formula, result: avg3Value };
       row.getCell(4).numFmt = RUB_FMT;
-
       row.getCell(5).value = { formula: avg7Formula, result: avg7Value };
       row.getCell(5).numFmt = RUB_FMT;
-
-      row.getCell(6).value = {
-        formula: `E${rowNumber}*1.2`,
-        result: avg7Plus20Value,
-      };
+      row.getCell(6).value = { formula: `E${rowNumber}*1.2`, result: avg7Plus20Value };
       row.getCell(6).numFmt = RUB_FMT;
-
       row.getCell(7).value = {
         formula: `B${rowNumber}+C${rowNumber}-(F${rowNumber}*${dayMultiplier})`,
         result: forecastValue,
@@ -1442,28 +1488,21 @@ const exportToExcel = async () => {
 
     const dailyHeader = ws.getRow(dailyHeaderRow);
     dailyHeader.getCell(1).value = 'Дата';
-
     exportItems.forEach((item, index) => {
       dailyHeader.getCell(index + 2).value = item.name;
     });
-
     dailyHeader.font = { bold: true };
 
     for (let c = 1; c <= exportItems.length + 1; c++) {
       const cell = dailyHeader.getCell(c);
       applyFill(cell, 'FF5B9BD5', true, 'FFFFFFFF');
       applyBorder(cell);
-      cell.alignment = {
-        wrapText: true,
-        vertical: 'middle',
-        horizontal: 'center',
-      };
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     }
 
     table.dates.forEach((iso, dateIndex) => {
       const rowNumber = dailyStartRow + dateIndex;
       const row = ws.getRow(rowNumber);
-
       const [year, month, day] = iso.split('-').map(Number);
       const excelDate = createCalendarDate(year, month, day);
 
@@ -1474,7 +1513,6 @@ const exportToExcel = async () => {
         const cell = row.getCell(itemIndex + 2);
         const series = seriesByPairKey.get(item.key);
         const amount = series?.dailyTotals?.[dateIndex] ?? 0;
-
         cell.value = Number(amount) || 0;
         cell.numFmt = RUB_FMT;
       });
@@ -1486,25 +1524,17 @@ const exportToExcel = async () => {
 
     const footerSpecs = [
       {
-        row: avg3Row,
-        label: 'Среднее за 3 дня',
-        fill: 'FFF4B183',
+        row: avg3Row, label: 'Среднее за 3 дня', fill: 'FFF4B183',
         formula: (column: string) =>
           `AVERAGE(${column}${Math.max(dailyEndRow - 2, dailyStartRow)}:${column}${dailyEndRow})`,
       },
       {
-        row: avg7Row,
-        label: 'Среднее за 7 дней',
-        fill: 'FF9DC3E6',
-        formula: (column: string) =>
-          `AVERAGE(${column}${dailyStartRow}:${column}${dailyEndRow})`,
+        row: avg7Row, label: 'Среднее за 7 дней', fill: 'FF9DC3E6',
+        formula: (column: string) => `AVERAGE(${column}${dailyStartRow}:${column}${dailyEndRow})`,
       },
       {
-        row: sumRow,
-        label: 'Общий итог',
-        fill: 'FF9DC3E6',
-        formula: (column: string) =>
-          `SUM(${column}${dailyStartRow}:${column}${dailyEndRow})`,
+        row: sumRow, label: 'Общий итог', fill: 'FF9DC3E6',
+        formula: (column: string) => `SUM(${column}${dailyStartRow}:${column}${dailyEndRow})`,
       },
     ];
 
@@ -1519,18 +1549,11 @@ const exportToExcel = async () => {
         const dailyTotals = series?.dailyTotals || [];
 
         let resultValue = 0;
-
         if (spec.label === 'Среднее за 3 дня') {
           const last3 = dailyTotals.slice(-3);
-          resultValue =
-            last3.length > 0
-              ? last3.reduce((a, b) => a + b, 0) / last3.length
-              : 0;
+          resultValue = last3.length > 0 ? last3.reduce((a, b) => a + b, 0) / last3.length : 0;
         } else if (spec.label === 'Среднее за 7 дней') {
-          resultValue =
-            dailyTotals.length > 0
-              ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length
-              : 0;
+          resultValue = dailyTotals.length > 0 ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length : 0;
         } else if (spec.label === 'Общий итог') {
           resultValue = dailyTotals.reduce((a, b) => a + b, 0);
         }
@@ -1548,21 +1571,10 @@ const exportToExcel = async () => {
     }
 
     const totalColumns = exportItems.length + 1;
-
-    ws.columns = Array.from({ length: totalColumns }, (_, index) => ({
-      width: index === 0 ? 24 : 24,
-    }));
-
-    ws.views = [
-      {
-        showGridLines: true,
-        state: 'frozen',
-        ySplit: 1,
-      },
-    ];
+    ws.columns = Array.from({ length: totalColumns }, () => ({ width: 24 }));
+    ws.views = [{ showGridLines: true, state: 'frozen', ySplit: 1 }];
 
     const buffer = await wb.xlsx.writeBuffer();
-
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
@@ -1592,15 +1604,11 @@ const exportToExcel = async () => {
 
 const refreshAll = async () => {
   loading.value = true;
-
   try {
-    await loadSheetReplenishments();          // ← добавили
-    if (showExpenses.value) {
-      await loadExpensesForChart();
-    }
-    if (showForecast.value) {
-      await loadForecast();
-    }
+    await loadSheetReplenishments();
+    if (showExpenses.value) await loadExpensesForChart();
+    if (showForecast.value) await loadForecast();
+    if (showMargin.value) await loadMargin();
   } finally {
     loading.value = false;
   }
@@ -1610,14 +1618,10 @@ const refreshAll = async () => {
    WATCHERS
    ========================================================= */
 
-watch(selectedClients, () => {
-  refreshAll();
-}, { deep: true });
+watch(selectedClients, () => { refreshAll(); }, { deep: true });
 
 watch(expensePeriod, () => {
-  if (showExpenses.value) {
-    loadExpensesForChart();
-  }
+  if (showExpenses.value) loadExpensesForChart();
 });
 
 watch(dateRange, () => {
@@ -1626,10 +1630,12 @@ watch(dateRange, () => {
   }
 }, { deep: true });
 
+watch([marginYear, marginMonth], () => {
+  if (showMargin.value) loadMargin();
+});
+
 watch(() => props.theme, () => {
-  if (expensesInstance) {
-    initExpensesChart();
-  }
+  if (expensesInstance) initExpensesChart();
 });
 
 /* =========================================================
@@ -1643,29 +1649,21 @@ let refreshInterval: ReturnType<typeof setInterval> | null = null;
    ========================================================= */
 
 onMounted(async () => {
-  await loadSheetReplenishments();            // ← добавили
+  await loadSheetReplenishments();
 
-  if (showExpenses.value) {
-    initExpensesChart();
-  }
+  if (showExpenses.value) initExpensesChart();
 
   if (showForecast.value) {
     loadForecast();
-
-    refreshInterval = setInterval(() => {
-      refreshAll();
-    }, 25 * 60 * 1000);
+    refreshInterval = setInterval(() => { refreshAll(); }, 25 * 60 * 1000);
   }
+
+  if (showMargin.value) loadMargin();
 });
 
 onBeforeUnmount(() => {
-  if (expensesInstance) {
-    expensesInstance.destroy();
-  }
-
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-  }
+  if (expensesInstance) expensesInstance.destroy();
+  if (refreshInterval) clearInterval(refreshInterval);
 });
 </script>
 
@@ -1690,9 +1688,7 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 
-.widget-header {
-  background-color: #FAFAFA;
-}
+.widget-header { background-color: #FAFAFA; }
 
 .table-responsive {
   overflow-x: auto;
@@ -1704,21 +1700,24 @@ onBeforeUnmount(() => {
   height: clamp(30rem, 50vh, 50rem);
 }
 
-.replenishment-value {
-  cursor: pointer;
-  white-space: nowrap;
+.replenishment-value { cursor: pointer; white-space: nowrap; }
+.replenishment-value:hover { color: #1976d2; }
+.replenishment-value:hover .edit-icon { opacity: 1; }
+.edit-icon { opacity: 0.4; transition: opacity 0.2s; }
+
+.success-light {
+  background-color: rgba(var(--v-theme-success), 0.05) !important;
 }
 
-.replenishment-value:hover {
-  color: #1976d2;
+.close-btn {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #333 !important;
+  border-radius: 50% !important;
+  transition: all 0.15s;
 }
 
-.replenishment-value:hover .edit-icon {
-  opacity: 1;
-}
-
-.edit-icon {
-  opacity: 0.4;
-  transition: opacity 0.2s;
+.close-btn:hover {
+  background-color: rgba(211, 47, 47, 0.15) !important;
+  color: #d32f2f !important;
 }
 </style>
